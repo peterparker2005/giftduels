@@ -1,0 +1,14 @@
+go 1.23.5
+
+use (
+	./apps/service-gift
+	./apps/service-identity
+	./packages/cli-go
+	./packages/configs
+	./packages/errors
+	./packages/events
+	./packages/logger-go
+	./packages/protobuf-go
+	./packages/shared
+	./packages/version-go
+)

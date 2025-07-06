@@ -1,0 +1,48 @@
+version: '3'
+
+tasks:
+  deps:
+    desc: 'Update dependencies'
+    cmds:
+      - go mod tidy
+
+  test:
+    desc: 'Run tests'
+    cmds:
+      - gotestsum --format=short-verbose -- ./...
+
+  test:coverage:
+    desc: 'Run tests with coverage'
+    cmds:
+      - go test -v -race -coverprofile=coverage.out ./...
+
+  test:html:
+    desc: 'Generate HTML coverage report'
+    deps: [test-coverage]
+    cmds:
+      - go tool cover -html=coverage.out
+
+  lint:
+    desc: 'Run linter'
+    cmds:
+      - golangci-lint run ./...
+
+  lint:fix:
+    desc: 'Run linter with auto-fix'
+    cmds:
+      - golangci-lint run --fix ./...
+
+  fmt:
+    desc: 'Format code'
+    cmds:
+      - go fmt ./...
+
+  vet:
+    desc: 'Run go vet'
+    cmds:
+      - go vet ./...
+
+  security:
+    desc: 'Run security checks'
+    cmds:
+      - gosec ./...

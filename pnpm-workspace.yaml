@@ -1,0 +1,6 @@
+packages:
+  - 'packages/protobuf-ts'
+  - 'packages/logger-ts'
+  - 'tools/postman-dev-proxy'
+  - 'packages/eslint-config'
+  - 'apps/gifts-to-duels-bot'

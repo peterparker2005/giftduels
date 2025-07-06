@@ -1,0 +1,144 @@
+#!/bin/sh
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+echo "${BLUE}🔍 Running pre-commit checks...${NC}"
+
+# Function to filter only existing files
+filter_existing_files() {
+  while read -r file; do
+    [ -f "$file" ] && echo "$file"
+  done
+}
+
+filter_not_ignored() {
+  while read -r file; do
+    # Если файл не игнорируется, оставляем его
+    if ! git check-ignore -q "$file"; then
+      echo "$file"
+    fi
+  done
+}
+
+# Function to check if command exists
+command_exists() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+# Get staged files (excluding generated protobuf files)
+STAGED_TS=$(git diff --cached --name-only --diff-filter=ACMR -- '*.ts' '*.tsx' '*.js' '*.jsx' | filter_existing_files | filter_not_ignored)
+STAGED_GO=$(git diff --cached --name-only --diff-filter=ACMR -- '*.go' | filter_existing_files | filter_not_ignored)
+STAGED_JSON=$(git diff --cached --name-only --diff-filter=ACMR -- '*.json' | filter_existing_files | filter_not_ignored)
+
+# Exit early if no relevant files are staged
+if [ -z "$STAGED_TS" ] && [ -z "$STAGED_GO" ] && [ -z "$STAGED_JSON" ]; then
+  echo "${GREEN}✅ No relevant files staged. Skipping lint checks.${NC}"
+  exit 0
+fi
+
+# Lint and format JavaScript/TypeScript files with Biome
+if [ -n "$STAGED_TS" ]; then
+  echo "${YELLOW}→ Linting and formatting JS/TS staged files with Biome...${NC}"
+  
+  if ! command_exists npx; then
+    echo "${RED}❌ npx not found. Please install Node.js and npm.${NC}"
+    exit 1
+  fi
+  
+  # Count files for better output
+  TS_COUNT=$(echo "$STAGED_TS" | wc -l | tr -d ' ')
+  echo "${BLUE}   Checking $TS_COUNT file(s)${NC}"
+  
+  # Create temporary file list for biome
+  TEMP_LIST=$(mktemp)
+  echo "$STAGED_TS" > "$TEMP_LIST"
+  
+  # Run biome check (lint + format) on staged files
+  if ! npx biome check --write --files-ignore-unknown=true --no-errors-on-unmatched $(echo "$STAGED_TS" | tr '\n' ' '); then
+    echo "${RED}❌ Biome check failed${NC}"
+    rm -f "$TEMP_LIST"
+    exit 1
+  fi
+  
+  # Re-add fixed files to staging
+  echo "$STAGED_TS" | xargs git add
+  rm -f "$TEMP_LIST"
+  echo "${GREEN}✅ JS/TS files checked with Biome successfully${NC}"
+fi
+
+# Lint Go files
+if [ -n "$STAGED_GO" ]; then
+  echo "${YELLOW}→ Linting Go staged files...${NC}"
+  
+  if ! command_exists gofmt; then
+    echo "${RED}❌ gofmt not found. Please install Go.${NC}"
+    exit 1
+  fi
+  
+  # Count files for better output
+  GO_COUNT=$(echo "$STAGED_GO" | wc -l | tr -d ' ')
+  echo "${BLUE}   Checking $GO_COUNT Go file(s)${NC}"
+  
+  # Format Go files
+  echo "$STAGED_GO" | xargs gofmt -w
+  
+  # Find unique Go module directories more efficiently
+  GO_MOD_DIRS=""
+  for file in $STAGED_GO; do
+    DIR=$(dirname "$file")
+    while [ "$DIR" != "/" ] && [ -n "$DIR" ] && [ "$DIR" != "." ]; do
+      if [ -f "$DIR/go.mod" ]; then
+        GO_MOD_DIRS="$GO_MOD_DIRS\n$DIR"
+        break
+      fi
+      DIR=$(dirname "$DIR")
+    done
+  done
+  
+  # Remove duplicates and empty lines
+  GO_MOD_DIRS=$(echo -e "$GO_MOD_DIRS" | sort -u | grep -v '^$' | head -10)
+  
+  # Run golangci-lint if available
+  if command_exists golangci-lint; then
+    for dir in $GO_MOD_DIRS; do
+      if [ -n "$dir" ] && [ -d "$dir" ]; then
+        echo "${BLUE}   Running golangci-lint in $dir${NC}"
+        if ! (cd "$dir" && golangci-lint run --fix --out-format=colored-line-number --timeout=5m); then
+          echo "${RED}❌ golangci-lint failed in $dir${NC}"
+          exit 1
+        fi
+      fi
+    done
+  else
+    echo "${YELLOW}⚠️  golangci-lint not found. Skipping advanced Go linting.${NC}"
+  fi
+  
+  # Re-add formatted files to staging
+  echo "$STAGED_GO" | xargs git add
+  echo "${GREEN}✅ Go files linted successfully${NC}"
+fi
+
+# Validate JSON files
+if [ -n "$STAGED_JSON" ]; then
+  echo "${YELLOW}→ Validating JSON files...${NC}"
+  
+  JSON_COUNT=$(echo "$STAGED_JSON" | wc -l | tr -d ' ')
+  echo "${BLUE}   Checking $JSON_COUNT JSON file(s)${NC}"
+  
+  for file in $STAGED_JSON; do
+    if ! python3 -m json.tool "$file" >/dev/null 2>&1; then
+      echo "${RED}❌ Invalid JSON in $file${NC}"
+      exit 1
+    fi
+  done
+  
+  echo "${GREEN}✅ JSON files validated successfully${NC}"
+fi
+
+echo "${GREEN}🎉 All pre-commit checks passed!${NC}"

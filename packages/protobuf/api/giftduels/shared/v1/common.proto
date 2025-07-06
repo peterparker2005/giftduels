@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+package giftduels.shared.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/shared/v1;sharedv1";
+
+// ===== PAGINATION =====
+message PageRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message PageResponse {
+  int32 page = 1;
+  int32 page_size = 2;
+  int32 total = 3;
+  int32 total_pages = 4;
+}
+
+// ===== COMMON IDENTIFIERS =====
+message TelegramUserId {
+  int64 value = 1;
+}
+
+message UserId {
+  string value = 1; // UUID
+}
+
+message GiftId {
+  string value = 1; // UUID
+}
+
+message GiftTelegramId {
+  int64 value = 1;
+}
+
+message DuelId {
+  string value = 1; // UUID
+}
+
+// ===== MONETARY VALUES =====
+message StarsAmount {
+  uint32 value = 1;
+}
+
+message TonAmount {
+  double value = 1; // Amount in TON
+}
+
+// ===== SORT ORDERS =====
+enum SortOrder {
+  SORT_ORDER_UNSPECIFIED = 0;
+  SORT_ORDER_ASC = 1;
+  SORT_ORDER_DESC = 2;
+}
+
+// ===== COMMON FILTERS =====
+message TimeRangeFilter {
+  google.protobuf.Timestamp from = 1;
+  google.protobuf.Timestamp to = 2;
+}
+
+message NumericRangeFilter {
+  int64 min_value = 1;
+  int64 max_value = 2;
+}
+
+// ===== STATUS RESPONSES =====
+message SuccessResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// ===== USER DISPLAY INFO =====
+message UserDisplayInfo {
+  TelegramUserId telegram_user_id = 1;
+  string display_name = 2;
+  string photo_url = 3;
+  string username = 4;
+}
+
+enum GameMode {
+  GAME_MODE_UNSPECIFIED = 0;
+  GAME_MODE_DUEL = 1;
+}

@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package giftduels.gift.v1;
+
+import "giftduels/gift/v1/gift.proto";
+import "giftduels/shared/v1/common.proto";
+
+option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1;giftv1";
+
+service GiftPrivateService {
+  rpc PrivateGetGift(PrivateGetGiftRequest) returns (PrivateGetGiftResponse);
+  rpc GetUserGifts(GetUserGiftsRequest) returns (GetUserGiftsResponse);
+  rpc StakeGift(StakeGiftRequest) returns (StakeGiftResponse);
+  rpc TransferGiftToUser(TransferGiftToUserRequest) returns (TransferGiftToUserResponse);
+}
+
+message GetUserGiftsRequest {
+  shared.v1.TelegramUserId telegram_user_id = 1;
+  shared.v1.PageRequest pagination = 2;
+}
+
+message GetUserGiftsResponse {
+  repeated Gift gifts = 1;
+  shared.v1.PageResponse pagination = 2;
+}
+
+message TransferGiftToUserRequest {
+  shared.v1.TelegramUserId telegram_user_id = 1;
+  shared.v1.GiftId gift_id = 2;
+}
+
+message TransferGiftToUserResponse {
+  Gift gift = 1;
+}
+
+message StakeGiftRequest {
+  shared.v1.TelegramUserId telegram_user_id = 1;
+  shared.v1.GiftId gift_id = 2;
+  string game_id = 3;
+}
+
+message StakeGiftResponse {
+  Gift gift = 1;
+}
+
+message PrivateGetGiftRequest {
+  shared.v1.GiftId gift_id = 1;
+}
+
+message PrivateGetGiftResponse {
+  Gift gift = 1;
+}

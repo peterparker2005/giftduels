@@ -1,0 +1,88 @@
+version: 3
+
+tasks:
+  dev:
+    desc: 'run dev'
+    cmds:
+      - |
+        pnpm --filter=@giftduels/postman-dev-proxy dev
+        pnpm --filter=@giftduels/gifts-to-duels-bot dev
+
+  postman-dev-proxy:dev:
+    desc: 'run postman dev proxy'
+    cmds:
+      - |
+        pnpm --filter=@giftduels/postman-dev-proxy dev
+
+  # Running this on git commit with Husky
+  lint:staged:
+    desc: 'run lint on staged files'
+    cmds:
+      - |
+        set -e
+
+        # Функция фильтрации только реально существующих файлов
+        filter_existing_files() {
+          while read -r file; do
+            [ -f "$file" ] && echo "$file"
+          done
+        }
+
+        # Collect staged files for each language
+        STAGED_TS=$(git diff --cached --name-only -- '*.ts' '*.tsx' | filter_existing_files)
+        STAGED_GO=$(git diff --cached --name-only -- '*.go' | filter_existing_files)
+
+        if [ -n "$STAGED_TS" ]; then
+          echo "→ Linting TS/TSX staged files with Biome"
+          npx biome check --write --files-ignore-unknown=true --no-errors-on-unmatched $STAGED_TS
+        fi
+
+        if [ -n "$STAGED_GO" ]; then
+          echo "→ Linting Go staged files"
+          gofmt -w $STAGED_GO
+
+          # Run golangci-lint in each directory containing a go.mod file
+          GO_MOD_DIRS=""
+          for file in $STAGED_GO; do
+            DIR=$(dirname "$file")
+            MOD_DIR=""
+            while [ "$DIR" != "/" ] && [ -n "$DIR" ]; do
+              if [ -f "$DIR/go.mod" ]; then
+                MOD_DIR="$DIR"
+                break
+              fi
+              DIR=$(dirname "$DIR")
+            done
+            if [ -n "$MOD_DIR" ]; then
+              GO_MOD_DIRS="$GO_MOD_DIRS
+            $MOD_DIR"
+            fi
+          done
+
+          GO_MOD_DIRS=$(echo "$GO_MOD_DIRS" | sort -u | grep -v '^$')
+          for dir in $GO_MOD_DIRS; do
+            echo "→ golangci-lint in $dir"
+            (cd "$dir" && golangci-lint run --fix --out-format=colored-line-number)
+          done
+        fi
+
+  lint:all:
+    desc: 'run all lint tasks'
+    cmds:
+      - |
+        set -e
+
+        if [ -f package.json ] && grep -q 'lint' package.json; then
+          npm run check:fix
+        fi
+
+        find apps packages -type f -name 'Taskfile*' | while read -r taskfile; do
+          dir=$(dirname "$taskfile")
+          if [ "$dir" = "." ]; then
+            continue
+          fi
+          if (cd "$dir" && task --list | grep -qE ' lint($|:)'); then
+            echo "→ Linting $dir"
+            (cd "$dir" && task lint:fix)
+          fi
+        done

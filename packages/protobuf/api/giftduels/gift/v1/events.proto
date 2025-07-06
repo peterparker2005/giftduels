@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package giftduels.gift.v1;
+
+import "giftduels/gift/v1/gift.proto";
+import "giftduels/shared/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1;giftv1";
+
+// Event emitted when a gift is received from a user to the system
+message TelegramGiftReceivedEvent {
+  shared.v1.GiftTelegramId telegram_gift_id = 2;
+  google.protobuf.Timestamp deposit_date = 3;
+
+  shared.v1.TelegramUserId owner_telegram_id = 4;
+
+  // Gift information
+  string title = 5;
+  string slug = 6;
+  repeated GiftAttribute attributes = 7;
+
+  // Collectible information (if applicable)
+  int32 collectible_id = 8;
+  int32 upgrade_message_id = 9; // Used to transfer gift
+}

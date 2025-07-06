@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package giftduels.identity.v1;
+
+import "giftduels/shared/v1/common.proto";
+
+option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/identity/v1;identityv1";
+
+message NewUserEvent {
+  shared.v1.UserId user_id = 1;
+  shared.v1.TelegramUserId telegram_id = 2;
+}

@@ -1,0 +1,30 @@
+version: v2
+clean: true
+
+plugins:
+  - remote: buf.build/protocolbuffers/go
+    out: ../protobuf-go/gen
+    opt:
+      - paths=source_relative
+
+  - remote: buf.build/grpc/go
+    out: ../protobuf-go/gen
+    opt: paths=source_relative
+
+  - remote: buf.build/grpc-ecosystem/gateway:v2.26.3
+    out: ../protobuf-go/gen
+    opt:
+      - paths=source_relative
+
+  - remote: buf.build/community/stephenh-ts-proto:v2.6.1
+    out: ../protobuf-ts/gen
+    opt:
+      - target=ts
+      - esModuleInterop=true
+      - forceLong=string
+      - outputIndex=true
+      - outputServices=none
+      - outputTypeAnnotations=true
+
+inputs:
+  - directory: api

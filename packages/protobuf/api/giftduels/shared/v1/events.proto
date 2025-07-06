@@ -1,0 +1,162 @@
+syntax = "proto3";
+
+package giftduels.shared.v1;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/shared/v1;sharedv1";
+
+// ===== EVENT FRAMEWORK =====
+
+message Event {
+  string event_id = 1; // Unique event identifier
+  string event_type = 2; // Event type identifier
+  string source_service = 3; // Service that generated the event
+  google.protobuf.Timestamp timestamp = 4;
+  google.protobuf.Any payload = 5; // Event-specific data
+  EventMetadata metadata = 6;
+}
+
+message EventMetadata {
+  string correlation_id = 1; // For tracking related events
+  string causation_id = 2; // ID of the event that caused this event
+  string user_id = 3; // User who triggered the event
+  int64 telegram_user_id = 4; // Telegram user ID
+  map<string, string> labels = 5; // Custom labels for filtering/routing
+  EventPriority priority = 6;
+}
+
+enum EventPriority {
+  EVENT_PRIORITY_UNSPECIFIED = 0;
+  EVENT_PRIORITY_LOW = 1;
+  EVENT_PRIORITY_NORMAL = 2;
+  EVENT_PRIORITY_HIGH = 3;
+  EVENT_PRIORITY_CRITICAL = 4;
+}
+
+// ===== EVENT ENVELOPE =====
+
+message EventEnvelope {
+  Event event = 1;
+  DeliveryMetadata delivery = 2;
+}
+
+message DeliveryMetadata {
+  google.protobuf.Timestamp sent_at = 1;
+  google.protobuf.Timestamp delivered_at = 2;
+  int32 retry_count = 3;
+  string routing_key = 4;
+  map<string, string> headers = 5;
+}
+
+// ===== EVENT SUBSCRIPTION =====
+
+message EventSubscription {
+  string subscription_id = 1;
+  string subscriber_service = 2;
+  repeated string event_types = 3; // Event types to subscribe to
+  EventFilter filter = 4;
+  SubscriptionConfig config = 5;
+}
+
+message EventFilter {
+  repeated string source_services = 1; // Filter by source service
+  map<string, string> label_selectors = 2; // Filter by labels
+  EventPriority min_priority = 3;
+  string user_id_filter = 4;
+}
+
+message SubscriptionConfig {
+  bool enable_retry = 1;
+  int32 max_retries = 2;
+  int32 retry_delay_seconds = 3;
+  bool enable_dead_letter = 4;
+  int32 max_age_hours = 5; // Ignore events older than this
+}
+
+// ===== COMMON EVENT TYPES =====
+
+enum CommonEventType {
+  COMMON_EVENT_TYPE_UNSPECIFIED = 0;
+  COMMON_EVENT_TYPE_ENTITY_CREATED = 1;
+  COMMON_EVENT_TYPE_ENTITY_UPDATED = 2;
+  COMMON_EVENT_TYPE_ENTITY_DELETED = 3;
+  COMMON_EVENT_TYPE_STATE_CHANGED = 4;
+  COMMON_EVENT_TYPE_WORKFLOW_STARTED = 5;
+  COMMON_EVENT_TYPE_WORKFLOW_COMPLETED = 6;
+  COMMON_EVENT_TYPE_WORKFLOW_FAILED = 7;
+  COMMON_EVENT_TYPE_NOTIFICATION_SENT = 8;
+  COMMON_EVENT_TYPE_ERROR_OCCURRED = 9;
+}
+
+// ===== ENTITY CHANGE EVENTS =====
+
+message EntityChangeEvent {
+  string entity_type = 1; // e.g., "user", "gift", "duel"
+  string entity_id = 2;
+  ChangeType change_type = 3;
+  google.protobuf.Any before_state = 4; // State before change (for updates)
+  google.protobuf.Any after_state = 5; // State after change
+  repeated string changed_fields = 6; // For updates only
+}
+
+enum ChangeType {
+  CHANGE_TYPE_UNSPECIFIED = 0;
+  CHANGE_TYPE_CREATED = 1;
+  CHANGE_TYPE_UPDATED = 2;
+  CHANGE_TYPE_DELETED = 3;
+  CHANGE_TYPE_ARCHIVED = 4;
+  CHANGE_TYPE_RESTORED = 5;
+}
+
+// ===== WORKFLOW EVENTS =====
+
+message WorkflowEvent {
+  string workflow_id = 1;
+  string workflow_type = 2; // e.g., "gift_withdrawal", "duel_completion"
+  WorkflowStatus status = 3;
+  string step_name = 4; // Current workflow step
+  google.protobuf.Any context = 5; // Workflow-specific context
+  string error_message = 6; // If status is FAILED
+}
+
+enum WorkflowStatus {
+  WORKFLOW_STATUS_UNSPECIFIED = 0;
+  WORKFLOW_STATUS_STARTED = 1;
+  WORKFLOW_STATUS_IN_PROGRESS = 2;
+  WORKFLOW_STATUS_PAUSED = 3;
+  WORKFLOW_STATUS_COMPLETED = 4;
+  WORKFLOW_STATUS_FAILED = 5;
+  WORKFLOW_STATUS_CANCELLED = 6;
+}
+
+// ===== NOTIFICATION EVENTS =====
+
+message NotificationEvent {
+  string notification_id = 1;
+  NotificationType type = 2;
+  int64 recipient_telegram_id = 3;
+  string title = 4;
+  string message = 5;
+  google.protobuf.Any data = 6; // Additional data for rich notifications
+  NotificationChannel channel = 7;
+}
+
+enum NotificationType {
+  NOTIFICATION_TYPE_UNSPECIFIED = 0;
+  NOTIFICATION_TYPE_INFO = 1;
+  NOTIFICATION_TYPE_SUCCESS = 2;
+  NOTIFICATION_TYPE_WARNING = 3;
+  NOTIFICATION_TYPE_ERROR = 4;
+  NOTIFICATION_TYPE_GAME_UPDATE = 5;
+  NOTIFICATION_TYPE_TRANSACTION = 6;
+}
+
+enum NotificationChannel {
+  NOTIFICATION_CHANNEL_UNSPECIFIED = 0;
+  NOTIFICATION_CHANNEL_TELEGRAM_BOT = 1;
+  NOTIFICATION_CHANNEL_IN_APP = 2;
+  NOTIFICATION_CHANNEL_PUSH = 3;
+  NOTIFICATION_CHANNEL_EMAIL = 4;
+}

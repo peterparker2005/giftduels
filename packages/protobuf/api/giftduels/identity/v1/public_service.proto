@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package giftduels.identity.v1;
+
+import "giftduels/identity/v1/user.proto";
+import "giftduels/shared/v1/common.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/identity/v1;identityv1";
+
+service IdentityPublicService {
+  // Authorize user via Telegram WebApp InitData
+  rpc Authorize(AuthorizeRequest) returns (AuthorizeResponse) {
+    option (google.api.http) = {
+      post: "/auth/authorize"
+      body: "*"
+    };
+  }
+
+  // Validate JWT token and get user info
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse) {
+    option (google.api.http) = {
+      post: "/auth/validate-token"
+      body: "*"
+    };
+  }
+
+  // Get current user profile
+  // buf:lint:ignore RPC_REQUEST_STANDARD_NAME
+  rpc GetProfile(google.protobuf.Empty) returns (GetProfileResponse) {
+    option (google.api.http) = {get: "/profile"};
+  }
+}
+
+message GetProfileResponse {
+  UserProfile profile = 1;
+}
+
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+message ValidateTokenResponse {
+  shared.v1.UserId user_id = 1; // Internal user UUID
+  shared.v1.TelegramUserId telegram_user_id = 2; // Telegram user ID
+  bool is_valid = 3;
+  string error_message = 4;
+}
+
+message AuthorizeRequest {
+  string init_data = 1; // Telegram WebApp InitData
+}
+
+message AuthorizeResponse {
+  string token = 1;
+}

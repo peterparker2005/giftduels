@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package giftduels.payment.v1;
+
+import "giftduels/payment/v1/payment.proto";
+import "giftduels/shared/v1/common.proto";
+
+option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/payment/v1;paymentv1";
+
+service PaymentPrivateService {
+  rpc SpendUserBalance(SpendUserBalanceRequest) returns (SpendUserBalanceResponse) {}
+  rpc GetUserBalance(GetUserBalanceRequest) returns (GetUserBalanceResponse) {}
+  rpc PrepareTonWithdrawal(PrepareTonWithdrawalRequest) returns (PrepareTonWithdrawalResponse) {}
+}
+
+message PrepareTonWithdrawalRequest {
+  shared.v1.GiftId gift_id = 1;
+  shared.v1.TonAmount ton_amount = 2;
+  string comment = 3;
+}
+
+message PrepareTonWithdrawalResponse {
+  TonWithdrawal ton_withdrawal = 1;
+}
+
+message SpendUserBalanceRequest {
+  shared.v1.TelegramUserId telegram_user_id = 1;
+  shared.v1.StarsAmount stars_amount = 2;
+}
+
+message SpendUserBalanceResponse {
+  shared.v1.StarsAmount stars_amount = 1;
+}
+
+message GetUserBalanceRequest {
+  shared.v1.TelegramUserId telegram_user_id = 1;
+}
+
+message GetUserBalanceResponse {
+  shared.v1.StarsAmount stars_amount = 1;
+}

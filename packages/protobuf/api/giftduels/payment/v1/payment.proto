@@ -1,0 +1,156 @@
+syntax = "proto3";
+
+package giftduels.payment.v1;
+
+import "giftduels/shared/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/payment/v1;paymentv1";
+
+enum InvoicePurpose {
+  INVOICE_PURPOSE_UNSPECIFIED = 0;
+  INVOICE_PURPOSE_STARS_DEPOSIT = 1; // user bought/added stars manually
+  INVOICE_PURPOSE_GIFT_COMMISSION = 2; // automatic fee for gift withdrawal
+}
+
+// data of invoice for stars deposit
+message StarsDeposit {
+  shared.v1.StarsAmount stars_amount = 1;
+  string description = 2; // if needed
+}
+
+// data of invoice for gift withdrawal commission paid with stars
+message CommissionChargeStars {
+  shared.v1.GiftId gift_id = 1;
+  shared.v1.StarsAmount stars_amount = 2;
+}
+
+// data for gift withdrawal commission paid with TON (no invoice, direct blockchain payment)
+message CommissionChargeTon {
+  shared.v1.GiftId gift_id = 1;
+  shared.v1.TonAmount ton_amount = 2;
+  string ton_comment = 3; // comment for TON transaction identification
+}
+
+// ===== TRANSACTION TYPES =====
+
+message StarTransaction {
+  string id = 1; // Transaction UUID
+  shared.v1.TelegramUserId telegram_user_id = 2;
+  string invoice_id = 3;
+  shared.v1.StarsAmount stars_amount = 4;
+  StarTransactionType type = 5;
+  StarTransactionSource source = 6;
+  StarTransactionPurpose purpose = 7;
+  string metadata = 8; // JSON metadata
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+enum StarTransactionType {
+  STAR_TRANSACTION_TYPE_UNSPECIFIED = 0;
+  STAR_TRANSACTION_TYPE_INCOME = 1;
+  STAR_TRANSACTION_TYPE_EXPENSE = 2;
+}
+
+enum StarTransactionSource {
+  STAR_TRANSACTION_SOURCE_UNSPECIFIED = 0;
+  STAR_TRANSACTION_SOURCE_TELEGRAM_STARS = 1;
+  STAR_TRANSACTION_SOURCE_INTERNAL_WALLET = 2;
+  STAR_TRANSACTION_SOURCE_REFERRAL_BONUS = 3;
+}
+
+enum StarTransactionPurpose {
+  STAR_TRANSACTION_PURPOSE_UNSPECIFIED = 0;
+  STAR_TRANSACTION_PURPOSE_STARS_DEPOSIT = 1;
+  STAR_TRANSACTION_PURPOSE_GIFT_WITHDRAW = 2;
+  STAR_TRANSACTION_PURPOSE_GAME_ENTRY_FEE = 3;
+  STAR_TRANSACTION_PURPOSE_PRIZE_PAYOUT = 4;
+  STAR_TRANSACTION_PURPOSE_REFUND = 5;
+}
+
+message TonTransaction {
+  string id = 1; // Transaction UUID
+  shared.v1.TelegramUserId telegram_user_id = 2;
+  string tx_hash = 3; // TON blockchain transaction hash
+  shared.v1.TonAmount ton_amount = 4;
+  TonTransactionType type = 5;
+  TonTransactionPurpose purpose = 6;
+  string metadata = 7; // JSON metadata
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  TonTransactionStatus status = 10;
+}
+
+enum TonTransactionType {
+  TON_TRANSACTION_TYPE_UNSPECIFIED = 0;
+  TON_TRANSACTION_TYPE_INCOME = 1;
+  TON_TRANSACTION_TYPE_EXPENSE = 2;
+}
+
+enum TonTransactionPurpose {
+  TON_TRANSACTION_PURPOSE_UNSPECIFIED = 0;
+  TON_TRANSACTION_PURPOSE_GIFT_WITHDRAW = 1;
+  TON_TRANSACTION_PURPOSE_WALLET_DEPOSIT = 2;
+  TON_TRANSACTION_PURPOSE_GAME_PRIZE = 3;
+  TON_TRANSACTION_PURPOSE_FEE_PAYMENT = 4;
+}
+
+enum TonTransactionStatus {
+  TON_TRANSACTION_STATUS_UNSPECIFIED = 0;
+  TON_TRANSACTION_STATUS_PENDING = 1;
+  TON_TRANSACTION_STATUS_CONFIRMED = 2;
+  TON_TRANSACTION_STATUS_FAILED = 3;
+  TON_TRANSACTION_STATUS_CANCELLED = 4;
+}
+
+// ===== WITHDRAWAL TYPES =====
+
+message TonWithdrawal {
+  string withdrawal_id = 1; // Withdrawal tracking UUID
+  string recipient_wallet_address = 2;
+  shared.v1.TonAmount ton_amount = 3;
+  string comment = 4;
+  TonWithdrawalStatus status = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  string tx_hash = 8; // Set when transaction is confirmed
+  shared.v1.TonAmount fee_amount = 9;
+}
+
+enum TonWithdrawalStatus {
+  TON_WITHDRAWAL_STATUS_UNSPECIFIED = 0;
+  TON_WITHDRAWAL_STATUS_PENDING = 1;
+  TON_WITHDRAWAL_STATUS_PAYMENT = 2;
+  TON_WITHDRAWAL_STATUS_COMPLETED = 3;
+  TON_WITHDRAWAL_STATUS_FAILED = 4;
+  TON_WITHDRAWAL_STATUS_CANCELLED = 5;
+}
+
+// ===== BALANCE TYPES =====
+
+message UserBalance {
+  shared.v1.TelegramUserId telegram_user_id = 1;
+  shared.v1.StarsAmount stars_amount = 2;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+message BalanceOperation {
+  string operation_id = 1;
+  shared.v1.TelegramUserId telegram_user_id = 2;
+  BalanceOperationType type = 3;
+  shared.v1.StarsAmount stars_amount = 4;
+  string description = 5;
+  string reference_id = 6; // Reference to related entity (gift_id, duel_id, etc.)
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+enum BalanceOperationType {
+  BALANCE_OPERATION_TYPE_UNSPECIFIED = 0;
+  BALANCE_OPERATION_TYPE_CREDIT = 1; // Add to balance
+  BALANCE_OPERATION_TYPE_DEBIT = 2; // Subtract from balance
+  BALANCE_OPERATION_TYPE_HOLD = 3; // Hold amount (for pending operations)
+  BALANCE_OPERATION_TYPE_RELEASE = 4; // Release held amount
+}

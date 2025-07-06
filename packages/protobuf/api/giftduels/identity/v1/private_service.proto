@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package giftduels.identity.v1;
+
+import "giftduels/identity/v1/user.proto";
+import "giftduels/shared/v1/common.proto";
+
+option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/identity/v1;identityv1";
+
+service IdentityPrivateService {
+  // Find user by ID (internal UUID or Telegram ID)
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+
+  // Create new user from Telegram data
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+
+  // Update existing user
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+
+  // Get multiple users by IDs
+  rpc GetUsers(GetUsersRequest) returns (GetUsersResponse);
+}
+
+message GetUserRequest {
+  oneof identifier {
+    shared.v1.UserId user_id = 1; // Internal UUID
+    shared.v1.TelegramUserId telegram_id = 2; // Telegram ID
+  }
+}
+
+message GetUserResponse {
+  User user = 1;
+}
+
+message CreateUserRequest {
+  TelegramUserInfo telegram_info = 1;
+}
+
+message CreateUserResponse {
+  User user = 1;
+}
+
+message UpdateUserRequest {
+  shared.v1.UserId user_id = 1; // Internal UUID
+  TelegramUserInfo telegram_info = 2;
+}
+
+message UpdateUserResponse {
+  User user = 1;
+}
+
+message GetUsersRequest {
+  repeated shared.v1.UserId user_ids = 1; // Internal UUIDs
+  shared.v1.PageRequest pagination = 2;
+}
+
+message GetUsersResponse {
+  repeated User users = 1;
+  shared.v1.PageResponse pagination = 2;
+}

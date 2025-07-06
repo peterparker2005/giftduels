@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package giftduels.telegrambot.v1;
+
+import "giftduels/shared/v1/common.proto";
+
+option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/telegrambot/v1;telegrambotv1";
+
+service TelegramBotPrivateService {
+  rpc CreateStarInvoice(CreateStarInvoiceRequest) returns (CreateStarInvoiceResponse);
+}
+
+message CreateStarInvoiceRequest {
+  shared.v1.TelegramUserId telegram_user_id = 1;
+  shared.v1.StarsAmount stars_amount = 2;
+  string description = 3;
+  // base64 encoded payload
+  string payload = 4;
+}
+
+message CreateStarInvoiceResponse {
+  string invoice_url = 1;
+}

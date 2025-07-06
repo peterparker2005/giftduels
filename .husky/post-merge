@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROTO_DIR="$REPO_ROOT/packages/protobuf"
+
+echo "🛠️ Generating protobuf code…"
+
+pushd "$PROTO_DIR" > /dev/null
+task all
+popd > /dev/null
+
+echo "✅ Protobuf code successfully generated from $PROTO_DIR"

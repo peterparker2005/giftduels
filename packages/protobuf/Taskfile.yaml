@@ -1,0 +1,33 @@
+version: '3'
+
+tasks:
+  all:
+    desc: 'Default target: generate proto, add __init__.py, postprocess JS'
+    cmds:
+      - task lint
+      - buf format -w
+      - task gen-proto
+
+  gen-proto:
+    desc: 'Generate protobuf code using buf'
+    cmds:
+      - echo "Generating protobuf code..."
+      - buf generate
+
+  clean:
+    desc: 'Clean generated files'
+    cmds:
+      - echo "Cleaning generated files..."
+      - rm -rf ../protobuf-go/gen/* ../protobuf-ts/gen/* ../protobuf-python/gen/*
+
+  lint:
+    desc: 'Lint proto files'
+    cmds:
+      - echo "Linting proto files..."
+      - buf lint
+
+  breaking:
+    desc: 'Check for breaking changes'
+    cmds:
+      - echo "Checking for breaking changes..."
+      - buf breaking --against '.git#branch=main'

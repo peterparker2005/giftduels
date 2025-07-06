@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package giftduels.identity.v1;
+
+import "giftduels/shared/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/identity/v1;identityv1";
+
+message User {
+  shared.v1.UserId user_id = 1;
+  shared.v1.TelegramUserId telegram_id = 2;
+  string first_name = 3;
+  string last_name = 4;
+  string username = 5;
+  string language_code = 6;
+  bool is_premium = 7;
+  bool allows_write_to_pm = 8;
+  string photo_url = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message UserProfile {
+  shared.v1.UserId user_id = 1;
+  shared.v1.TelegramUserId telegram_id = 2;
+  string display_name = 3; // Computed from first_name + last_name or username
+  string username = 4;
+  string photo_url = 5;
+  bool is_premium = 6;
+}
+
+message TelegramUserInfo {
+  shared.v1.TelegramUserId telegram_id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string username = 4;
+  string language_code = 5;
+  bool is_premium = 6;
+  bool allows_write_to_pm = 7;
+  string photo_url = 8;
+}

@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package giftduels.gift.v1;
+
+import "giftduels/gift/v1/gift.proto";
+import "giftduels/payment/v1/payment.proto";
+import "giftduels/shared/v1/common.proto";
+import "google/api/annotations.proto";
+
+option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1;giftv1";
+
+service GiftPublicService {
+  // Get user's gifts with filtering and pagination
+  rpc GetGifts(GetGiftsRequest) returns (GetGiftsResponse) {
+    option (google.api.http) = {get: "/gifts"};
+  }
+
+  // Get specific gift details
+  rpc GetGift(GetGiftRequest) returns (GetGiftResponse) {
+    option (google.api.http) = {get: "/gifts/{gift_id.value}"};
+  }
+
+  // Initiate gift withdrawal process
+  rpc WithdrawGift(WithdrawGiftRequest) returns (WithdrawGiftResponse) {
+    option (google.api.http) = {
+      post: "/gifts/{gift_id.value}/withdraw"
+      body: "*"
+    };
+  }
+
+  // Get gift withdrawal options and pricing
+  // TODO: move to payment service
+  rpc GetWithdrawOptions(GetWithdrawOptionsRequest) returns (GetWithdrawOptionsResponse) {
+    option (google.api.http) = {get: "/gifts/{gift_id.value}/withdraw-options"};
+  }
+}
+
+message GetGiftRequest {
+  shared.v1.GiftId gift_id = 1;
+}
+
+message GetGiftResponse {
+  GiftView gift = 1;
+}
+
+message GetWithdrawOptionsRequest {
+  shared.v1.GiftId gift_id = 1;
+}
+
+message GetWithdrawOptionsResponse {
+  repeated WithdrawOption options = 1;
+}
+
+message WithdrawOption {
+  WithdrawMethod method = 1;
+  shared.v1.StarsAmount stars_cost = 2;
+  shared.v1.TonAmount ton_cost = 3;
+  string description = 4;
+  bool is_available = 5;
+}
+
+message WithdrawGiftRequest {
+  shared.v1.GiftId gift_id = 1;
+  WithdrawMethod method = 2;
+  string wallet_address = 3; // For TON withdrawals
+}
+
+message WithdrawGiftResponse {
+  oneof result {
+    string stars_invoice_url = 1;
+    payment.v1.TonWithdrawal ton_withdrawal = 2;
+    shared.v1.SuccessResponse success = 3;
+  }
+  string withdrawal_id = 4; // Track withdrawal status
+}
+
+message GetGiftsRequest {
+  shared.v1.PageRequest pagination = 1;
+}
+
+message GetGiftsResponse {
+  repeated GiftView gifts = 1;
+  shared.v1.PageResponse pagination = 2;
+}

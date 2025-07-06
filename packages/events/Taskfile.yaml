@@ -1,0 +1,10 @@
+version: 3
+
+tasks:
+  test:
+    cmds:
+      - gotestsum --format=short-verbose -- ./...
+
+  lint:
+    cmds:
+      - golangci-lint run

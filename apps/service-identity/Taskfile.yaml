@@ -1,0 +1,54 @@
+version: '3'
+
+vars:
+  BUILD_VERSION: '{{.BUILD_VERSION| default "dev-release"}}'
+  BUILD_DIR: '{{.BUILD_DIR| default ".bin"}}'
+  BINARY_NAME: '{{.BINARY_NAME| default "identityservice"}}'
+
+tasks:
+  build:
+    desc: build binary
+    cmds:
+      - |
+        go build -mod=readonly \
+          -ldflags "-X github.com/peterparker2005/giftduels/packages/version-go.Version={{ .BUILD_VERSION }}" \
+          -o {{ .BUILD_DIR }}/{{ .BINARY_NAME }} ./cmd/cli
+
+  run:
+    desc: run binary with arguments
+    cmds:
+      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} {{.CLI_ARGS}}'
+
+  lint:
+    desc: lint go code
+    cmds:
+      - golangci-lint run ./...
+
+  generate:
+    desc: generate go:generate (proto, mocks and etc.)
+    cmds:
+      - go generate ./...
+
+  test:
+    desc: run tests
+    cmds:
+      - gotestsum ./... -v -count=1
+
+  dev:
+    desc: quick dev build with flags
+    cmds:
+      - go run ./cmd/cli/main.go {{.CLI_ARGS}}
+
+  migrate:create:
+    desc: '🔨 Создать новую миграцию'
+    vars:
+      NAME: '{{.NAME| default "DefaultName"}}'
+    requires:
+      vars: [NAME]
+    cmds:
+      - migrate create -ext sql -dir internal/db/migrations {{.NAME}}
+
+  migrate:up:
+    desc: apply all pending migrations
+    cmds:
+      - go run ./cmd/cli/main.go migrate
