@@ -3,58 +3,31 @@ package giftduels.duel.v1;
 
 import "giftduels/duel/v1/duel.proto";
 import "giftduels/shared/v1/common.proto";
-import "google/api/annotations.proto";
 import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/duel/v1;duelv1";
 
 service DuelPublicService {
   // Create a new duel
-  rpc CreateDuel(CreateDuelRequest) returns (CreateDuelResponse) {
-    option (google.api.http) = {
-      post: "/duels"
-      body: "*"
-    };
-  }
+  rpc CreateDuel(CreateDuelRequest) returns (CreateDuelResponse) {}
 
   // Join an existing duel
-  rpc JoinDuel(JoinDuelRequest) returns (JoinDuelResponse) {
-    option (google.api.http) = {
-      post: "/duels/{duel_id}/join"
-      body: "*"
-    };
-  }
+  rpc JoinDuel(JoinDuelRequest) returns (JoinDuelResponse) {}
 
   // Submit dice roll action
-  rpc RollDice(RollDiceRequest) returns (RollDiceResponse) {
-    option (google.api.http) = {
-      post: "/duels/{duel_id}/roll"
-      body: "*"
-    };
-  }
+  rpc RollDice(RollDiceRequest) returns (RollDiceResponse) {}
 
   // Get specific duel details
-  rpc GetDuel(GetDuelRequest) returns (GetDuelResponse) {
-    option (google.api.http) = {get: "/duels/{duel_id}"};
-  }
+  rpc GetDuel(GetDuelRequest) returns (GetDuelResponse) {}
 
   // List duels with filtering and pagination
-  rpc ListDuels(ListDuelsRequest) returns (ListDuelsResponse) {
-    option (google.api.http) = {get: "/duels"};
-  }
+  rpc ListDuels(ListDuelsRequest) returns (ListDuelsResponse) {}
 
   // Cancel a duel (only creator can cancel)
-  rpc CancelDuel(CancelDuelRequest) returns (CancelDuelResponse) {
-    option (google.api.http) = {
-      post: "/duels/{duel_id}/cancel"
-      body: "*"
-    };
-  }
+  rpc CancelDuel(CancelDuelRequest) returns (CancelDuelResponse) {}
 
   // Get duel statistics
-  rpc GetDuelStats(GetDuelStatsRequest) returns (GetDuelStatsResponse) {
-    option (google.api.http) = {get: "/duels/stats"};
-  }
+  rpc GetDuelStats(GetDuelStatsRequest) returns (GetDuelStatsResponse) {}
 }
 
 message DuelSort {

@@ -4,50 +4,28 @@ package giftduels.payment.v1;
 
 import "giftduels/payment/v1/payment.proto";
 import "giftduels/shared/v1/common.proto";
-import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 
 option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/payment/v1;paymentv1";
 
 service PaymentPublicService {
   // Create a Stars invoice for purchasing Stars
-  rpc DepositStars(DepositStarsRequest) returns (DepositStarsResponse) {
-    option (google.api.http) = {
-      post: "/deposit/stars"
-      body: "*"
-    };
-  }
+  rpc DepositStars(DepositStarsRequest) returns (DepositStarsResponse) {}
 
-  rpc CreateWithdrawCommissionReceipt(CreateWithdrawCommissionReceiptRequest) returns (CreateWithdrawCommissionReceiptResponse) {
-    option (google.api.http) = {
-      post: "/commission-receipt"
-      body: "*"
-    };
-  }
+  rpc CreateWithdrawCommissionReceipt(CreateWithdrawCommissionReceiptRequest) returns (CreateWithdrawCommissionReceiptResponse) {}
 
   // Get current user balance
   // buf:lint:ignore RPC_REQUEST_STANDARD_NAME
-  rpc GetBalance(google.protobuf.Empty) returns (GetBalanceResponse) {
-    option (google.api.http) = {get: "/balance"};
-  }
+  rpc GetBalance(google.protobuf.Empty) returns (GetBalanceResponse) {}
 
   // Calculate withdrawal commission
-  rpc CalculateWithdrawCommission(CalculateWithdrawCommissionRequest) returns (CalculateWithdrawCommissionResponse) {
-    option (google.api.http) = {
-      post: "/withdrawals/calculate-commission"
-      body: "*"
-    };
-  }
+  rpc CalculateWithdrawCommission(CalculateWithdrawCommissionRequest) returns (CalculateWithdrawCommissionResponse) {}
 
   // Get transaction history
-  rpc GetTransactionHistory(GetTransactionHistoryRequest) returns (GetTransactionHistoryResponse) {
-    option (google.api.http) = {get: "/transactions"};
-  }
+  rpc GetTransactionHistory(GetTransactionHistoryRequest) returns (GetTransactionHistoryResponse) {}
 
   // Get withdrawal status
-  rpc GetWithdrawalStatus(GetWithdrawalStatusRequest) returns (GetWithdrawalStatusResponse) {
-    option (google.api.http) = {get: "/withdrawals/{withdrawal_id}"};
-  }
+  rpc GetWithdrawalStatus(GetWithdrawalStatusRequest) returns (GetWithdrawalStatusResponse) {}
 }
 
 message CreateWithdrawCommissionReceiptRequest {

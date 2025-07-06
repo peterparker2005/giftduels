@@ -7,6 +7,7 @@ use (
 	./packages/configs
 	./packages/errors
 	./packages/events
+	./packages/grpc-go
 	./packages/logger-go
 	./packages/protobuf-go
 	./packages/shared

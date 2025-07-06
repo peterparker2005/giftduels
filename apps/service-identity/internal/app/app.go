@@ -7,7 +7,7 @@ import (
 	"go.uber.org/fx/fxevent"
 
 	"github.com/peterparker2005/giftduels/apps/service-identity/internal/config"
-	"github.com/peterparker2005/giftduels/apps/service-identity/internal/transport/grpc"
+	"github.com/peterparker2005/giftduels/apps/service-identity/internal/transport"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 )
 
@@ -20,7 +20,7 @@ func Run(cfg *config.Config) {
 			return cfg
 		}),
 		LoggerModule,
-		grpc.Module,
+		transport.Module,
 
 		// Lifecycle hooks
 		fx.Invoke(registerHooks),

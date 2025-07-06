@@ -34,10 +34,9 @@ command_exists() {
 # Get staged files (excluding generated protobuf files)
 STAGED_TS=$(git diff --cached --name-only --diff-filter=ACMR -- '*.ts' '*.tsx' '*.js' '*.jsx' | filter_existing_files | filter_not_ignored)
 STAGED_GO=$(git diff --cached --name-only --diff-filter=ACMR -- '*.go' | filter_existing_files | filter_not_ignored)
-STAGED_JSON=$(git diff --cached --name-only --diff-filter=ACMR -- '*.json' | filter_existing_files | filter_not_ignored)
 
 # Exit early if no relevant files are staged
-if [ -z "$STAGED_TS" ] && [ -z "$STAGED_GO" ] && [ -z "$STAGED_JSON" ]; then
+if [ -z "$STAGED_TS" ] && [ -z "$STAGED_GO" ]; then
   echo "${GREEN}✅ No relevant files staged. Skipping lint checks.${NC}"
   exit 0
 fi
@@ -122,23 +121,6 @@ if [ -n "$STAGED_GO" ]; then
   # Re-add formatted files to staging
   echo "$STAGED_GO" | xargs git add
   echo "${GREEN}✅ Go files linted successfully${NC}"
-fi
-
-# Validate JSON files
-if [ -n "$STAGED_JSON" ]; then
-  echo "${YELLOW}→ Validating JSON files...${NC}"
-  
-  JSON_COUNT=$(echo "$STAGED_JSON" | wc -l | tr -d ' ')
-  echo "${BLUE}   Checking $JSON_COUNT JSON file(s)${NC}"
-  
-  for file in $STAGED_JSON; do
-    if ! python3 -m json.tool "$file" >/dev/null 2>&1; then
-      echo "${RED}❌ Invalid JSON in $file${NC}"
-      exit 1
-    fi
-  done
-  
-  echo "${GREEN}✅ JSON files validated successfully${NC}"
 fi
 
 echo "${GREEN}🎉 All pre-commit checks passed!${NC}"

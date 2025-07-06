@@ -14,6 +14,7 @@ import (
 	"github.com/peterparker2005/giftduels/packages/events/telegram"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 )
 
 var Module = fx.Options(
@@ -85,7 +86,7 @@ var Module = fx.Options(
 				go func() {
 					if err := router.Run(runCtx); err != nil &&
 						!errors.Is(err, context.Canceled) {
-						log.Fatal("router stopped", logger.Error(err))
+						log.Fatal("router stopped", zap.Error(err))
 					}
 				}()
 				return nil

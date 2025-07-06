@@ -55,7 +55,7 @@ func (h *giftPrivateHandler) GetUserGifts(ctx context.Context, req *giftv1.GetUs
 }
 
 func (h *giftPrivateHandler) StakeGift(ctx context.Context, req *giftv1.StakeGiftRequest) (*giftv1.StakeGiftResponse, error) {
-	domainGift, err := h.giftService.StakeGift(ctx, req.GiftId.Value)
+	domainGift, err := h.giftService.StakeGift(ctx, req.GetGiftId().Value)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (h *giftPrivateHandler) StakeGift(ctx context.Context, req *giftv1.StakeGif
 }
 
 func (h *giftPrivateHandler) TransferGiftToUser(ctx context.Context, req *giftv1.TransferGiftToUserRequest) (*giftv1.TransferGiftToUserResponse, error) {
-	domainGift, err := h.giftService.TransferGiftToUser(ctx, req.GiftId.Value, req.TelegramUserId.Value)
+	domainGift, err := h.giftService.TransferGiftToUser(ctx, req.GetGiftId().Value, req.GetTelegramUserId().Value)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (h *giftPrivateHandler) TransferGiftToUser(ctx context.Context, req *giftv1
 }
 
 func (h *giftPrivateHandler) PrivateGetGift(ctx context.Context, req *giftv1.PrivateGetGiftRequest) (*giftv1.PrivateGetGiftResponse, error) {
-	domainGift, err := h.giftService.GetGiftByID(ctx, req.GiftId.Value)
+	domainGift, err := h.giftService.GetGiftByID(ctx, req.GetGiftId().Value)
 	if err != nil {
 		return nil, err
 	}

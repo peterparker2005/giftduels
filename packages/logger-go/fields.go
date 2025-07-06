@@ -43,6 +43,3 @@ func Metadata(m map[string]interface{}) zap.Field { return zap.Any("metadata", m
 
 // Поле error (объект с деталями)
 func ErrorDetail(e LogErrorDetail) zap.Field { return zap.Any("error", e) }
-
-// Поле error (простая ошибка)
-func Error(err error) zap.Field { return zap.Error(err) }

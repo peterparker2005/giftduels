@@ -2,7 +2,7 @@ version: '3'
 
 vars:
   BUILD_VERSION: '{{.BUILD_VERSION| default "dev-release"}}'
-  BUILD_DIR: '{{.BUILD_DIR| default ".bin"}}'
+  BUILD_DIR: '{{.BUILD_DIR| default "bin"}}'
   BINARY_NAME: '{{.BINARY_NAME| default "giftservice"}}'
 
 tasks:
@@ -14,10 +14,16 @@ tasks:
           -ldflags "-X github.com/peterparker2005/giftduels/packages/version-go.Version={{ .BUILD_VERSION }}" \
           -o {{ .BUILD_DIR }}/{{ .BINARY_NAME }} ./cmd/cli
 
-  run:
+  serve:
     desc: run binary with arguments
     cmds:
-      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} {{.CLI_ARGS}}'
+      - task build
+      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} serve'
+
+  consume:
+    desc: consume messages
+    cmds:
+      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} consume'
 
   lint:
     desc: lint go code

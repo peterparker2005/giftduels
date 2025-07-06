@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+@theme {
+	--color-background: hsl(0, 0%, 8%);
+	--color-foreground: hsl(0, 0%, 100%);
+
+	--color-card: hsl(0, 0%, 12%);
+	--color-card-muted: hsla(0, 0%, 16%, 1);
+	--color-card-foreground: hsl(0, 0%, 100%);
+	--color-card-foreground-muted: hsl(0, 0%, 45%);
+	--color-card-accent: hsla(0, 0%, 25%, 1);
+	--color-card-accent-foreground: hsla(0, 0%, 100%, 1);
+
+	--color-primary: hsla(217, 100%, 55%, 1);
+	--color-primary-foreground: hsla(0, 0%, 100%, 1);
+
+	--radius: 16px;
+
+	--font-sans:
+		-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+		"Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+	--font-mono:
+		source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+	--tg-viewport-safe-area-inset-top: -30px;
+	--tg-viewport-safe-area-inset-bottom: 0px;
+}
+
+@layer base {
+	*,
+	*::before,
+	*::after {
+		box-sizing: border-box;
+		margin: 0;
+		padding: 0;
+		scrollbar-width: none;
+		outline: none;
+		-webkit-touch-callout: none;
+		-webkit-user-select: none;
+		user-select: none;
+	}
+
+	html,
+	body {
+		height: 100%;
+		width: 100%;
+		/* biome-ignore lint/correctness/noUnknownFunction: Tailwind syntax, gets processed during build */
+		color: theme(--color-foreground);
+		/* biome-ignore lint/correctness/noUnknownFunction: Tailwind syntax, gets processed during build */
+		background: theme(--color-background);
+		/* biome-ignore lint/correctness/noUnknownFunction: Tailwind syntax, gets processed during build */
+		/* biome-ignore lint/a11y/useGenericFontNames: Can't use generic font names */
+		font-family: theme(--font-sans);
+		-webkit-user-select: none;
+		user-select: none;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+		text-rendering: optimizeSpeed;
+		overflow: hidden;
+		margin: 0;
+		padding: 0;
+		touch-action: manipulation;
+		box-sizing: border-box;
+	}
+
+	code {
+		/* biome-ignore lint/correctness/noUnknownFunction: Tailwind syntax, gets processed during build */
+		/* biome-ignore lint/a11y/useGenericFontNames: Can't use generic font names */
+		font-family: theme(--font-mono);
+	}
+	button {
+		@apply cursor-pointer;
+	}
+}
+
+@utility blur-background {
+	backdrop-filter: blur(80px);
+}
+
+.scrollable {
+	overflow-y: auto;
+	overflow-x: hidden; /* или auto — если горизонтальный скролл нужен */
+	-webkit-overflow-scrolling: touch; /* плавность скролла на iOS */
+	max-height: 100%; /* или конкретную высоту, если надо */
+}
+
+/* Оптимизации для анимаций */
+[data-motion] {
+	will-change: transform, opacity;
+	transform: translateZ(0);
+}
+
+/* body {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+	-webkit-tap-highlight-color: transparent;
+	user-select: none;
+	-webkit-user-select: none;
+	font-family: theme(--font-sans);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	overflow: hidden;
+	position: relative;
+	height: var(--tg-viewport-height);
+	margin: auto;
+
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	text-rendering: optimizeSpeed;
+} */

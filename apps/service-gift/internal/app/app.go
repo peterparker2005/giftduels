@@ -7,7 +7,10 @@ import (
 	"go.uber.org/fx/fxevent"
 
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/config"
-	"github.com/peterparker2005/giftduels/apps/service-gift/internal/transport/grpc"
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/db"
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/repository"
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/service"
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/transport"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 )
 
@@ -20,7 +23,10 @@ func Run(cfg *config.Config) {
 			return cfg
 		}),
 		LoggerModule,
-		grpc.Module,
+		db.Module,
+		repository.Module,
+		service.Module,
+		transport.Module,
 
 		// Lifecycle hooks
 		fx.Invoke(registerHooks),

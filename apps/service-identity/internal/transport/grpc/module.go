@@ -7,12 +7,10 @@ import (
 	"github.com/peterparker2005/giftduels/apps/service-identity/internal/service/token"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	"go.uber.org/fx"
-	"go.uber.org/zap"
 )
 
 var Module = fx.Options(
 	fx.Provide(
-		// Network listener
 		func(cfg *config.Config) net.Listener {
 			listener, err := NewListener(&cfg.GRPC.Identity)
 			if err != nil {
@@ -20,22 +18,20 @@ var Module = fx.Options(
 			}
 			return listener
 		},
-		// Service dependencies
 		func(cfg *config.Config, logger *logger.Logger) token.TokenService {
 			return token.NewJWTService(&cfg.JWT, logger.Zap())
 		},
-		func(logger *logger.Logger) *zap.Logger {
-			return logger.Zap()
-		},
-		// gRPC components
-		NewRecoveryInterceptor,   // grpc.UnaryServerInterceptor
-		NewVersionInterceptors,   // []grpc.StreamServerInterceptor, []grpc.UnaryServerInterceptor
-		NewIdentityPublicHandler, // *IdentityPublicHandler
-		NewServer,                // *grpc.Server
+		NewRecoveryInterceptor,
+		NewVersionInterceptors,
+		NewIdentityPublicHandler,
+		NewGRPCServer,
 	),
 	fx.Invoke(
-		registerHealthCheck,
-		registerReflection,
-		startServer,
+		func(lc fx.Lifecycle, s *Server) {
+			lc.Append(fx.Hook{
+				OnStart: s.Start,
+				OnStop:  s.Stop,
+			})
+		},
 	),
 )

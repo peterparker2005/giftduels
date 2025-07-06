@@ -11,7 +11,6 @@ import (
 )
 
 type giftPublicHandler struct {
-	// встраиваем заглушку из protobuf, чтобы не ломать backward-совместимость при добавлении новых методов
 	giftv1.GiftPublicServiceServer
 
 	// зависимость от сервисного слоя
@@ -65,7 +64,7 @@ func (h *giftPublicHandler) GetGifts(ctx context.Context, req *giftv1.GetGiftsRe
 }
 
 func (h *giftPublicHandler) WithdrawGift(ctx context.Context, req *giftv1.WithdrawGiftRequest) (*giftv1.WithdrawGiftResponse, error) {
-	_, err := h.giftService.WithdrawGift(ctx, req.GiftId.Value)
+	_, err := h.giftService.WithdrawGift(ctx, req.GetGiftId().Value)
 	if err != nil {
 		return nil, err
 	}

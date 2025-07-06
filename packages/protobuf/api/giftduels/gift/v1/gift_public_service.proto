@@ -5,34 +5,22 @@ package giftduels.gift.v1;
 import "giftduels/gift/v1/gift.proto";
 import "giftduels/payment/v1/payment.proto";
 import "giftduels/shared/v1/common.proto";
-import "google/api/annotations.proto";
 
 option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1;giftv1";
 
 service GiftPublicService {
   // Get user's gifts with filtering and pagination
-  rpc GetGifts(GetGiftsRequest) returns (GetGiftsResponse) {
-    option (google.api.http) = {get: "/gifts"};
-  }
+  rpc GetGifts(GetGiftsRequest) returns (GetGiftsResponse) {}
 
   // Get specific gift details
-  rpc GetGift(GetGiftRequest) returns (GetGiftResponse) {
-    option (google.api.http) = {get: "/gifts/{gift_id.value}"};
-  }
+  rpc GetGift(GetGiftRequest) returns (GetGiftResponse) {}
 
   // Initiate gift withdrawal process
-  rpc WithdrawGift(WithdrawGiftRequest) returns (WithdrawGiftResponse) {
-    option (google.api.http) = {
-      post: "/gifts/{gift_id.value}/withdraw"
-      body: "*"
-    };
-  }
+  rpc WithdrawGift(WithdrawGiftRequest) returns (WithdrawGiftResponse) {}
 
   // Get gift withdrawal options and pricing
   // TODO: move to payment service
-  rpc GetWithdrawOptions(GetWithdrawOptionsRequest) returns (GetWithdrawOptionsResponse) {
-    option (google.api.http) = {get: "/gifts/{gift_id.value}/withdraw-options"};
-  }
+  rpc GetWithdrawOptions(GetWithdrawOptionsRequest) returns (GetWithdrawOptionsResponse) {}
 }
 
 message GetGiftRequest {

@@ -12,12 +12,13 @@ type fakeRepo struct {
 	names []string // пул вымышленных названий
 	min   float64  // нижняя граница TON-цены
 	max   float64  // верхняя граница TON-цены
+	rng   *rand.Rand
 }
 
 // NewPricingFake возвращает реализацию pricing.Repository,
 // генерирующую limit случайных Observation.
 func NewPricingFake() pricing.Repository {
-	rand.Seed(time.Now().UnixNano())
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	return &fakeRepo{
 		names: []string{
 			"Neon Rat", "Wolf Rage", "Spiced Wine",
@@ -25,6 +26,7 @@ func NewPricingFake() pricing.Repository {
 		},
 		min: 0.1, // 0.1 TON
 		max: 5.0, // 5 TON
+		rng: rng,
 	}
 }
 
@@ -41,8 +43,8 @@ func (r *fakeRepo) Samples(
 	now := time.Now().Unix()
 	for i := 0; i < limit; i++ {
 		out[i] = pricing.Observation{
-			GiftName:  r.names[rand.Intn(len(r.names))],
-			TonPrice:  r.min + rand.Float64()*(r.max-r.min),
+			GiftName:  r.names[r.rng.Intn(len(r.names))],
+			TonPrice:  r.min + r.rng.Float64()*(r.max-r.min),
 			Timestamp: now,
 			Source:    "fake",
 		}

@@ -4,33 +4,20 @@ package giftduels.identity.v1;
 
 import "giftduels/identity/v1/user.proto";
 import "giftduels/shared/v1/common.proto";
-import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 
 option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/identity/v1;identityv1";
 
 service IdentityPublicService {
   // Authorize user via Telegram WebApp InitData
-  rpc Authorize(AuthorizeRequest) returns (AuthorizeResponse) {
-    option (google.api.http) = {
-      post: "/auth/authorize"
-      body: "*"
-    };
-  }
+  rpc Authorize(AuthorizeRequest) returns (AuthorizeResponse) {}
 
   // Validate JWT token and get user info
-  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse) {
-    option (google.api.http) = {
-      post: "/auth/validate-token"
-      body: "*"
-    };
-  }
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse) {}
 
   // Get current user profile
   // buf:lint:ignore RPC_REQUEST_STANDARD_NAME
-  rpc GetProfile(google.protobuf.Empty) returns (GetProfileResponse) {
-    option (google.api.http) = {get: "/profile"};
-  }
+  rpc GetProfile(google.protobuf.Empty) returns (GetProfileResponse) {}
 }
 
 message GetProfileResponse {

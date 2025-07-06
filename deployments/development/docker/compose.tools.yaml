@@ -109,6 +109,17 @@ services:
     restart: unless-stopped
     networks: [net]
 
+  envoy:
+    image: envoyproxy/envoy:v1.29.1
+    container_name: envoy
+    volumes:
+      - ./config/envoy.yaml:/etc/envoy/envoy.yaml
+    ports:
+      - '8080:8080' # точка входа для фронта, miniapp и т.д.
+      - '9090:9090' # admin Envoy
+    depends_on: []
+    networks: [net]
+
 networks:
   net:
     driver: bridge
