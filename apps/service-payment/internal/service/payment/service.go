@@ -18,18 +18,21 @@ func NewService(repo payment.Repository) *Service {
 	}
 }
 
-func (s *Service) CreateDeposit(ctx context.Context, telegramUserID int64, tonAmount float64) (*payment.Deposit, error) {
-	payload := uuid.New().String()
+func (s *Service) CreateDeposit(
+	ctx context.Context,
+	telegramUserID int64,
+	tonAmount float64,
+) (*payment.Deposit, error) {
+	rawPayload := uuid.New().String()
 	nanoAmount := int64(tonAmount * 1e9)
-	expiresAt := time.Now().Add(1 * time.Hour)
+	expiresAt := time.Now().Add(time.Hour)
 
 	params := &payment.CreateDepositParams{
 		TelegramUserID: telegramUserID,
 		AmountNano:     nanoAmount,
-		Payload:        payload,
+		Payload:        rawPayload, // просто UUID
 		ExpiresAt:      expiresAt,
 	}
-
 	return s.repo.CreateDeposit(ctx, params)
 }
 

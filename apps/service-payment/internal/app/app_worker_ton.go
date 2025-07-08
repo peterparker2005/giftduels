@@ -5,6 +5,7 @@ import (
 
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/adapter/pg"
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/adapter/ton"
+	"github.com/peterparker2005/giftduels/apps/service-payment/internal/service"
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/service/tonworker"
 	"go.uber.org/fx"
 )
@@ -12,6 +13,7 @@ import (
 func NewWorkerTonApp() *fx.App {
 	return fx.New(
 		moduleCommon,
+		service.Module,
 		fx.Provide(
 			ton.NewTonAPI,
 			pg.NewTonCursorRepo,

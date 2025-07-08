@@ -2,6 +2,7 @@ package ton
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/config"
@@ -92,17 +93,36 @@ func (a *adapter) SubscribeTransactions(ctx context.Context, addrStr string, fro
 			}
 			ti := raw.IO.In.AsInternal()
 			sender := ti.SrcAddr.String()
-			amountStr := ti.Amount.String()
+			amountStr := ti.Amount.Nano().String()
 			currency := "TON"
+
+			// Extract payload from transaction body
+			payload := ""
+			if ti.Body != nil {
+				// Convert entire body to BOC base64 (this is what tonworker expects)
+				bocBytes := ti.Body.ToBOC()
+				if len(bocBytes) > 2 { // Skip empty BOC (usually 2 bytes for empty cell)
+					payload = a.encodeBOCAsBase64(bocBytes)
+					a.logger.Debug("📦 Extracted BOC payload",
+						zap.String("payload", payload),
+						zap.Int("bocLength", len(bocBytes)))
+				}
+			}
 
 			out <- domain.Transaction{
 				Sender:   sender,
 				Amount:   amountStr,
 				Currency: currency,
+				Payload:  payload,
 				LastLT:   raw.LT,
 			}
 		}
 		a.logger.Info("✅ Forwarding loop ended, out channel will not get more messages")
 	}()
 	return nil
+}
+
+// encodeBOCAsBase64 encodes BOC bytes as base64 URL encoding
+func (a *adapter) encodeBOCAsBase64(bocBytes []byte) string {
+	return base64.URLEncoding.EncodeToString(bocBytes)
 }

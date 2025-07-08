@@ -16,7 +16,7 @@ export const Page = () => {
 				<Avatar className="w-20 h-20" />
 				<h1 className="text-2xl font-medium">{data?.profile?.displayName}</h1>
 			</div>
-			<div>
+			<div className="mt-4">
 				<InventoryStats />
 			</div>
 			<section className="flex flex-items-center gap-2 w-full mt-4 mb-4">

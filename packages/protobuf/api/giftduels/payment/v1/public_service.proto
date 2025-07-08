@@ -43,6 +43,7 @@ message DepositTonResponse {
   string deposit_id = 1;
   uint64 nano_ton_amount = 2;
   string payload = 3;
+  string treasury_address = 4;
 }
 
 message GetBalanceResponse {

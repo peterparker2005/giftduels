@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useBalanceQuery } from "@/shared/api/queries/useBalanceQuery";
 import { Icon } from "@/shared/ui/Icon/Icon";
+import { formatTonAmount } from "@/shared/utils/formatTonAmount";
 
 export const TonBalance = () => {
 	const { data, isLoading } = useBalanceQuery();
@@ -18,7 +19,9 @@ export const TonBalance = () => {
 			<div className="w-5 h-5 flex items-center justify-center bg-[#2D9EED] rounded-full">
 				<Icon icon="TON" className="w-3.5 h-3.5" />
 			</div>
-			<span className="font-medium">{data?.balance?.tonAmount?.value} TON</span>
+			<span className="font-medium">
+				{formatTonAmount(data?.balance?.tonAmount?.value)} TON
+			</span>
 			<div className="w-4 h-4 flex items-center justify-center bg-white rounded-full">
 				<Icon icon="plus" className="w-3.5 h-3.5 text-background" />
 			</div>

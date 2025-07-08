@@ -5,6 +5,7 @@ import {
 	Outlet,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import { DefaultLayout } from "@/layouts/DefaultLayout";
 import { RootLayout } from "@/layouts/RootLayout";
 import Balance from "@/pages/Balance";
 import Home from "@/pages/Home";
@@ -26,14 +27,26 @@ const rootRoute = createRootRoute({
 	},
 });
 
-const indexRoute = createRoute({
+const defaultLayoutRoute = createRoute({
 	getParentRoute: () => rootRoute,
+	id: "default-layout",
+	component: () => {
+		return (
+			<DefaultLayout>
+				<Outlet />
+			</DefaultLayout>
+		);
+	},
+});
+
+const indexRoute = createRoute({
+	getParentRoute: () => defaultLayoutRoute,
 	path: "/",
 	component: Home,
 });
 
 const profileRoute = createRoute({
-	getParentRoute: () => rootRoute,
+	getParentRoute: () => defaultLayoutRoute,
 	path: "/profile",
 	component: Profile,
 });
@@ -44,9 +57,13 @@ const balanceRoute = createRoute({
 	component: Balance,
 });
 
-const routeTree = rootRoute.addChildren([
+const defaultLayoutWithChildren = defaultLayoutRoute.addChildren([
 	indexRoute,
 	profileRoute,
+]);
+
+const routeTree = rootRoute.addChildren([
+	defaultLayoutWithChildren,
 	balanceRoute,
 ]);
 

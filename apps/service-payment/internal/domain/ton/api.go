@@ -12,6 +12,7 @@ type Transaction struct {
 	Sender   string
 	Amount   string // строковое представление с нужными десятичными знаками
 	Currency string // "TON" или код джеттона
+	Payload  string // payload/comment from transaction body
 	LastLT   uint64 // для сохранения курсора
 }
 

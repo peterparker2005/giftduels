@@ -3,7 +3,10 @@ package grpc
 import (
 	"context"
 
+	"github.com/peterparker2005/giftduels/apps/service-payment/internal/config"
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/service/payment"
+	"github.com/peterparker2005/giftduels/apps/service-payment/pkg/boc"
+	"github.com/peterparker2005/giftduels/packages/errors/pkg/errors"
 	"github.com/peterparker2005/giftduels/packages/grpc-go/authctx"
 	paymentv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/payment/v1"
 	sharedv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/shared/v1"
@@ -13,11 +16,13 @@ import (
 type PaymentPublicHandler struct {
 	paymentv1.UnimplementedPaymentPublicServiceServer
 	service *payment.Service
+	cfg     *config.Config
 }
 
-func NewPaymentPublicHandler(service *payment.Service) paymentv1.PaymentPublicServiceServer {
+func NewPaymentPublicHandler(service *payment.Service, cfg *config.Config) paymentv1.PaymentPublicServiceServer {
 	return &PaymentPublicHandler{
 		service: service,
+		cfg:     cfg,
 	}
 }
 
@@ -43,15 +48,34 @@ func (h *PaymentPublicHandler) GetWithdrawOptions(ctx context.Context, req *paym
 	return &paymentv1.GetWithdrawOptionsResponse{}, nil
 }
 
-func (h *PaymentPublicHandler) DepositTon(ctx context.Context, req *paymentv1.DepositTonRequest) (*paymentv1.DepositTonResponse, error) {
-	// telegramUserID, err := authctx.TelegramUserID(ctx)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// tonAmount := req.GetTonAmount().GetValue()
+func (h *PaymentPublicHandler) DepositTon(
+	ctx context.Context,
+	req *paymentv1.DepositTonRequest,
+) (*paymentv1.DepositTonResponse, error) {
+	userID, err := authctx.TelegramUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// 1) Создаём запись в БД с «сырым» UUID-payload:
+	tonAmount := req.GetTonAmount().GetValue()
+	deposit, err := h.service.CreateDeposit(ctx, userID, tonAmount)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2) Упаковываем этот UUID в BOC и кодируем
+	bocPayload, err := boc.EncodeStringAsBOC(deposit.Payload)
+	if err != nil {
+		// если вдруг что-то пошло не так
+		return nil, errors.NewInternalError("failed to encode payload boc")
+	}
+
+	// 3) Отдаём клиенту nanoAmount + BOC-payload
 	return &paymentv1.DepositTonResponse{
-		DepositId:     "",
-		NanoTonAmount: 0,
-		Payload:       "",
+		DepositId:       deposit.ID.String(),
+		NanoTonAmount:   uint64(deposit.AmountNano),
+		Payload:         bocPayload,
+		TreasuryAddress: h.cfg.Ton.WalletAddress,
 	}, nil
 }

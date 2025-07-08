@@ -2,10 +2,13 @@ package tonworker
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/config"
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/domain/ton"
+	"github.com/peterparker2005/giftduels/apps/service-payment/internal/service/payment"
+	"github.com/peterparker2005/giftduels/apps/service-payment/pkg/boc"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	"go.uber.org/zap"
 )
@@ -13,6 +16,7 @@ import (
 type Processor struct {
 	api             ton.TonAPI
 	cursorRepo      ton.CursorRepository
+	paymentService  *payment.Service
 	treasuryAddress string
 	cancel          context.CancelFunc
 	logger          *logger.Logger
@@ -21,12 +25,14 @@ type Processor struct {
 func NewProcessor(
 	api ton.TonAPI,
 	cursorRepo ton.CursorRepository,
+	paymentService *payment.Service,
 	cfg *config.Config,
 	logger *logger.Logger,
 ) *Processor {
 	return &Processor{
 		api:             api,
 		cursorRepo:      cursorRepo,
+		paymentService:  paymentService,
 		treasuryAddress: cfg.Ton.WalletAddress,
 		logger:          logger,
 	}
@@ -95,7 +101,31 @@ func (p *Processor) run(ctx context.Context) {
 					zap.String("amount", tx.Amount),
 					zap.String("currency", tx.Currency),
 					zap.String("sender", tx.Sender),
+					zap.String("payload", tx.Payload),
 				)
+
+				// Process deposit if payload is provided
+				if tx.Payload != "" && tx.Currency == "TON" {
+					amountNano, err := strconv.ParseInt(tx.Amount, 10, 64)
+					if err != nil {
+						p.logger.Warn("failed to parse amount", zap.Error(err), zap.String("amount", tx.Amount))
+					} else {
+						// Decode BOC payload back to original UUID
+						originalPayload, err := boc.DecodeStringFromBOC(tx.Payload)
+						if err != nil {
+							p.logger.Warn("failed to decode BOC payload", zap.Error(err), zap.String("payload", tx.Payload))
+						} else {
+							p.logger.Info("🔓 Decoded BOC payload", zap.String("original", originalPayload), zap.String("boc", tx.Payload))
+							err = p.paymentService.ProcessDepositTransaction(ctx, originalPayload, "", int64(tx.LastLT), amountNano)
+							if err != nil {
+								p.logger.Warn("failed to process deposit transaction", zap.Error(err), zap.String("payload", originalPayload))
+							} else {
+								p.logger.Info("✅ Deposit processed successfully", zap.String("payload", originalPayload), zap.Int64("amount", amountNano))
+							}
+						}
+					}
+				}
+
 				if err := p.cursorRepo.Upsert(ctx, "testnet", p.treasuryAddress, tx.LastLT); err != nil {
 					p.logger.Warn("failed to save cursor", zap.Error(err))
 				}
