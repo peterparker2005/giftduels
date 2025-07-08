@@ -4,7 +4,9 @@ import (
 	"context"
 	"net"
 
+	envoyauthv3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"github.com/peterparker2005/giftduels/apps/service-identity/internal/config"
+	authctx "github.com/peterparker2005/giftduels/packages/grpc-go/authctx"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	identityv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/identity/v1"
 	"go.uber.org/zap"
@@ -28,17 +30,20 @@ func NewGRPCServer(
 	versionUnary []grpc.UnaryServerInterceptor,
 	versionStream []grpc.StreamServerInterceptor,
 	publicHandler identityv1.IdentityPublicServiceServer,
+	privateHandler identityv1.IdentityPrivateServiceServer,
+	envoyHandler envoyauthv3.AuthorizationServer,
 	log *logger.Logger,
 ) *Server {
 	opts := []grpc.ServerOption{
-		grpc.ChainUnaryInterceptor(append(versionUnary, recover)...),
+		grpc.ChainUnaryInterceptor(append(versionUnary, recover, authctx.TelegramIDCtxInterceptor())...),
 		grpc.ChainStreamInterceptor(versionStream...),
 	}
 
 	s := grpc.NewServer(opts...)
 
 	identityv1.RegisterIdentityPublicServiceServer(s, publicHandler)
-
+	identityv1.RegisterIdentityPrivateServiceServer(s, privateHandler)
+	envoyauthv3.RegisterAuthorizationServer(s, envoyHandler)
 	hs := health.NewServer()
 	hs.SetServingStatus("identity", healthpb.HealthCheckResponse_SERVING)
 	healthpb.RegisterHealthServer(s, hs)

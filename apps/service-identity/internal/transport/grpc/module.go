@@ -4,8 +4,6 @@ import (
 	"net"
 
 	"github.com/peterparker2005/giftduels/apps/service-identity/internal/config"
-	"github.com/peterparker2005/giftduels/apps/service-identity/internal/service/token"
-	"github.com/peterparker2005/giftduels/packages/logger-go"
 	"go.uber.org/fx"
 )
 
@@ -18,12 +16,11 @@ var Module = fx.Options(
 			}
 			return listener
 		},
-		func(cfg *config.Config, logger *logger.Logger) token.TokenService {
-			return token.NewJWTService(&cfg.JWT, logger.Zap())
-		},
 		NewRecoveryInterceptor,
 		NewVersionInterceptors,
 		NewIdentityPublicHandler,
+		NewIdentityPrivateHandler,
+		NewIdentityEnvoyHandler,
 		NewGRPCServer,
 	),
 	fx.Invoke(

@@ -16,7 +16,7 @@ function randomDice() {
 
 export const DiceLoader: FC = () => {
 	const [diceSrc, setDiceSrc] = useState(() => randomDice());
-	const { lottie, lottieRefCallback } = useLottie();
+	const { lottie } = useLottie();
 
 	/** Перезапускаем новый JSON после завершения предыдущего */
 	const handleComplete = useCallback(() => {
@@ -44,7 +44,6 @@ export const DiceLoader: FC = () => {
 				src={diceSrc}
 				autoplay
 				loop={false}
-				dotLottieRefCallback={lottieRefCallback}
 			/>
 		</div>
 	);

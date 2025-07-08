@@ -1,21 +1,21 @@
-import { Userbot } from '@/core/userbot'
+import { Userbot } from "@/core/userbot";
 
 async function seed() {
-	const userbot = new Userbot()
+	const userbot = new Userbot();
 
-	await userbot.start()
+	await userbot.start();
 
 	const { gifts } = await userbot.getUserGifts({
 		limit: 1,
-		user: '@GiftsToPortals',
-	})
+		user: "@GiftsToPortals",
+	});
 
-	console.log(gifts)
+	console.log(gifts);
 
-	await userbot.close()
+	await userbot.close();
 }
 
-seed().catch(err => {
-	console.error('[FATAL] Unhandled exception:', err)
-	process.exit(1)
-})
+seed().catch((err) => {
+	console.error("[FATAL] Unhandled exception:", err);
+	process.exit(1);
+});

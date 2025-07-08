@@ -3,11 +3,11 @@ sql:
   - name: db
     engine: 'postgresql'
     schema:
-      - internal/db/migrations/20250703161937_init.up.sql
+      - db/migrations/20250703161937_init.up.sql
     queries:
-      - internal/db/queries.sql
+      - db/queries.sql
     gen:
       go:
-        package: db
-        out: internal/db
-        # sql_package: db
+        package: sqlc
+        out: internal/adapter/pg/sqlc
+        sql_package: pgx/v5

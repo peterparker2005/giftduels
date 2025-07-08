@@ -3,6 +3,7 @@ package cli
 import (
 	"log"
 
+	"github.com/peterparker2005/giftduels/apps/service-identity/internal/cli/command/migrate"
 	"github.com/peterparker2005/giftduels/apps/service-identity/internal/cli/command/serve"
 	"github.com/peterparker2005/giftduels/apps/service-identity/internal/config"
 	"github.com/peterparker2005/giftduels/packages/cli-go"
@@ -19,6 +20,7 @@ func rootCmd() *cobra.Command {
 
 	cmd.AddCommand(
 		serve.NewCmdServe(cfg),
+		migrate.NewCmdMigrate(cfg),
 	)
 
 	return cmd

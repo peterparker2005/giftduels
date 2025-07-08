@@ -1,60 +1,61 @@
-import { Api, TelegramClient } from 'telegram'
-
-import { parseMessageActionStarGiftUnique } from '@/domain/gift'
-import { logger } from '@/logger'
-import { publishProto } from '@/amqp/publisher'
-import { giftduels } from '@giftduels/protobuf-ts'
-import { encoderFor } from '@/utils/encoderFor'
+import {
+	TelegramGiftReceivedEvent,
+	TelegramGiftReceivedEventSchema,
+} from "@giftduels/protobuf-js/giftduels/gift/v1/events_pb";
+import { Api, TelegramClient } from "telegram";
+import { publishProto } from "@/amqp/publisher";
+import { parseMessageActionStarGiftUnique } from "@/domain/gift";
+import { logger } from "@/logger";
 
 export async function nftGiftHandler(client: TelegramClient) {
 	client.addEventHandler(async (update: Api.TypeUpdate) => {
-		if (!(update instanceof Api.UpdateNewMessage)) return
+		if (!(update instanceof Api.UpdateNewMessage)) return;
 
-		const message = update.message
-		logger.info({ messageType: message.className }, '📨 Incoming message')
+		const message = update.message;
+		logger.info({ messageType: message.className }, "📨 Incoming message");
 
-		if (!(message instanceof Api.MessageService)) return
+		if (!(message instanceof Api.MessageService)) return;
 
-		logger.info({ action: message.action.className }, 'action.className')
+		logger.info({ action: message.action.className }, "action.className");
 
 		// Обрабатываем только NFT подарки (MessageActionStarGiftUnique)
-		if (!(message.action instanceof Api.MessageActionStarGiftUnique)) return
+		if (!(message.action instanceof Api.MessageActionStarGiftUnique)) return;
 
-		logger.info({ action: message.action.className }, '🎯 NFT Gift action')
-		logger.info({ data: message }, 'Data')
+		logger.info({ action: message.action.className }, "🎯 NFT Gift action");
+		logger.info({ data: message }, "Data");
 
-		let senderId: number
-		const peer = message.fromId ?? message.peerId
+		let senderId: number;
+		const peer = message.fromId ?? message.peerId;
 
-		if ('userId' in peer) {
-			senderId = peer.userId.toJSNumber?.()
-		} else if ('chatId' in peer) {
-			senderId = peer.chatId.toJSNumber?.()
+		if ("userId" in peer) {
+			senderId = peer.userId.toJSNumber?.();
+		} else if ("chatId" in peer) {
+			senderId = peer.chatId.toJSNumber?.();
 		} else {
-			logger.warn({ peer }, '⚠️ Unknown peer type')
-			return
+			logger.warn({ peer }, "⚠️ Unknown peer type");
+			return;
 		}
 
-		logger.info({ action: message.action.className }, 'Processing NFT Gift...')
+		logger.info({ action: message.action.className }, "Processing NFT Gift...");
 
-		const self = await client.getMe()
+		const self = await client.getMe();
 
-		logger.info({ senderId }, '🎁 Got NFT Gift')
+		logger.info({ senderId }, "🎁 Got NFT Gift");
 
 		try {
 			const gift = parseMessageActionStarGiftUnique(
 				message,
 				senderId,
-				self.id?.toJSNumber()
-			)
+				self.id?.toJSNumber(),
+			);
 
-			logger.debug({ gift }, '📦 Parsed NFT gift')
+			logger.debug({ gift }, "📦 Parsed NFT gift");
 
-			await publishProto<giftduels.gift.v1.TelegramGiftReceivedEvent>({
-				routingKey: 'telegram.gift.received',
+			await publishProto<TelegramGiftReceivedEvent>({
+				routingKey: "telegram.gift.received",
+				schema: TelegramGiftReceivedEventSchema,
 				msg: gift,
-				encoder: encoderFor(giftduels.gift.v1.TelegramGiftReceivedEvent),
-			})
+			});
 
 			logger.info(
 				{
@@ -62,14 +63,14 @@ export async function nftGiftHandler(client: TelegramClient) {
 					userId: senderId,
 					giftId: gift.telegramGiftId,
 				},
-				'📤 NFT Gift event published'
-			)
+				"📤 NFT Gift event published",
+			);
 
 			await client.sendMessage(senderId, {
 				message: `🎁 ${
-					gift.title || 'Подарок'
+					gift.title || "Подарок"
 				} успешно добавлен в ваш профиль GiftDuels!\n\nИщите игру или создайте свою — @GiftDuels`,
-			})
+			});
 		} catch (err) {
 			logger.error(
 				{
@@ -77,12 +78,12 @@ export async function nftGiftHandler(client: TelegramClient) {
 					messageId: message.id,
 					userId: senderId,
 				},
-				'❌ Error in NFT Gift handler'
-			)
+				"❌ Error in NFT Gift handler",
+			);
 
 			await client.sendMessage(senderId, {
-				message: '❌ Не удалось обработать подарок. Попробуйте позже.',
-			})
+				message: "❌ Не удалось обработать подарок. Попробуйте позже.",
+			});
 		}
-	})
+	});
 }

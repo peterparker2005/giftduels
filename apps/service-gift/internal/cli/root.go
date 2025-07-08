@@ -3,9 +3,9 @@ package cli
 import (
 	"log"
 
-	"github.com/peterparker2005/giftduels/apps/service-gift/internal/cli/command/consume"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/cli/command/migrate"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/cli/command/serve"
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/cli/command/worker"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/config"
 	"github.com/peterparker2005/giftduels/packages/cli-go"
 	"github.com/spf13/cobra"
@@ -21,7 +21,7 @@ func rootCmd() *cobra.Command {
 
 	cmd.AddCommand(
 		serve.NewCmdServe(cfg),
-		consume.NewCmdConsume(cfg),
+		worker.NewCmdWorker(cfg),
 		migrate.NewCmdMigrate(cfg),
 	)
 

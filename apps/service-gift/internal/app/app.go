@@ -6,9 +6,8 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
 
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/adapter/pg"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/config"
-	"github.com/peterparker2005/giftduels/apps/service-gift/internal/db"
-	"github.com/peterparker2005/giftduels/apps/service-gift/internal/repository"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/service"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/transport"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
@@ -23,8 +22,7 @@ func Run(cfg *config.Config) {
 			return cfg
 		}),
 		LoggerModule,
-		db.Module,
-		repository.Module,
+		pg.Module,
 		service.Module,
 		transport.Module,
 

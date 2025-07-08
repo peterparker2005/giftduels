@@ -16,15 +16,26 @@ plugins:
     opt:
       - paths=source_relative
 
-  - remote: buf.build/community/stephenh-ts-proto:v2.6.1
-    out: ../protobuf-ts/gen
+  # - remote: buf.build/community/stephenh-ts-proto:v2.6.1
+  #   out: ../protobuf-ts/gen
+  #   opt:
+  #     - target=ts
+  #     - esModuleInterop=true
+  #     - forceLong=string
+  #     - outputIndex=false
+  #     - outputServices=none
+  #     - outputTypeAnnotations=true
+
+  - remote: buf.build/bufbuild/es:v2.6.0
+    out: ../protobuf-js/gen
     opt:
       - target=ts
-      - esModuleInterop=true
-      - forceLong=string
-      - outputIndex=true
-      - outputServices=none
-      - outputTypeAnnotations=true
+      - import_extension=.ts
 
+  - remote: buf.build/connectrpc/es:v1.6.1
+    out: ../protobuf-js/gen
+    opt:
+      - target=ts
+      - import_extension=.ts
 inputs:
   - directory: api

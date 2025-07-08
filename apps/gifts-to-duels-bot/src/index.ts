@@ -1,20 +1,20 @@
-import { Userbot } from './core/userbot'
-import { setupShutdownHooks } from './shutdown'
-import { nftGiftHandler } from './telegram/handlers/gift'
-import { closeAmqp, connectAmqp } from './amqp/connection'
+import { closeAmqp, connectAmqp } from "./amqp/connection";
+import { Userbot } from "./core/userbot";
+import { setupShutdownHooks } from "./shutdown";
+import { nftGiftHandler } from "./telegram/handlers/gift";
 
-const userbot = new Userbot()
+const userbot = new Userbot();
 
 async function main() {
-	await connectAmqp()
-	await userbot.start()
+	await connectAmqp();
+	await userbot.start();
 
-	await nftGiftHandler(userbot.getClient())
+	await nftGiftHandler(userbot.getClient());
 
 	setupShutdownHooks(async () => {
-		await closeAmqp()
-		await userbot.close()
-	})
+		await closeAmqp();
+		await userbot.close();
+	});
 
 	// const messages = await userbot
 	// 	.getClient()
@@ -41,7 +41,7 @@ async function main() {
 	// })
 }
 
-main().catch(err => {
-	console.error('[FATAL] Unhandled exception:', err)
-	process.exit(1)
-})
+main().catch((err) => {
+	console.error("[FATAL] Unhandled exception:", err);
+	process.exit(1);
+});

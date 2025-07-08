@@ -1,82 +1,107 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { logger } from '@/logger'
-import { giftduels } from '@giftduels/protobuf-ts'
-import { Api } from 'telegram'
+// biome-ignore-all lint/suspicious/noExplicitAny: all
+
+import { create } from "@bufbuild/protobuf";
+import { TimestampSchema } from "@bufbuild/protobuf/wkt";
+import {
+	TelegramGiftReceivedEvent,
+	TelegramGiftReceivedEventSchema,
+} from "@giftduels/protobuf-js/giftduels/gift/v1/events_pb";
+import {
+	Gift,
+	GiftAttribute,
+	GiftAttributeSchema,
+	GiftAttributeType,
+	GiftSchema,
+	GiftStatus,
+	GiftView,
+	GiftViewSchema,
+} from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
+import {
+	GiftTelegramId,
+	GiftTelegramIdSchema,
+	TelegramUserId,
+	TelegramUserIdSchema,
+} from "@giftduels/protobuf-js/giftduels/shared/v1/common_pb";
+import { Api } from "telegram";
+import { logger } from "@/logger";
 
 /**
  * Parser for Telegram API gift objects to protobuf types
  */
 
-function createGiftTelegramId(
-	value: string | number | bigint
-): giftduels.shared.v1.GiftTelegramId {
-	return giftduels.shared.v1.GiftTelegramId.create({
-		value: typeof value === 'string' ? value : value.toString(),
-	})
+function createGiftTelegramId(value: string | number | bigint): GiftTelegramId {
+	return create(GiftTelegramIdSchema, {
+		value: BigInt(value),
+	});
 }
 
-function createTelegramUserId(
-	value: string | number | bigint
-): giftduels.shared.v1.TelegramUserId {
-	return giftduels.shared.v1.TelegramUserId.create({
-		value: typeof value === 'string' ? value : value.toString(),
-	})
+function createTelegramUserId(value: string | number | bigint): TelegramUserId {
+	return create(TelegramUserIdSchema, {
+		value: BigInt(value),
+	});
 }
 
-function createTimestamp(unixTimestamp: number): Date {
-	return new Date(unixTimestamp * 1000)
+function createTimestamp(unixTimestamp: number) {
+	const seconds = Math.floor(unixTimestamp);
+	const nanos = (unixTimestamp % 1) * 1e9;
+	return create(TimestampSchema, { seconds: BigInt(seconds), nanos });
 }
 
 function parseAttributes(
-	telegramAttributes?: Array<{
-		type?: string
-		name?: string
-		rarity?: number
-		[key: string]: any
-	}>
-): giftduels.gift.v1.GiftAttribute[] {
+	telegramAttributes?: Api.TypeStarGiftAttribute[],
+): GiftAttribute[] {
 	if (!telegramAttributes || !Array.isArray(telegramAttributes)) {
-		return []
+		return [];
 	}
 
-	return telegramAttributes.map(attr => {
-		let attributeType =
-			giftduels.gift.v1.GiftAttributeType.GIFT_ATTRIBUTE_TYPE_UNSPECIFIED
+	const mappedAttributes = telegramAttributes.map((attr) => {
+		let attributeType: GiftAttributeType | undefined;
+		let name = "";
+		let rarity = 0;
 
-		// Map attribute types from Telegram to protobuf
-		switch (attr.type?.toLowerCase()) {
-			case 'model':
-				attributeType =
-					giftduels.gift.v1.GiftAttributeType.GIFT_ATTRIBUTE_TYPE_MODEL
-				break
-			case 'backdrop':
-				attributeType =
-					giftduels.gift.v1.GiftAttributeType.GIFT_ATTRIBUTE_TYPE_BACKDROP
-				break
-			case 'symbol':
-				attributeType =
-					giftduels.gift.v1.GiftAttributeType.GIFT_ATTRIBUTE_TYPE_SYMBOL
-				break
-			default:
-				attributeType =
-					giftduels.gift.v1.GiftAttributeType.GIFT_ATTRIBUTE_TYPE_UNSPECIFIED
+		if (attr instanceof Api.StarGiftAttributeModel) {
+			attributeType = GiftAttributeType.MODEL;
+			name = attr.name;
+			rarity = attr.rarityPermille;
+		} else if (attr instanceof Api.StarGiftAttributePattern) {
+			attributeType = GiftAttributeType.SYMBOL;
+			name = attr.name;
+			rarity = attr.rarityPermille;
+		} else if (attr instanceof Api.StarGiftAttributeBackdrop) {
+			attributeType = GiftAttributeType.BACKDROP;
+			name = attr.name;
+			rarity = attr.rarityPermille;
+		} else if (attr instanceof Api.StarGiftAttributeOriginalDetails) {
+			logger.warn(
+				"⚠️ StarGiftAttributeOriginalDetails is not handled yet, skipping",
+			);
+			return null;
+		} else {
+			logger.warn(
+				{ className: (attr as any)?.className },
+				"⚠️ Unknown Telegram gift attribute type, skipping",
+			);
+			return null;
 		}
 
-		return giftduels.gift.v1.GiftAttribute.create({
+		return create(GiftAttributeSchema, {
 			type: attributeType,
-			name: attr.name || '',
-			rarity: attr.rarity || 0,
-			description: attr.description || '',
-		})
-	})
+			name: name,
+			rarity: rarity,
+		});
+	});
+
+	return mappedAttributes.filter(
+		(attr): attr is GiftAttribute => attr !== null,
+	);
 }
 
 function slugify(title: string): string {
 	return title
 		.toLowerCase()
-		.replace(/[^a-z0-9\s-]/g, '')
-		.replace(/\s+/g, '-')
-		.trim()
+		.replace(/[^a-z0-9\s-]/g, "")
+		.replace(/\s+/g, "-")
+		.trim();
 }
 
 // ===== MAIN PARSERS =====
@@ -86,46 +111,46 @@ function slugify(title: string): string {
  */
 export function parseSavedStarGift(
 	savedGift: Api.SavedStarGift,
-	ownerTelegramId: number
-): giftduels.gift.v1.Gift {
-	const gift = savedGift.gift
+	ownerTelegramId: number,
+): Gift {
+	const gift = savedGift.gift;
 
 	if (!gift) {
-		throw new Error('SavedStarGift does not contain gift object')
+		throw new Error("SavedStarGift does not contain gift object");
 	}
 
 	// Handle different gift types
-	let telegramGiftId: string
-	let title: string
-	let slug: string
-	let attributes: giftduels.gift.v1.GiftAttribute[] = []
+	let telegramGiftId: string;
+	let title: string;
+	let slug: string;
+	let attributes: GiftAttribute[] = [];
 
-	if (gift.className === 'StarGiftUnique') {
-		const uniqueGift = gift as Api.StarGiftUnique
-		telegramGiftId = uniqueGift.id?.toString() || '0'
-		title = uniqueGift.title || 'Unknown Gift'
-		slug = uniqueGift.slug || slugify(title)
-		attributes = parseAttributes(uniqueGift.attributes as any)
-	} else if (gift.className === 'StarGift') {
-		const regularGift = gift as Api.StarGift
-		telegramGiftId = regularGift.id?.toString() || '0'
-		title = (regularGift as any).title || 'Unknown Gift'
-		slug = slugify(title)
+	if (gift.className === "StarGiftUnique") {
+		const uniqueGift = gift as Api.StarGiftUnique;
+		telegramGiftId = uniqueGift.id?.toString() || "0";
+		title = uniqueGift.title || "Unique Gift";
+		slug = uniqueGift.slug || slugify(title);
+		attributes = parseAttributes(uniqueGift.attributes);
+	} else if (gift.className === "StarGift") {
+		const regularGift = gift as Api.StarGift;
+		telegramGiftId = regularGift.id?.toString() || "0";
+		title = (regularGift as any).title || "Unknown Gift";
+		slug = slugify(title);
 		// Regular gifts might not have attributes
 	} else {
-		logger.warn(`Unknown gift type: ${(gift as any).className as string}`)
-		telegramGiftId = '0'
-		title = 'Unknown Gift'
-		slug = 'unknown'
+		logger.warn(`Unknown gift type: ${(gift as any).className as string}`);
+		telegramGiftId = "0";
+		title = "Unknown Gift";
+		slug = "unknown";
 	}
 
 	// Determine status from saved gift flags
-	let status = giftduels.gift.v1.GiftStatus.GIFT_STATUS_OWNED
+	let status = GiftStatus.OWNED;
 	if (savedGift.refunded) {
-		status = giftduels.gift.v1.GiftStatus.GIFT_STATUS_WITHDRAWN // Treat refunded as withdrawn
+		status = GiftStatus.WITHDRAWN; // Treat refunded as withdrawn
 	}
 
-	const result: giftduels.gift.v1.Gift = giftduels.gift.v1.Gift.create({
+	const result: Gift = create(GiftSchema, {
 		telegramGiftId: createGiftTelegramId(telegramGiftId),
 		date: createTimestamp(savedGift.date || Math.floor(Date.now() / 1000)),
 		ownerTelegramId: createTelegramUserId(ownerTelegramId),
@@ -133,16 +158,16 @@ export function parseSavedStarGift(
 		telegramMessageId: savedGift.msgId || 0,
 		title,
 		slug,
-		imageUrl: '', // Not available in SavedStarGift
+		imageUrl: "", // Not available in SavedStarGift
 		attributes,
 		originalPrice: undefined, // Not available in SavedStarGift
 		status,
 		withdrawnAt: undefined,
-	})
+	});
 
-	logger.debug({ giftId: telegramGiftId, title }, '📦 Parsed SavedStarGift')
+	logger.debug({ giftId: telegramGiftId, title }, "📦 Parsed SavedStarGift");
 
-	return result
+	return result;
 }
 
 /**
@@ -151,39 +176,40 @@ export function parseSavedStarGift(
 export function parseMessageActionStarGift(
 	message: Api.MessageService,
 	fromUserId: number,
-	toUserId?: number
-): giftduels.gift.v1.TelegramGiftReceivedEvent {
-	const action = message.action as Api.MessageActionStarGift
+	toUserId?: number,
+): TelegramGiftReceivedEvent {
+	const action = message.action as Api.MessageActionStarGift;
 
 	if (!action.gift) {
-		throw new Error('MessageActionStarGift does not contain gift object')
+		throw new Error("MessageActionStarGift does not contain gift object");
 	}
 
-	const gift = action.gift
-	let telegramGiftId: string
-	let title: string
-	let slug: string
-	const attributes: giftduels.gift.v1.GiftAttribute[] = []
+	const gift = action.gift;
+	let telegramGiftId: string;
+	let title: string;
+	let slug: string;
+	const attributes: GiftAttribute[] = [];
 
-	if (gift.className === 'StarGift') {
-		const starGift = gift as Api.StarGift
-		telegramGiftId = starGift.id?.toString() || '0'
-		title = (starGift as any).title || 'Star Gift'
-		slug = slugify(title)
+	if (gift.className === "StarGift") {
+		const starGift = gift as Api.StarGift;
+		telegramGiftId = starGift.id?.toString() || "0";
+		title = (starGift as any).title || "Star Gift";
+		slug = slugify(title);
 	} else {
 		logger.warn(
-			`Unexpected gift type in MessageActionStarGift: ${gift.className}`
-		)
-		telegramGiftId = '0'
-		title = 'Unknown Gift'
-		slug = 'unknown'
+			`Unexpected gift type in MessageActionStarGift: ${gift.className}`,
+		);
+		telegramGiftId = "0";
+		title = "Unknown Gift";
+		slug = "unknown";
 	}
 
-	const result: giftduels.gift.v1.TelegramGiftReceivedEvent =
-		giftduels.gift.v1.TelegramGiftReceivedEvent.create({
+	const result: TelegramGiftReceivedEvent = create(
+		TelegramGiftReceivedEventSchema,
+		{
 			telegramGiftId: createGiftTelegramId(telegramGiftId),
 			depositDate: createTimestamp(
-				message.date || Math.floor(Date.now() / 1000)
+				message.date || Math.floor(Date.now() / 1000),
 			),
 			ownerTelegramId: createTelegramUserId(toUserId || fromUserId),
 			title,
@@ -191,14 +217,15 @@ export function parseMessageActionStarGift(
 			attributes,
 			collectibleId: 0,
 			upgradeMessageId: 0,
-		})
+		},
+	);
 
 	logger.debug(
 		{ giftId: telegramGiftId, title, fromUserId, toUserId },
-		'🎁 Parsed MessageActionStarGift'
-	)
+		"🎁 Parsed MessageActionStarGift",
+	);
 
-	return result
+	return result;
 }
 
 /**
@@ -207,42 +234,43 @@ export function parseMessageActionStarGift(
 export function parseMessageActionStarGiftUnique(
 	message: Api.MessageService,
 	fromUserId: number,
-	toUserId?: number
-): giftduels.gift.v1.TelegramGiftReceivedEvent {
-	const action = message.action as Api.MessageActionStarGiftUnique
+	toUserId?: number,
+): TelegramGiftReceivedEvent {
+	const action = message.action as Api.MessageActionStarGiftUnique;
 
 	if (!action.gift) {
-		throw new Error('MessageActionStarGiftUnique does not contain gift object')
+		throw new Error("MessageActionStarGiftUnique does not contain gift object");
 	}
 
-	const gift = action.gift
-	let telegramGiftId: string
-	let title: string
-	let slug: string
-	let attributes: giftduels.gift.v1.GiftAttribute[] = []
-	let collectibleId = 0
+	const gift = action.gift;
+	let telegramGiftId: string;
+	let title: string;
+	let slug: string;
+	let attributes: GiftAttribute[] = [];
+	let collectibleId = 0;
 
-	if (gift.className === 'StarGiftUnique') {
-		const uniqueGift = gift as Api.StarGiftUnique
-		telegramGiftId = uniqueGift.id?.toString() || '0'
-		title = uniqueGift.title || 'Unique Gift'
-		slug = uniqueGift.slug || slugify(title)
-		attributes = parseAttributes(uniqueGift.attributes as any)
-		collectibleId = uniqueGift.num || 0 // Use num as collectible ID
+	if (gift.className === "StarGiftUnique") {
+		const uniqueGift = gift as Api.StarGiftUnique;
+		telegramGiftId = uniqueGift.id?.toString() || "0";
+		title = uniqueGift.title || "Unique Gift";
+		slug = uniqueGift.slug || slugify(title);
+		attributes = parseAttributes(uniqueGift.attributes);
+		collectibleId = uniqueGift.num || 0; // Use num as collectible ID
 	} else {
 		logger.warn(
-			`Unexpected gift type in MessageActionStarGiftUnique: ${gift.className}`
-		)
-		telegramGiftId = '0'
-		title = 'Unknown Unique Gift'
-		slug = 'unknown'
+			`Unexpected gift type in MessageActionStarGiftUnique: ${gift.className}`,
+		);
+		telegramGiftId = "0";
+		title = "Unknown Unique Gift";
+		slug = "unknown";
 	}
 
-	const result: giftduels.gift.v1.TelegramGiftReceivedEvent =
-		giftduels.gift.v1.TelegramGiftReceivedEvent.create({
+	const result: TelegramGiftReceivedEvent = create(
+		TelegramGiftReceivedEventSchema,
+		{
 			telegramGiftId: createGiftTelegramId(telegramGiftId),
 			depositDate: createTimestamp(
-				message.date || Math.floor(Date.now() / 1000)
+				message.date || Math.floor(Date.now() / 1000),
 			),
 			ownerTelegramId: createTelegramUserId(toUserId || fromUserId),
 			title,
@@ -250,7 +278,8 @@ export function parseMessageActionStarGiftUnique(
 			attributes,
 			collectibleId,
 			upgradeMessageId: message.id || 0,
-		})
+		},
+	);
 
 	logger.debug(
 		{
@@ -260,10 +289,10 @@ export function parseMessageActionStarGiftUnique(
 			fromUserId,
 			toUserId,
 		},
-		'🎁 Parsed MessageActionStarGiftUnique'
-	)
+		"🎁 Parsed MessageActionStarGiftUnique",
+	);
 
-	return result
+	return result;
 }
 
 /**
@@ -271,11 +300,11 @@ export function parseMessageActionStarGiftUnique(
  */
 export function parseSavedStarGiftToView(
 	savedGift: Api.SavedStarGift,
-	ownerTelegramId: number
-): giftduels.gift.v1.GiftView {
-	const fullGift = parseSavedStarGift(savedGift, ownerTelegramId)
+	ownerTelegramId: number,
+): GiftView {
+	const fullGift = parseSavedStarGift(savedGift, ownerTelegramId);
 
-	return giftduels.gift.v1.GiftView.create({
+	return create(GiftViewSchema, {
 		giftId: fullGift.giftId,
 		telegramGiftId: fullGift.telegramGiftId,
 		title: fullGift.title,
@@ -285,7 +314,7 @@ export function parseSavedStarGiftToView(
 		collectibleId: fullGift.collectibleId,
 		status: fullGift.status,
 		withdrawnAt: fullGift.withdrawnAt,
-	})
+	});
 }
 
 /**
@@ -294,16 +323,16 @@ export function parseSavedStarGiftToView(
 export function parseNftGift(
 	message: Api.MessageService,
 	fromUserId: number,
-	toUserId?: number
-): giftduels.gift.v1.TelegramGiftReceivedEvent {
+	toUserId?: number,
+): TelegramGiftReceivedEvent {
 	if (message.action instanceof Api.MessageActionStarGiftUnique) {
-		return parseMessageActionStarGiftUnique(message, fromUserId, toUserId)
+		return parseMessageActionStarGiftUnique(message, fromUserId, toUserId);
 	} else if (message.action instanceof Api.MessageActionStarGift) {
-		return parseMessageActionStarGift(message, fromUserId, toUserId)
+		return parseMessageActionStarGift(message, fromUserId, toUserId);
 	} else {
 		throw new Error(
-			`Unsupported message action type: ${message.action.className}`
-		)
+			`Unsupported message action type: ${message.action.className}`,
+		);
 	}
 }
 
@@ -314,20 +343,20 @@ export function parseNftGift(
  */
 export function parseSavedStarGifts(
 	savedGifts: Api.SavedStarGift[],
-	ownerTelegramId: number
-): giftduels.gift.v1.Gift[] {
-	return savedGifts.map(savedGift =>
-		parseSavedStarGift(savedGift, ownerTelegramId)
-	)
+	ownerTelegramId: number,
+): Gift[] {
+	return savedGifts.map((savedGift) =>
+		parseSavedStarGift(savedGift, ownerTelegramId),
+	);
 }
 /**
  * Parse multiple SavedStarGifts to GiftView objects
  */
 export function parseSavedStarGiftsToViews(
 	savedGifts: Api.SavedStarGift[],
-	ownerTelegramId: number
-): giftduels.gift.v1.GiftView[] {
-	return savedGifts.map(savedGift =>
-		parseSavedStarGiftToView(savedGift, ownerTelegramId)
-	)
+	ownerTelegramId: number,
+): GiftView[] {
+	return savedGifts.map((savedGift) =>
+		parseSavedStarGiftToView(savedGift, ownerTelegramId),
+	);
 }

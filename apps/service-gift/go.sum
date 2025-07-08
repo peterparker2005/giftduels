@@ -122,6 +122,8 @@ github.com/peterparker2005/giftduels/packages/errors v0.0.0-20250706093708-5d489
 github.com/peterparker2005/giftduels/packages/errors v0.0.0-20250706093708-5d489ad138ec/go.mod h1:UlRaeMkGUQEZ3qOwD+oCqo4i7er/aqMn3AlgsaFSc/Y=
 github.com/peterparker2005/giftduels/packages/events v0.0.0-20250706093708-5d489ad138ec h1:Ri3CE244K2mYYYa0GYk8+6CNORVuZUUzqY3ByEMUXUk=
 github.com/peterparker2005/giftduels/packages/events v0.0.0-20250706093708-5d489ad138ec/go.mod h1:RQEH4SnMim1EifXgeX/GJ+7nOt+i/4srYbk3DzME1wc=
+github.com/peterparker2005/giftduels/packages/grpc-go v0.0.0-20250706215627-2babd89ada5a h1:KSd11CFM+7PrMmnYTgXy+2KLbQRdS2YXLGzFycDvSgc=
+github.com/peterparker2005/giftduels/packages/grpc-go v0.0.0-20250706215627-2babd89ada5a/go.mod h1:UpFqaXCe7Ldgy38t2PT8xdtaZeZ5I9Q0dWmGsH2GBbk=
 github.com/peterparker2005/giftduels/packages/logger-go v0.0.0-20250706093708-5d489ad138ec h1:f9lEbTDYLS89UbVvti65UoU8g3PYC/Gy0qf77mf8vhw=
 github.com/peterparker2005/giftduels/packages/logger-go v0.0.0-20250706093708-5d489ad138ec/go.mod h1:07BMMJK4hW8zp10hG/RvA8KKxNxrZrphlKhTXfY8c30=
 github.com/peterparker2005/giftduels/packages/protobuf-go v0.0.0-20250706093708-5d489ad138ec h1:0bp6LA3XiiYHrRLaMXErkyfq3VPjUWd+ZI33XboorNw=
@@ -191,6 +193,7 @@ golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACk
 golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
 golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 golang.org/x/crypto v0.39.0 h1:SHs+kF4LP+f+p14esP5jAoDpHU8Gu/v9lFRK6IT5imM=
+golang.org/x/crypto v0.39.0/go.mod h1:L+Xg3Wf6HoL4Bn4238Z6ft6KfEpN0tJGo53AAPC632U=
 golang.org/x/exp v0.0.0-20190121172915-509febef88a4/go.mod h1:CJ0aWSM057203Lf6IL+f9T1iT9GByDxfZKAQTCR3kQA=
 golang.org/x/lint v0.0.0-20181026193005-c67002cb31c3/go.mod h1:UVdnD1Gm6xHRNCYTkRU2/jEulfH38KcIWyp/GAMgvoE=
 golang.org/x/lint v0.0.0-20190227174305-5b3e6a55c961/go.mod h1:wehouNa3lNwaWXcvxsM5YxQ5yQlVC4a0KAMCusXpPoU=

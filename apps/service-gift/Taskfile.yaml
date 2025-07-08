@@ -16,14 +16,61 @@ tasks:
 
   serve:
     desc: run binary with arguments
+    deps: [build]
     cmds:
-      - task build
       - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} serve'
 
-  consume:
-    desc: consume messages
+  worker:
+    desc: run binary with arguments
+    deps: [build]
     cmds:
-      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} consume'
+      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} worker'
+
+  migrate:
+    desc: run binary with arguments
+    deps: [build]
+    cmds:
+      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} migrate'
+
+  migrate:create:
+    desc: create new migration
+    vars:
+      NAME: '{{.NAME| default "DefaultName"}}'
+    requires:
+      vars: [NAME]
+    deps: [build]
+    cmds:
+      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} migrate create {{.NAME}}'
+
+  migrate:up:
+    desc: apply all pending migrations
+    deps: [build]
+    cmds:
+      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} migrate up'
+
+  migrate:down:
+    desc: revert all migrations
+    deps: [build]
+    cmds:
+      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} migrate down'
+
+  migrate:force:
+    desc: force apply all migrations
+    deps: [build]
+    cmds:
+      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} migrate force'
+
+  migrate:drop:
+    desc: drop all tables
+    deps: [build]
+    cmds:
+      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} migrate drop'
+
+  migrate:version:
+    desc: show current migration version
+    deps: [build]
+    cmds:
+      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} migrate version'
 
   lint:
     desc: lint go code
@@ -39,22 +86,3 @@ tasks:
     desc: run tests
     cmds:
       - gotestsum ./... -v -count=1
-
-  dev:
-    desc: quick dev build with flags
-    cmds:
-      - go run ./cmd/cli/main.go {{.CLI_ARGS}}
-
-  migrate:create:
-    desc: '🔨 Создать новую миграцию'
-    vars:
-      NAME: '{{.NAME| default "DefaultName"}}'
-    requires:
-      vars: [NAME]
-    cmds:
-      - migrate create -ext sql -dir internal/db/migrations {{.NAME}}
-
-  migrate:up:
-    desc: apply all pending migrations
-    cmds:
-      - go run ./cmd/cli/main.go migrate

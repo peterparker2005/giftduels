@@ -36,21 +36,21 @@ message GetWithdrawOptionsRequest {
 }
 
 message GetWithdrawOptionsResponse {
-  repeated WithdrawOption options = 1;
-}
-
-message WithdrawOption {
-  WithdrawMethod method = 1;
-  shared.v1.StarsAmount stars_cost = 2;
-  shared.v1.TonAmount ton_cost = 3;
-  string description = 4;
-  bool is_available = 5;
+  message TonOption {
+    shared.v1.TonAmount ton_cost = 1;
+    bool is_available = 2;
+  }
+  message StarsOption {
+    shared.v1.StarsAmount stars_cost = 1;
+    bool is_available = 2;
+  }
+  TonOption ton = 1;
+  StarsOption stars = 2;
 }
 
 message WithdrawGiftRequest {
   shared.v1.GiftId gift_id = 1;
-  WithdrawMethod method = 2;
-  string wallet_address = 3; // For TON withdrawals
+  string wallet_address = 2; // For TON withdrawals
 }
 
 message WithdrawGiftResponse {

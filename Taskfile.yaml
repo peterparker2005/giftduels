@@ -16,13 +16,20 @@ tasks:
       - service-gift
       - service-identity
       - gifts-to-duels-bot
+      - react-tma
+
+  react-tma:
+    desc: 'run react-tma'
+    dir: apps/react-tma
+    cmds:
+      - pnpm --filter=@giftduels/react-tma dev
 
   service-gift:
     desc: 'run service-gift'
     dir: apps/service-gift
     cmds:
       - task serve
-      - task consume
+      - task worker
 
   service-identity:
     desc: 'run service-identity'

@@ -6,9 +6,19 @@ static_resources:
   listeners:
     - name: listener_0
       address:
-        socket_address: { address: 0.0.0.0, port_value: 8080 }
+        socket_address: { address: 0.0.0.0, port_value: 8443 }
       filter_chains:
-        - filters:
+        - transport_socket:
+            name: envoy.transport_sockets.tls
+            typed_config:
+              '@type': type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+              common_tls_context:
+                tls_certificates:
+                  - certificate_chain:
+                      filename: /certs/setter.alpaca-wahoo.ts.net.crt
+                    private_key:
+                      filename: /certs/setter.alpaca-wahoo.ts.net.key
+          filters:
             - name: envoy.filters.network.http_connection_manager
               typed_config:
                 '@type': type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
@@ -19,18 +29,53 @@ static_resources:
                   virtual_hosts:
                     - name: local_service
                       domains: ['*']
+                      cors:
+                        allow_origin_string_match:
+                          - exact: 'https://setter.alpaca-wahoo.ts.net:3443'
+                        allow_methods: 'GET, POST, OPTIONS'
+                        allow_headers: '*'
+                        max_age: '86400'
                       routes:
                         - match: { prefix: '/giftduels.gift.v1.' }
                           route: { cluster: gift_service }
-                        - match: { prefix: '/giftduels.identity.v1.' }
+
+                        - match:
+                            {
+                              path: '/giftduels.identity.v1.IdentityPublicService/Authorize',
+                            }
                           route: { cluster: identity_service }
+                          typed_per_filter_config:
+                            envoy.filters.http.ext_authz:
+                              '@type': type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthzPerRoute
+                              disabled: true #  <-- только Authorize!
+
+                        # ---- ПРОТЕГТИРОВАННО ----
+                        - match: { prefix: '/giftduels.identity.v1.' }
+                          route: { cluster: identity_service } # ext_authz включён
                 http_filters:
+                  - name: envoy.filters.http.cors
+                    typed_config:
+                      '@type': type.googleapis.com/envoy.extensions.filters.http.cors.v3.Cors
                   - name: envoy.filters.http.connect_grpc_bridge
                     typed_config:
                       '@type': type.googleapis.com/envoy.extensions.filters.http.connect_grpc_bridge.v3.FilterConfig
                   - name: envoy.filters.http.grpc_web
                     typed_config:
                       '@type': type.googleapis.com/envoy.extensions.filters.http.grpc_web.v3.GrpcWeb
+                  - name: envoy.filters.http.ext_authz
+                    typed_config:
+                      '@type': type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
+                      transport_api_version: V3
+                      grpc_service:
+                        envoy_grpc:
+                          cluster_name: identity_service
+                        timeout: 5s
+                      clear_route_cache: true
+                      failure_mode_allow: false
+                      with_request_body:
+                        max_request_bytes: 8192
+                        allow_partial_message: true
+                        pack_as_bytes: false
                   - name: envoy.filters.http.router
                     typed_config:
                       '@type': type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
@@ -46,7 +91,7 @@ static_resources:
               - endpoint:
                   address:
                     socket_address:
-                      address: host.docker.internal # <------ вот тут фишка
+                      address: host.docker.internal
                       port_value: 50052
       typed_extension_protocol_options:
         envoy.extensions.upstreams.http.v3.HttpProtocolOptions:

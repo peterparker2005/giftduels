@@ -8,7 +8,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/config"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
-	"github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/pricing"
 	amqputil "github.com/peterparker2005/giftduels/apps/service-gift/internal/event/amqp"
 	giftEvents "github.com/peterparker2005/giftduels/packages/events/gift"
 	"github.com/peterparker2005/giftduels/packages/events/telegram"
@@ -31,11 +30,10 @@ var Module = fx.Options(
 
 	//-------------------------------- бизнес-логика --------------------------------
 	fx.Provide(func(
-		repo gift.Repository,
-		pricingRepo pricing.Repository,
+		repo gift.GiftRepository,
 		l *logger.Logger,
 	) *TelegramGiftReceivedHandler {
-		return NewTelegramGiftReceivedHandler(repo, pricingRepo, l.Zap())
+		return NewTelegramGiftReceivedHandler(repo, l)
 	}),
 
 	//-------------------------------- router & lifecycle ---------------------------

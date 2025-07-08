@@ -6,7 +6,7 @@ import (
 
 type SessionClaims struct {
 	UserID         string `json:"uid"`
-	TelegramUserID string `json:"tg_uid"`
+	TelegramUserID int64  `json:"telegram_user_id"`
 	jwt.RegisteredClaims
 }
 

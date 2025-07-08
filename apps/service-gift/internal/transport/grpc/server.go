@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/config"
+	authctx "github.com/peterparker2005/giftduels/packages/grpc-go/authctx"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	giftv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1"
 	"go.uber.org/zap"
@@ -32,7 +33,7 @@ func NewGRPCServer(
 	log *logger.Logger,
 ) *Server {
 	opts := []grpc.ServerOption{
-		grpc.ChainUnaryInterceptor(append(versionUnary, recover)...),
+		grpc.ChainUnaryInterceptor(append(versionUnary, recover, authctx.TelegramIDCtxInterceptor())...),
 		grpc.ChainStreamInterceptor(versionStream...),
 	}
 

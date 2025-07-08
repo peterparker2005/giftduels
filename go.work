@@ -11,5 +11,5 @@ use (
 	./packages/logger-go
 	./packages/protobuf-go
 	./packages/shared
-	./packages/version-go
+	./packages/version-go	
 )

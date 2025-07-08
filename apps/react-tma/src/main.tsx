@@ -6,6 +6,7 @@ import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 import { AppLoader } from "./app/AppLoader.tsx";
 import { init } from "./app/init.ts";
+import { Providers } from "./app/providers/index.tsx";
 import reportWebVitals from "./reportWebVitals.ts";
 
 // biome-ignore lint/style/noNonNullAssertion: idgaf
@@ -26,7 +27,9 @@ const root = ReactDOM.createRoot(document.getElementById("root")!);
 		}).then(() => {
 			root.render(
 				<StrictMode>
-					<AppLoader />
+					<Providers>
+						<AppLoader />
+					</Providers>
 				</StrictMode>,
 			);
 		});

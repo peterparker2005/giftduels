@@ -15,7 +15,13 @@ type Gift struct {
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 	Attributes       []Attribute
-	ImageUrl         string
+}
+
+type GiftEvent struct {
+	ID         string
+	FromUserID int64
+	ToUserID   int64
+	CreatedAt  time.Time
 }
 
 type Status string
@@ -36,8 +42,7 @@ const (
 )
 
 type Attribute struct {
-	Type     AttributeType
-	Name     string
-	Rarity   int32
-	ImageUrl string
+	Type   AttributeType
+	Name   string
+	Rarity int32
 }

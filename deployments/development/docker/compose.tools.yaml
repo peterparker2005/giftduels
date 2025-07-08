@@ -114,8 +114,9 @@ services:
     container_name: envoy
     volumes:
       - ./config/envoy.yaml:/etc/envoy/envoy.yaml
+      - ./certs:/certs:ro
     ports:
-      - '8080:8080' # точка входа для фронта, miniapp и т.д.
+      - '8443:8443' # точка входа для фронта, miniapp и т.д.
       - '9090:9090' # admin Envoy
     depends_on: []
     networks: [net]

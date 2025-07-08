@@ -1,6 +1,5 @@
 import { RouterProvider } from "@tanstack/react-router";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { Providers } from "./providers";
 import { router } from "./router";
 
 function ErrorBoundaryError({ error }: { error: unknown }) {
@@ -23,9 +22,7 @@ function ErrorBoundaryError({ error }: { error: unknown }) {
 function App() {
 	return (
 		<ErrorBoundary fallback={ErrorBoundaryError}>
-			<Providers>
-				<RouterProvider router={router} />
-			</Providers>
+			<RouterProvider router={router} />
 		</ErrorBoundary>
 	);
 }

@@ -10,10 +10,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 	const mobile = useMobile();
 	return (
 		<QueryClientProvider client={queryClient}>
-			<TonWalletProvider>
-				{/*  */}
-				{children}
-			</TonWalletProvider>
+			<TonWalletProvider>{children}</TonWalletProvider>
 			{!mobile && config.isDev && (
 				<ReactQueryDevtools buttonPosition="top-right" />
 			)}

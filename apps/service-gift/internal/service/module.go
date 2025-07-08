@@ -9,7 +9,7 @@ import (
 // Module предоставляет service зависимости
 var Module = fx.Module("services",
 	fx.Provide(
-		func(repo gift.Repository) *giftService.Service {
+		func(repo gift.GiftRepository) *giftService.Service {
 			return giftService.New(repo)
 		},
 	),

@@ -1,6 +1,6 @@
 packages:
   - 'apps/gifts-to-duels-bot'
   - 'apps/react-tma'
-  - 'packages/protobuf-ts'
+  - 'packages/protobuf-js'
   - 'packages/logger-ts'
   - 'packages/eslint-config'

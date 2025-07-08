@@ -12,6 +12,7 @@ import {
 	requestFullscreen,
 	restoreInitData,
 	retrieveLaunchParams,
+	retrieveRawInitData,
 	setDebug,
 	swipeBehavior,
 	type ThemeParams,
@@ -100,4 +101,8 @@ export async function init(options: {
 		miniApp.setBackgroundColor("#141414");
 		miniApp.backgroundColor(); // '#ffffff'
 	}
+
+	const initData = retrieveRawInitData();
+
+	logger.debug("initData", initData);
 }

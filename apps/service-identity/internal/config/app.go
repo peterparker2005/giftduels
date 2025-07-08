@@ -18,9 +18,10 @@ type JWTConfig struct {
 
 type Config struct {
 	configs.ServiceBaseConfig
-	Logger   configs.LoggerConfig `yaml:"logger"`
-	Telegram TelegramConfig       `yaml:"telegram"`
-	JWT      JWTConfig            `yaml:"jwt"`
+	Database configs.DatabaseConfig `yaml:"database"`
+	Logger   configs.LoggerConfig   `yaml:"logger"`
+	Telegram TelegramConfig         `yaml:"telegram"`
+	JWT      JWTConfig              `yaml:"jwt"`
 
 	GRPC configs.GRPCConfig `yaml:"grpc"`
 }

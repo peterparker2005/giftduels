@@ -26,17 +26,16 @@ message Gift {
   // Gift metadata
   string title = 7;
   string slug = 8;
-  string image_url = 9;
 
   // Gift attributes
-  repeated GiftAttribute attributes = 10;
+  repeated GiftAttribute attributes = 9;
 
   // Pricing information
-  shared.v1.TonAmount original_price = 11;
+  shared.v1.TonAmount original_price = 10;
 
   // Gift status tracking
-  GiftStatus status = 12;
-  google.protobuf.Timestamp withdrawn_at = 13;
+  GiftStatus status = 11;
+  google.protobuf.Timestamp withdrawn_at = 12;
 }
 
 message GiftView {
@@ -44,18 +43,16 @@ message GiftView {
   shared.v1.GiftTelegramId telegram_gift_id = 2;
   string title = 3;
   string slug = 4;
-  string image_url = 5;
-  shared.v1.TonAmount original_price = 6;
-  int32 collectible_id = 7;
-  GiftStatus status = 8;
-  google.protobuf.Timestamp withdrawn_at = 9;
+  shared.v1.TonAmount original_price = 5;
+  int32 collectible_id = 6;
+  GiftStatus status = 7;
+  google.protobuf.Timestamp withdrawn_at = 8;
 }
 
 message GiftAttribute {
   GiftAttributeType type = 1;
   string name = 2;
   int32 rarity = 3;
-  string description = 4;
 }
 
 enum GiftAttributeType {
@@ -101,10 +98,4 @@ enum GiftEventAction {
   GIFT_EVENT_ACTION_GAME_LOSE = 5; // Lost in game
   GIFT_EVENT_ACTION_STAKE = 6; // Stake for game
   GIFT_EVENT_ACTION_REFUND = 7; // Refund from game
-}
-
-enum WithdrawMethod {
-  WITHDRAW_METHOD_UNSPECIFIED = 0;
-  WITHDRAW_METHOD_STARS_PAYMENT = 1; // Pay with Stars
-  WITHDRAW_METHOD_TON_PAYMENT = 2; // Pay with TON
 }

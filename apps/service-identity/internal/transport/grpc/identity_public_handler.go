@@ -5,11 +5,13 @@ import (
 	"time"
 
 	"github.com/peterparker2005/giftduels/apps/service-identity/internal/config"
+	"github.com/peterparker2005/giftduels/apps/service-identity/internal/domain/user"
 	"github.com/peterparker2005/giftduels/apps/service-identity/internal/service/token"
+	userservice "github.com/peterparker2005/giftduels/apps/service-identity/internal/service/user"
 	"github.com/peterparker2005/giftduels/packages/errors/pkg/errors"
+	"github.com/peterparker2005/giftduels/packages/grpc-go/authctx"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	identityv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/identity/v1"
-	sharedv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/shared/v1"
 	initdata "github.com/telegram-mini-apps/init-data-golang"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -20,13 +22,15 @@ var _ identityv1.IdentityPublicServiceServer = (*IdentityPublicHandler)(nil)
 type IdentityPublicHandler struct {
 	identityv1.IdentityPublicServiceServer
 	tokenSvc token.TokenService
+	userSvc  *userservice.Service
 	logger   *logger.Logger
 	cfg      *config.Config
 }
 
-func NewIdentityPublicHandler(tokenSvc token.TokenService, logger *logger.Logger, cfg *config.Config) identityv1.IdentityPublicServiceServer {
+func NewIdentityPublicHandler(tokenSvc token.TokenService, userSvc *userservice.Service, logger *logger.Logger, cfg *config.Config) identityv1.IdentityPublicServiceServer {
 	return &IdentityPublicHandler{
 		tokenSvc: tokenSvc,
+		userSvc:  userSvc,
 		logger:   logger,
 		cfg:      cfg,
 	}
@@ -47,6 +51,24 @@ func (h *IdentityPublicHandler) Authorize(ctx context.Context, req *identityv1.A
 
 	telegramID := parsed.User.ID
 
+	// Upsert user data from Telegram initData
+	userParams := user.CreateUserParams{
+		TelegramID:      telegramID,
+		Username:        getStringOrEmpty(parsed.User.Username),
+		FirstName:       parsed.User.FirstName,
+		LastName:        getStringOrEmpty(parsed.User.LastName),
+		PhotoUrl:        getStringOrEmpty(parsed.User.PhotoURL),
+		LanguageCode:    getStringOrEmpty(parsed.User.LanguageCode),
+		AllowsWriteToPm: parsed.User.AllowsWriteToPm,
+		IsPremium:       parsed.User.IsPremium,
+	}
+
+	_, err = h.userSvc.UpsertUser(ctx, userParams)
+	if err != nil {
+		h.logger.Error("failed to upsert user", zap.Error(err), zap.Int64("telegram_id", telegramID))
+		return nil, errors.NewInternalError("failed to process user data")
+	}
+
 	token, err := h.tokenSvc.Generate(telegramID)
 	if err != nil {
 		h.logger.Error("failed to generate token", zap.Error(err))
@@ -58,18 +80,23 @@ func (h *IdentityPublicHandler) Authorize(ctx context.Context, req *identityv1.A
 	}, nil
 }
 
-func (h *IdentityPublicHandler) ValidateToken(ctx context.Context, req *identityv1.ValidateTokenRequest) (*identityv1.ValidateTokenResponse, error) {
-	claims, err := h.tokenSvc.Validate(req.Token)
+func (h *IdentityPublicHandler) GetProfile(ctx context.Context, req *emptypb.Empty) (*identityv1.GetProfileResponse, error) {
+	telegramID, err := authctx.TelegramUserID(ctx)
 	if err != nil {
-		h.logger.Warn("invalid token", zap.Error(err))
-		return nil, errors.NewUnauthorizedError("invalid token")
+		return nil, err
 	}
 
-	return &identityv1.ValidateTokenResponse{
-		TelegramUserId: &sharedv1.TelegramUserId{Value: claims.TelegramUserID},
+	u, err := h.userSvc.GetUserByTelegramID(ctx, telegramID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &identityv1.GetProfileResponse{
+		Profile: toPBProfile(u),
 	}, nil
 }
 
-func (h *IdentityPublicHandler) GetProfile(ctx context.Context, req *emptypb.Empty) (*identityv1.GetProfileResponse, error) {
-	return nil, nil
+// Helper functions to safely extract values from initData
+func getStringOrEmpty(val string) string {
+	return val
 }

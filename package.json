@@ -4,13 +4,15 @@
 	"description": "",
 	"scripts": {
 		"prepare": "husky",
-		"biome:check": "npx biome check --write"
+		"biome": "npx biome check",
+		"biome:fix": "npx biome check --write"
 	},
 	"keywords": [],
 	"author": "",
 	"license": "ISC",
 	"packageManager": "pnpm@10.11.0",
 	"devDependencies": {
+		"@biomejs/biome": "^2.0.6",
 		"husky": "^9.1.7"
 	}
 }

@@ -1,0 +1,30 @@
+{
+	"name": "@giftduels/protobuf-js",
+	"version": "1.0.0",
+	"description": "Protocol Buffers for Gift Duels",
+	"type": "module",
+	"files": [
+		"gen",
+		"dist"
+	],
+	"keywords": [
+		"protobuf",
+		"buf",
+		"giftduels",
+		"grpc",
+		"typescript",
+		"schema"
+	],
+	"license": "MIT",
+	"dependencies": {
+		"@giftduels/eslint-config": "workspace:*",
+		"@bufbuild/protobuf": "^2.2.5",
+		"@grpc/grpc-js": "^1.13.3"
+	},
+	"devDependencies": {
+		"@types/node": "^22.14.0"
+	},
+	"exports": {
+		"./*": "./gen/*.ts"
+	}
+}

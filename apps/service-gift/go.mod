@@ -15,6 +15,7 @@ require (
 	github.com/peterparker2005/giftduels/packages/cli-go v0.0.0-20250706093708-5d489ad138ec
 	github.com/peterparker2005/giftduels/packages/configs v0.0.0-20250706093708-5d489ad138ec
 	github.com/peterparker2005/giftduels/packages/events v0.0.0-20250706093708-5d489ad138ec
+	github.com/peterparker2005/giftduels/packages/grpc-go v0.0.0-20250706215627-2babd89ada5a
 	github.com/peterparker2005/giftduels/packages/logger-go v0.0.0-20250706093708-5d489ad138ec
 	github.com/peterparker2005/giftduels/packages/protobuf-go v0.0.0-20250706093708-5d489ad138ec
 	github.com/peterparker2005/giftduels/packages/shared v0.0.0-20250706093708-5d489ad138ec

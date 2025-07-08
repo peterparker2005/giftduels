@@ -3,11 +3,14 @@ package grpc
 import (
 	"context"
 
+	domainGift "github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/service/gift"
-	"github.com/peterparker2005/giftduels/apps/service-identity/pkg/grpc"
+	"github.com/peterparker2005/giftduels/packages/grpc-go/authctx"
+	"github.com/peterparker2005/giftduels/packages/logger-go"
 	giftv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1"
 	sharedv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/shared/v1"
 	"github.com/peterparker2005/giftduels/packages/shared"
+	"go.uber.org/zap"
 )
 
 type giftPublicHandler struct {
@@ -15,50 +18,55 @@ type giftPublicHandler struct {
 
 	// зависимость от сервисного слоя
 	giftService *gift.Service
+	logger      *logger.Logger
 }
 
 // NewGiftPublicHandler создает новый GRPC handler
-func NewGiftPublicHandler(giftService *gift.Service) giftv1.GiftPublicServiceServer {
+func NewGiftPublicHandler(giftService *gift.Service, logger *logger.Logger) giftv1.GiftPublicServiceServer {
 	return &giftPublicHandler{
 		giftService: giftService,
+		logger:      logger,
 	}
 }
 
 func (h *giftPublicHandler) GetGift(ctx context.Context, req *giftv1.GetGiftRequest) (*giftv1.GetGiftResponse, error) {
-	domainGift, err := h.giftService.GetGiftByID(ctx, req.GetGiftId().Value)
+	g, err := h.giftService.GetGiftByID(ctx, req.GetGiftId().Value)
 	if err != nil {
 		return nil, err
 	}
 
 	return &giftv1.GetGiftResponse{
-		Gift: ConvertDomainGiftToProtoView(domainGift),
+		Gift: domainGift.ConvertDomainGiftToProtoView(g),
 	}, nil
 }
 
 func (h *giftPublicHandler) GetGifts(ctx context.Context, req *giftv1.GetGiftsRequest) (*giftv1.GetGiftsResponse, error) {
-	telegramUserID, err := grpc.TelegramUserID(ctx)
+	telegramUserID, err := authctx.TelegramUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	pagination := shared.NewPageRequest(req.Pagination.Page, req.Pagination.PageSize)
-	domainGifts, err := h.giftService.GetUserGifts(ctx, telegramUserID, pagination.PageSize(), pagination.Offset())
+	pagination := shared.NewPageRequest(req.GetPagination().GetPage(), req.GetPagination().GetPageSize())
+	h.logger.Info("GetGifts", zap.Any("pagination", pagination))
+	domainGifts, err := h.giftService.GetUserGifts(ctx, telegramUserID, pagination)
 	if err != nil {
+		h.logger.Error("GetGifts", zap.Error(err))
 		return nil, err
 	}
 
 	giftViews := make([]*giftv1.GiftView, len(domainGifts))
-	for i, domainGift := range domainGifts {
-		giftViews[i] = ConvertDomainGiftToProtoView(domainGift)
+	for i, g := range domainGifts {
+		h.logger.Info("GetGifts", zap.Any("domainGift", g))
+		giftViews[i] = domainGift.ConvertDomainGiftToProtoView(g)
 	}
 
 	return &giftv1.GetGiftsResponse{
 		Gifts: giftViews,
 		Pagination: &sharedv1.PageResponse{
-			Page:       req.Pagination.Page,
-			PageSize:   req.Pagination.PageSize,
-			Total:      int32(len(domainGifts)), // TODO: implement proper total count
-			TotalPages: 1,                       // TODO: implement proper total pages
+			Page:       pagination.Page(),
+			PageSize:   pagination.PageSize(),
+			Total:      int32(len(domainGifts)),
+			TotalPages: pagination.TotalPages(int32(len(domainGifts))),
 		},
 	}, nil
 }
@@ -79,19 +87,5 @@ func (h *giftPublicHandler) WithdrawGift(ctx context.Context, req *giftv1.Withdr
 			},
 		},
 		WithdrawalId: "temp-withdrawal-id", // TODO: generate proper withdrawal ID
-	}, nil
-}
-
-func (h *giftPublicHandler) GetWithdrawOptions(ctx context.Context, req *giftv1.GetWithdrawOptionsRequest) (*giftv1.GetWithdrawOptionsResponse, error) {
-	// Return default withdrawal options
-	return &giftv1.GetWithdrawOptionsResponse{
-		Options: []*giftv1.WithdrawOption{
-			{
-				Method:      giftv1.WithdrawMethod_WITHDRAW_METHOD_STARS_PAYMENT,
-				StarsCost:   &sharedv1.StarsAmount{Value: 100},
-				Description: "Withdraw for Stars",
-				IsAvailable: true,
-			},
-		},
 	}, nil
 }
