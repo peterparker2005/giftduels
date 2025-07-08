@@ -30,7 +30,7 @@ CREATE TABLE gift_attributes (
   type    gift_attribute_type          NOT NULL,
   name    TEXT          NOT NULL,
   rarity  INT           NOT NULL,
-  PRIMARY KEY (gift_id, type)
+  PRIMARY KEY (telegram_gift_id, type)
 );
 
 -- 4. события (аудит)

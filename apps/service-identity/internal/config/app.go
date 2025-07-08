@@ -22,8 +22,8 @@ type Config struct {
 	Logger   configs.LoggerConfig   `yaml:"logger"`
 	Telegram TelegramConfig         `yaml:"telegram"`
 	JWT      JWTConfig              `yaml:"jwt"`
-
-	GRPC configs.GRPCConfig `yaml:"grpc"`
+	AMQP     configs.AMQPConfig     `yaml:"amqp"`
+	GRPC     configs.GRPCConfig     `yaml:"grpc"`
 }
 
 func LoadConfig() (*Config, error) {

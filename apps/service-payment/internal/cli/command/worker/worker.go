@@ -1,0 +1,32 @@
+package worker
+
+import (
+	"github.com/peterparker2005/giftduels/apps/service-payment/internal/adapter/pg"
+	"github.com/peterparker2005/giftduels/apps/service-payment/internal/app"
+	"github.com/peterparker2005/giftduels/apps/service-payment/internal/config"
+	"github.com/peterparker2005/giftduels/apps/service-payment/internal/event"
+	"github.com/spf13/cobra"
+	"go.uber.org/fx"
+)
+
+func NewCmdWorker(cfg *config.Config) *cobra.Command {
+	return &cobra.Command{
+		Use:   "worker",
+		Short: "Run event worker",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runWorker(cfg)
+		},
+	}
+}
+
+func runWorker(cfg *config.Config) error {
+	app := fx.New(
+		app.LoggerModule,
+		pg.Module,
+		event.Module,
+		fx.Provide(func() *config.Config { return cfg }),
+	)
+
+	app.Run()
+	return nil
+}

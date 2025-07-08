@@ -4,6 +4,7 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/peterparker2005/giftduels/apps/service-identity/internal/config"
 	"github.com/peterparker2005/giftduels/apps/service-identity/internal/domain/user"
 	"github.com/peterparker2005/giftduels/apps/service-identity/internal/service/token"
@@ -19,8 +20,8 @@ var Module = fx.Module("services",
 			return token.NewJWTService(&cfg.JWT, logger.Zap())
 		},
 		// Предоставляем UserService
-		func(userRepo user.UserRepository) *userservice.Service {
-			return userservice.NewService(userRepo)
+		func(userRepo user.UserRepository, publisher message.Publisher) *userservice.Service {
+			return userservice.NewService(userRepo, publisher)
 		},
 		// Предоставляем *zap.Logger для обратной совместимости
 		func(logger *logger.Logger) *zap.Logger {

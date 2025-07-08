@@ -9,23 +9,30 @@ import "google/protobuf/empty.proto";
 option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/payment/v1;paymentv1";
 
 service PaymentPublicService {
-  // Create a Stars invoice for purchasing Stars
-  rpc DepositStars(DepositStarsRequest) returns (DepositStarsResponse) {}
-
-  rpc CreateWithdrawCommissionReceipt(CreateWithdrawCommissionReceiptRequest) returns (CreateWithdrawCommissionReceiptResponse) {}
+  rpc DepositTon(DepositTonRequest) returns (DepositTonResponse) {}
 
   // Get current user balance
   // buf:lint:ignore RPC_REQUEST_STANDARD_NAME
   rpc GetBalance(google.protobuf.Empty) returns (GetBalanceResponse) {}
 
-  // Calculate withdrawal commission
-  rpc CalculateWithdrawCommission(CalculateWithdrawCommissionRequest) returns (CalculateWithdrawCommissionResponse) {}
+  rpc GetWithdrawOptions(GetWithdrawOptionsRequest) returns (GetWithdrawOptionsResponse) {}
+}
 
-  // Get transaction history
-  rpc GetTransactionHistory(GetTransactionHistoryRequest) returns (GetTransactionHistoryResponse) {}
+message GetWithdrawOptionsRequest {
+  shared.v1.GiftId gift_id = 1;
+}
 
-  // Get withdrawal status
-  rpc GetWithdrawalStatus(GetWithdrawalStatusRequest) returns (GetWithdrawalStatusResponse) {}
+message GetWithdrawOptionsResponse {
+  message TonOption {
+    shared.v1.TonAmount ton_cost = 1;
+    bool is_available = 2;
+  }
+  message StarsOption {
+    shared.v1.StarsAmount stars_cost = 1;
+    bool is_available = 2;
+  }
+  TonOption ton = 1;
+  StarsOption stars = 2;
 }
 
 message CreateWithdrawCommissionReceiptRequest {
@@ -39,6 +46,15 @@ message CreateWithdrawCommissionReceiptResponse {
   }
   shared.v1.TonAmount ton_amount = 3;
   shared.v1.StarsAmount stars_amount = 4;
+}
+
+message DepositTonRequest {
+  shared.v1.TonAmount ton_amount = 1;
+}
+
+message DepositTonResponse {
+  uint64 nano_ton_amount = 1;
+  string comment = 2;
 }
 
 message DepositStarsRequest {

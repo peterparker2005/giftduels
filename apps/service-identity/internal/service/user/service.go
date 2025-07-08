@@ -2,16 +2,27 @@ package user
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/google/uuid"
 	"github.com/peterparker2005/giftduels/apps/service-identity/internal/domain/user"
+	identityEvents "github.com/peterparker2005/giftduels/packages/events/identity"
+	identityv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/identity/v1"
+	sharedv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/shared/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 type Service struct {
-	repo user.UserRepository
+	repo      user.UserRepository
+	publisher message.Publisher
 }
 
-func NewService(userRepo user.UserRepository) *Service {
-	return &Service{repo: userRepo}
+func NewService(userRepo user.UserRepository, publisher message.Publisher) *Service {
+	return &Service{
+		repo:      userRepo,
+		publisher: publisher,
+	}
 }
 
 func (s *Service) GetUserByTelegramID(ctx context.Context, telegramID int64) (*user.User, error) {
@@ -23,11 +34,50 @@ func (s *Service) GetUserByTelegramID(ctx context.Context, telegramID int64) (*u
 	return u, nil
 }
 
-func (s *Service) UpsertUser(ctx context.Context, params user.CreateUserParams) (*user.User, error) {
-	u, err := s.repo.UpsertUser(ctx, params)
+func (s *Service) UpsertUser(ctx context.Context, params *user.CreateUserParams) (*user.User, error) {
+	u, created, err := s.repo.CreateOrUpdate(ctx, params)
 	if err != nil {
 		return nil, err
 	}
 
+	// Если пользователь был создан впервые, публикуем событие
+	if created {
+		if err := s.publishUserCreatedEvent(ctx, u); err != nil {
+			// Логируем ошибку, но не возвращаем её, так как пользователь уже создан
+			fmt.Printf("Failed to publish user created event: %v\n", err)
+		}
+	}
+
 	return u, nil
+}
+
+func (s *Service) publishUserCreatedEvent(ctx context.Context, u *user.User) error {
+	event := &identityv1.NewUserEvent{
+		UserId: &sharedv1.UserId{
+			Value: u.ID,
+		},
+		TelegramId: &sharedv1.TelegramUserId{
+			Value: u.TelegramID,
+		},
+	}
+
+	payload, err := proto.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal user created event: %w", err)
+	}
+
+	msg := message.NewMessage(uuid.New().String(), payload)
+
+	// Добавляем метаданные
+	metadata := map[string]string{
+		"event_type":       identityEvents.TopicUserCreated.String(),
+		"telegram_user_id": fmt.Sprintf("%d", u.TelegramID),
+		"user_id":          u.ID,
+	}
+
+	for key, value := range metadata {
+		msg.Metadata.Set(key, value)
+	}
+
+	return s.publisher.Publish(identityEvents.TopicUserCreated.String(), msg)
 }

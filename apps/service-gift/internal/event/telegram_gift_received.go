@@ -68,7 +68,7 @@ func (h *TelegramGiftReceivedHandler) Handle(msg *message.Message) error {
 			return err
 		}
 		createAttributes = append(createAttributes, giftdomain.CreateGiftAttributeParams{
-			GiftID:          id,
+			TelegramGiftID:  ev.TelegramGiftId.Value,
 			AttributeType:   attrType,
 			AttributeName:   attr.Name,
 			AttributeRarity: attr.Rarity,

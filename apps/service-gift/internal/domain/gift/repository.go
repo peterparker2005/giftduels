@@ -6,7 +6,7 @@ import (
 )
 
 type CreateGiftAttributeParams struct {
-	GiftID          string
+	TelegramGiftID  int64
 	AttributeType   AttributeType
 	AttributeName   string
 	AttributeRarity int32

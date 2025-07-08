@@ -84,7 +84,7 @@ RETURNING *;
 
 -- name: CreateGiftAttribute :one
 INSERT INTO gift_attributes (
-    gift_id,
+    telegram_gift_id,
     type,
     name,
     rarity

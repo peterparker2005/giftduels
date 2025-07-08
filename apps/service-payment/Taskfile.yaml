@@ -1,0 +1,88 @@
+version: '3'
+
+vars:
+  BUILD_VERSION: '{{.BUILD_VERSION| default "dev-release"}}'
+  BUILD_DIR: '{{.BUILD_DIR| default "bin"}}'
+  BINARY_NAME: '{{.BINARY_NAME| default "paymentservice"}}'
+
+tasks:
+  build:
+    desc: build binary
+    cmds:
+      - |
+        go build -mod=readonly \
+          -ldflags "-X github.com/peterparker2005/giftduels/packages/version-go.Version={{ .BUILD_VERSION }}" \
+          -o {{ .BUILD_DIR }}/{{ .BINARY_NAME }} ./cmd/cli
+
+  serve:
+    desc: run binary with arguments
+    deps: [build]
+    cmds:
+      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} serve'
+
+  worker:
+    desc: run binary with arguments
+    deps: [build]
+    cmds:
+      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} worker'
+
+  migrate:
+    desc: run binary with arguments
+    deps: [build]
+    cmds:
+      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} migrate'
+
+  migrate:create:
+    desc: create new migration
+    vars:
+      NAME: '{{.NAME| default "DefaultName"}}'
+    requires:
+      vars: [NAME]
+    deps: [build]
+    cmds:
+      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} migrate create {{.NAME}}'
+
+  migrate:up:
+    desc: apply all pending migrations
+    deps: [build]
+    cmds:
+      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} migrate up'
+
+  migrate:down:
+    desc: revert all migrations
+    deps: [build]
+    cmds:
+      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} migrate down'
+
+  migrate:force:
+    desc: force apply all migrations
+    deps: [build]
+    cmds:
+      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} migrate force'
+
+  migrate:drop:
+    desc: drop all tables
+    deps: [build]
+    cmds:
+      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} migrate drop'
+
+  migrate:version:
+    desc: show current migration version
+    deps: [build]
+    cmds:
+      - '{{ .BUILD_DIR }}/{{ .BINARY_NAME }} migrate version'
+
+  lint:
+    desc: lint go code
+    cmds:
+      - golangci-lint run ./...
+
+  generate:
+    desc: generate go:generate (proto, mocks and etc.)
+    cmds:
+      - go generate ./...
+
+  test:
+    desc: run tests
+    cmds:
+      - gotestsum ./... -v -count=1

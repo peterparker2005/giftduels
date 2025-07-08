@@ -17,10 +17,6 @@ service GiftPublicService {
 
   // Initiate gift withdrawal process
   rpc WithdrawGift(WithdrawGiftRequest) returns (WithdrawGiftResponse) {}
-
-  // Get gift withdrawal options and pricing
-  // TODO: move to payment service
-  rpc GetWithdrawOptions(GetWithdrawOptionsRequest) returns (GetWithdrawOptionsResponse) {}
 }
 
 message GetGiftRequest {
@@ -29,23 +25,6 @@ message GetGiftRequest {
 
 message GetGiftResponse {
   GiftView gift = 1;
-}
-
-message GetWithdrawOptionsRequest {
-  shared.v1.GiftId gift_id = 1;
-}
-
-message GetWithdrawOptionsResponse {
-  message TonOption {
-    shared.v1.TonAmount ton_cost = 1;
-    bool is_available = 2;
-  }
-  message StarsOption {
-    shared.v1.StarsAmount stars_cost = 1;
-    bool is_available = 2;
-  }
-  TonOption ton = 1;
-  StarsOption stars = 2;
 }
 
 message WithdrawGiftRequest {

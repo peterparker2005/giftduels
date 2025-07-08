@@ -22,7 +22,7 @@ type Config struct {
 	// shared configs
 	Database configs.DatabaseConfig `yaml:"database"`
 	GRPC     configs.GRPCConfig     `yaml:"grpc"`
-	Amqp     configs.AmqpConfig     `yaml:"amqp"`
+	AMQP     configs.AMQPConfig     `yaml:"amqp"`
 }
 
 func LoadConfig() (*Config, error) {

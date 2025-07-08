@@ -17,3 +17,14 @@ type User struct {
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
+
+type CreateUserParams struct {
+	TelegramID      int64
+	Username        string
+	FirstName       string
+	LastName        string
+	PhotoUrl        string
+	LanguageCode    string
+	AllowsWriteToPm bool
+	IsPremium       bool
+}

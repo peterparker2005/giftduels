@@ -12,36 +12,8 @@ tasks:
 
   dev:
     desc: 'run dev services in parallel'
-    deps:
-      - service-gift
-      - service-identity
-      - gifts-to-duels-bot
-      - react-tma
-
-  react-tma:
-    desc: 'run react-tma'
-    dir: apps/react-tma
     cmds:
-      - pnpm --filter=@giftduels/react-tma dev
-
-  service-gift:
-    desc: 'run service-gift'
-    dir: apps/service-gift
-    cmds:
-      - task serve
-      - task worker
-
-  service-identity:
-    desc: 'run service-identity'
-    dir: apps/service-identity
-    cmds:
-      - task serve
-
-  gifts-to-duels-bot:
-    desc: 'run bot in dev mode'
-    cmds:
-      - |
-        pnpm --filter=@giftduels/gifts-to-duels-bot dev
+      - overmind s -f Procfile.dev
 
   # Running this on git commit with Husky
   lint:staged:

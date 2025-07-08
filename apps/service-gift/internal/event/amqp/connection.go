@@ -9,7 +9,7 @@ import (
 // ProvideConnection — *одно* TCP-соединение на всё приложение.
 func ProvideConnection(cfg *config.Config, log *logger.Logger) (*amqp.ConnectionWrapper, error) {
 	return amqp.NewConnection(
-		amqp.ConnectionConfig{AmqpURI: cfg.Amqp.Address()},
+		amqp.ConnectionConfig{AmqpURI: cfg.AMQP.Address()},
 		logger.NewWatermill(log.Zap()),
 	)
 }
