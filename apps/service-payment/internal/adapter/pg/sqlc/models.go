@@ -11,6 +11,92 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type DepositStatus string
+
+const (
+	DepositStatusPending   DepositStatus = "pending"
+	DepositStatusReceived  DepositStatus = "received"
+	DepositStatusConfirmed DepositStatus = "confirmed"
+	DepositStatusExpired   DepositStatus = "expired"
+)
+
+func (e *DepositStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = DepositStatus(s)
+	case string:
+		*e = DepositStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for DepositStatus: %T", src)
+	}
+	return nil
+}
+
+type NullDepositStatus struct {
+	DepositStatus DepositStatus
+	Valid         bool // Valid is true if DepositStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullDepositStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.DepositStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.DepositStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullDepositStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.DepositStatus), nil
+}
+
+type TonNetwork string
+
+const (
+	TonNetworkMainnet TonNetwork = "mainnet"
+	TonNetworkTestnet TonNetwork = "testnet"
+)
+
+func (e *TonNetwork) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = TonNetwork(s)
+	case string:
+		*e = TonNetwork(s)
+	default:
+		return fmt.Errorf("unsupported scan type for TonNetwork: %T", src)
+	}
+	return nil
+}
+
+type NullTonNetwork struct {
+	TonNetwork TonNetwork
+	Valid      bool // Valid is true if TonNetwork is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullTonNetwork) Scan(value interface{}) error {
+	if value == nil {
+		ns.TonNetwork, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.TonNetwork.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullTonNetwork) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.TonNetwork), nil
+}
+
 type TransactionReason string
 
 const (
@@ -52,10 +138,30 @@ func (ns NullTransactionReason) Value() (driver.Value, error) {
 	return string(ns.TransactionReason), nil
 }
 
+type Deposit struct {
+	ID             pgtype.UUID
+	TelegramUserID int64
+	Status         DepositStatus
+	AmountNano     int64
+	Payload        string
+	ExpiresAt      pgtype.Timestamptz
+	TxHash         pgtype.Text
+	TxLt           pgtype.Int8
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+type TonCursor struct {
+	Network       TonNetwork
+	WalletAddress string
+	LastLt        int64
+	UpdatedAt     pgtype.Timestamptz
+}
+
 type UserBalance struct {
 	ID             int32
 	TelegramUserID int64
-	TonBalance     float64
+	TonAmount      float64
 	CreatedAt      pgtype.Timestamp
 	UpdatedAt      pgtype.Timestamp
 }

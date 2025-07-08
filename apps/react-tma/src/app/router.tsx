@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { RootLayout } from "@/layouts/RootLayout";
+import Balance from "@/pages/Balance";
 import Home from "@/pages/Home";
 import Profile from "@/pages/Profile";
 import { useMobile } from "@/shared/hooks/useMobile";
@@ -37,7 +38,17 @@ const profileRoute = createRoute({
 	component: Profile,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, profileRoute]);
+const balanceRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "/balance",
+	component: Balance,
+});
+
+const routeTree = rootRoute.addChildren([
+	indexRoute,
+	profileRoute,
+	balanceRoute,
+]);
 
 export const router = createRouter({
 	routeTree,

@@ -6,8 +6,8 @@ import { InventoryLoading } from "./InventoryLoading";
 export const Inventory = () => {
 	const { data, isLoading } = useGiftsQuery();
 
-	if (!data || data.gifts.length < 1) return <EmptyInventory />;
 	if (isLoading) return <InventoryLoading />;
+	if (!data || data.gifts.length < 1) return <EmptyInventory />;
 	return (
 		<section className="grid grid-cols-2 gap-4">
 			{data.gifts.map((gift) => (

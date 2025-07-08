@@ -26,9 +26,14 @@ type CreateGiftParams struct {
 	UpdatedAt        time.Time
 }
 
+type GetUserGiftsResult struct {
+	Gifts []*Gift
+	Total int64
+}
+
 type GiftRepository interface {
 	GetGiftByID(ctx context.Context, id string) (*Gift, error)
-	GetUserGifts(ctx context.Context, limit int32, offset int32, ownerTelegramID int64) ([]*Gift, error)
+	GetUserGifts(ctx context.Context, limit int32, offset int32, ownerTelegramID int64) (*GetUserGiftsResult, error)
 	StakeGiftForGame(ctx context.Context, id string) (*Gift, error)
 	UpdateGiftOwner(ctx context.Context, id string, ownerTelegramID int64) (*Gift, error)
 	MarkGiftForWithdrawal(ctx context.Context, id string) (*Gift, error)

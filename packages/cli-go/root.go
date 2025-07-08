@@ -13,8 +13,6 @@ func RootCmd() *cobra.Command {
 
 func newRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "identity",
-		Short: "CLI for service-identity",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return nil
 		},

@@ -3,7 +3,6 @@ syntax = "proto3";
 package giftduels.gift.v1;
 
 import "giftduels/gift/v1/gift.proto";
-import "giftduels/payment/v1/payment.proto";
 import "giftduels/shared/v1/common.proto";
 
 option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1;giftv1";
@@ -17,6 +16,10 @@ service GiftPublicService {
 
   // Initiate gift withdrawal process
   rpc WithdrawGift(WithdrawGiftRequest) returns (WithdrawGiftResponse) {}
+}
+
+message GetStatsRequest {
+  string wallet_address = 1;
 }
 
 message GetGiftRequest {
@@ -35,7 +38,7 @@ message WithdrawGiftRequest {
 message WithdrawGiftResponse {
   oneof result {
     string stars_invoice_url = 1;
-    payment.v1.TonWithdrawal ton_withdrawal = 2;
+    // payment.v1.TonWithdrawal ton_withdrawal = 2;
     shared.v1.SuccessResponse success = 3;
   }
   string withdrawal_id = 4; // Track withdrawal status
@@ -47,5 +50,6 @@ message GetGiftsRequest {
 
 message GetGiftsResponse {
   repeated GiftView gifts = 1;
-  shared.v1.PageResponse pagination = 2;
+  double total_value = 2;
+  shared.v1.PageResponse pagination = 100;
 }

@@ -54,19 +54,20 @@ func (h *giftPublicHandler) GetGifts(ctx context.Context, req *giftv1.GetGiftsRe
 		return nil, err
 	}
 
-	giftViews := make([]*giftv1.GiftView, len(domainGifts))
-	for i, g := range domainGifts {
+	giftViews := make([]*giftv1.GiftView, len(domainGifts.Gifts))
+	for i, g := range domainGifts.Gifts {
 		h.logger.Info("GetGifts", zap.Any("domainGift", g))
 		giftViews[i] = domainGift.ConvertDomainGiftToProtoView(g)
 	}
 
 	return &giftv1.GetGiftsResponse{
-		Gifts: giftViews,
+		Gifts:      giftViews,
+		TotalValue: domainGifts.TotalValue,
 		Pagination: &sharedv1.PageResponse{
 			Page:       pagination.Page(),
 			PageSize:   pagination.PageSize(),
-			Total:      int32(len(domainGifts)),
-			TotalPages: pagination.TotalPages(int32(len(domainGifts))),
+			Total:      domainGifts.Total,
+			TotalPages: pagination.TotalPages(domainGifts.Total),
 		},
 	}, nil
 }

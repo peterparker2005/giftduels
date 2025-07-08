@@ -57,6 +57,7 @@ func (h *IdentityPublicHandler) Authorize(ctx context.Context, req *identityv1.A
 		Username:        getStringOrEmpty(parsed.User.Username),
 		FirstName:       parsed.User.FirstName,
 		LastName:        getStringOrEmpty(parsed.User.LastName),
+		PhotoUrl:        getStringOrEmpty(parsed.User.PhotoURL),
 		LanguageCode:    getStringOrEmpty(parsed.User.LanguageCode),
 		AllowsWriteToPm: parsed.User.AllowsWriteToPm,
 		IsPremium:       parsed.User.IsPremium,

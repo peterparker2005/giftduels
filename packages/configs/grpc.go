@@ -4,7 +4,7 @@ import "fmt"
 
 type ServiceConfig struct {
 	Host string `yaml:"host" env:"HOST" env-default:"localhost"`
-	Port string `yaml:"port" env:"PORT" env-default:"50052"`
+	Port string `yaml:"port" env:"PORT"`
 }
 
 func (c *ServiceConfig) Address() string {

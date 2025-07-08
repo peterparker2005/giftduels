@@ -1,4 +1,4 @@
-package migrate
+package cli
 
 import (
 	"bufio"
@@ -10,8 +10,13 @@ import (
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/config"
 )
 
-func newRunner(cfg *config.Config) (*migratepg.Runner, error) {
-	return migratepg.New(cfg)
+func newRunner() (*migratepg.Runner, error) {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	return migratepg.NewWithDSN(cfg.Database.DSN())
 }
 
 func confirm(prompt, want string) bool {

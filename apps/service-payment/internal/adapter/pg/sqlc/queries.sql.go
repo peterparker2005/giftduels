@@ -7,44 +7,82 @@ package sqlc
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const addUserBalance = `-- name: AddUserBalance :exec
-UPDATE user_balances SET ton_balance = ton_balance + $1 WHERE telegram_user_id = $2
+UPDATE user_balances SET ton_amount = ton_amount + $1 WHERE telegram_user_id = $2
 `
 
 type AddUserBalanceParams struct {
-	TonBalance     float64
+	TonAmount      float64
 	TelegramUserID int64
 }
 
 func (q *Queries) AddUserBalance(ctx context.Context, arg AddUserBalanceParams) error {
-	_, err := q.db.Exec(ctx, addUserBalance, arg.TonBalance, arg.TelegramUserID)
+	_, err := q.db.Exec(ctx, addUserBalance, arg.TonAmount, arg.TelegramUserID)
 	return err
+}
+
+const createDeposit = `-- name: CreateDeposit :one
+INSERT INTO deposits (telegram_user_id, amount_nano, payload, expires_at)
+VALUES ($1, $2, $3, $4)
+RETURNING id, telegram_user_id, status, amount_nano, payload, expires_at, tx_hash, tx_lt, created_at, updated_at
+`
+
+type CreateDepositParams struct {
+	TelegramUserID int64
+	AmountNano     int64
+	Payload        string
+	ExpiresAt      pgtype.Timestamptz
+}
+
+func (q *Queries) CreateDeposit(ctx context.Context, arg CreateDepositParams) (Deposit, error) {
+	row := q.db.QueryRow(ctx, createDeposit,
+		arg.TelegramUserID,
+		arg.AmountNano,
+		arg.Payload,
+		arg.ExpiresAt,
+	)
+	var i Deposit
+	err := row.Scan(
+		&i.ID,
+		&i.TelegramUserID,
+		&i.Status,
+		&i.AmountNano,
+		&i.Payload,
+		&i.ExpiresAt,
+		&i.TxHash,
+		&i.TxLt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const createUserBalance = `-- name: CreateUserBalance :one
 INSERT INTO user_balances (
     telegram_user_id,
-    ton_balance
+    ton_amount
 ) VALUES (
     $1, $2
 )
-RETURNING id, telegram_user_id, ton_balance, created_at, updated_at
+RETURNING id, telegram_user_id, ton_amount, created_at, updated_at
 `
 
 type CreateUserBalanceParams struct {
 	TelegramUserID int64
-	TonBalance     float64
+	TonAmount      float64
 }
 
 func (q *Queries) CreateUserBalance(ctx context.Context, arg CreateUserBalanceParams) (UserBalance, error) {
-	row := q.db.QueryRow(ctx, createUserBalance, arg.TelegramUserID, arg.TonBalance)
+	row := q.db.QueryRow(ctx, createUserBalance, arg.TelegramUserID, arg.TonAmount)
 	var i UserBalance
 	err := row.Scan(
 		&i.ID,
 		&i.TelegramUserID,
-		&i.TonBalance,
+		&i.TonAmount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -81,8 +119,50 @@ func (q *Queries) CreateUserTransaction(ctx context.Context, arg CreateUserTrans
 	return i, err
 }
 
+const getDepositByPayload = `-- name: GetDepositByPayload :one
+SELECT id, telegram_user_id, status, amount_nano, payload, expires_at, tx_hash, tx_lt, created_at, updated_at FROM deposits
+WHERE payload = $1
+`
+
+func (q *Queries) GetDepositByPayload(ctx context.Context, payload string) (Deposit, error) {
+	row := q.db.QueryRow(ctx, getDepositByPayload, payload)
+	var i Deposit
+	err := row.Scan(
+		&i.ID,
+		&i.TelegramUserID,
+		&i.Status,
+		&i.AmountNano,
+		&i.Payload,
+		&i.ExpiresAt,
+		&i.TxHash,
+		&i.TxLt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getTonCursor = `-- name: GetTonCursor :one
+SELECT last_lt
+FROM ton_cursors
+WHERE network = $1
+  AND wallet_address = $2
+`
+
+type GetTonCursorParams struct {
+	Network       TonNetwork
+	WalletAddress string
+}
+
+func (q *Queries) GetTonCursor(ctx context.Context, arg GetTonCursorParams) (int64, error) {
+	row := q.db.QueryRow(ctx, getTonCursor, arg.Network, arg.WalletAddress)
+	var last_lt int64
+	err := row.Scan(&last_lt)
+	return last_lt, err
+}
+
 const getUserBalance = `-- name: GetUserBalance :one
-SELECT id, telegram_user_id, ton_balance, created_at, updated_at FROM user_balances WHERE telegram_user_id = $1
+SELECT id, telegram_user_id, ton_amount, created_at, updated_at FROM user_balances WHERE telegram_user_id = $1
 `
 
 func (q *Queries) GetUserBalance(ctx context.Context, telegramUserID int64) (UserBalance, error) {
@@ -91,7 +171,42 @@ func (q *Queries) GetUserBalance(ctx context.Context, telegramUserID int64) (Use
 	err := row.Scan(
 		&i.ID,
 		&i.TelegramUserID,
-		&i.TonBalance,
+		&i.TonAmount,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const setDepositTransaction = `-- name: SetDepositTransaction :one
+UPDATE deposits
+SET
+    status = 'received',
+    tx_hash = $2,
+    tx_lt = $3,
+    updated_at = now()
+WHERE id = $1
+RETURNING id, telegram_user_id, status, amount_nano, payload, expires_at, tx_hash, tx_lt, created_at, updated_at
+`
+
+type SetDepositTransactionParams struct {
+	ID     pgtype.UUID
+	TxHash pgtype.Text
+	TxLt   pgtype.Int8
+}
+
+func (q *Queries) SetDepositTransaction(ctx context.Context, arg SetDepositTransactionParams) (Deposit, error) {
+	row := q.db.QueryRow(ctx, setDepositTransaction, arg.ID, arg.TxHash, arg.TxLt)
+	var i Deposit
+	err := row.Scan(
+		&i.ID,
+		&i.TelegramUserID,
+		&i.Status,
+		&i.AmountNano,
+		&i.Payload,
+		&i.ExpiresAt,
+		&i.TxHash,
+		&i.TxLt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -99,15 +214,34 @@ func (q *Queries) GetUserBalance(ctx context.Context, telegramUserID int64) (Use
 }
 
 const spendUserBalance = `-- name: SpendUserBalance :exec
-UPDATE user_balances SET ton_balance = ton_balance - $1 WHERE telegram_user_id = $2
+UPDATE user_balances SET ton_amount = ton_amount - $1 WHERE telegram_user_id = $2
 `
 
 type SpendUserBalanceParams struct {
-	TonBalance     float64
+	TonAmount      float64
 	TelegramUserID int64
 }
 
 func (q *Queries) SpendUserBalance(ctx context.Context, arg SpendUserBalanceParams) error {
-	_, err := q.db.Exec(ctx, spendUserBalance, arg.TonBalance, arg.TelegramUserID)
+	_, err := q.db.Exec(ctx, spendUserBalance, arg.TonAmount, arg.TelegramUserID)
+	return err
+}
+
+const upsertTonCursor = `-- name: UpsertTonCursor :exec
+INSERT INTO ton_cursors (network, wallet_address, last_lt)
+VALUES ($1, $2, $3)
+ON CONFLICT (network, wallet_address) DO UPDATE
+  SET last_lt    = EXCLUDED.last_lt,
+      updated_at = now()
+`
+
+type UpsertTonCursorParams struct {
+	Network       TonNetwork
+	WalletAddress string
+	LastLt        int64
+}
+
+func (q *Queries) UpsertTonCursor(ctx context.Context, arg UpsertTonCursorParams) error {
+	_, err := q.db.Exec(ctx, upsertTonCursor, arg.Network, arg.WalletAddress, arg.LastLt)
 	return err
 }

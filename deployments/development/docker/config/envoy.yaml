@@ -39,6 +39,9 @@ static_resources:
                         - match: { prefix: '/giftduels.gift.v1.' }
                           route: { cluster: gift_service }
 
+                        - match: { prefix: '/giftduels.payment.v1.' }
+                          route: { cluster: payment_service }
+
                         - match:
                             {
                               path: '/giftduels.identity.v1.IdentityPublicService/Authorize',
@@ -80,6 +83,26 @@ static_resources:
                     typed_config:
                       '@type': type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
   clusters:
+    - name: payment_service
+      connect_timeout: 0.25s
+      type: STRICT_DNS
+      lb_policy: ROUND_ROBIN
+      load_assignment:
+        cluster_name: payment_service
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: host.docker.internal
+                      port_value: 50054
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          '@type': type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            http2_protocol_options:
+              max_concurrent_streams: 100
+
     - name: gift_service
       connect_timeout: 0.25s
       type: STRICT_DNS

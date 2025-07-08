@@ -10,7 +10,7 @@ CREATE TYPE transaction_reason AS ENUM (
 CREATE TABLE user_balances (
 	id SERIAL PRIMARY KEY,
 	telegram_user_id BIGINT NOT NULL,
-	ton_balance FLOAT NOT NULL,
+	ton_amount FLOAT NOT NULL,
 	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

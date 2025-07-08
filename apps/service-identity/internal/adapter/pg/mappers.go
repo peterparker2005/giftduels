@@ -16,6 +16,7 @@ func UserToDomain(u sqlc.User) *user.User {
 		LanguageCode:    u.LanguageCode.String,
 		AllowsWriteToPm: u.AllowsWriteToPm.Bool,
 		IsPremium:       u.IsPremium.Bool,
+		PhotoUrl:        u.PhotoUrl.String,
 		CreatedAt:       u.CreatedAt.Time,
 		UpdatedAt:       u.UpdatedAt.Time,
 	}
@@ -30,5 +31,6 @@ func UpsertUserParamsToSQLC(params *user.CreateUserParams) sqlc.UpsertUserParams
 		LanguageCode:    pgtype.Text{String: params.LanguageCode, Valid: params.LanguageCode != ""},
 		AllowsWriteToPm: pgtype.Bool{Bool: params.AllowsWriteToPm, Valid: true},
 		IsPremium:       pgtype.Bool{Bool: params.IsPremium, Valid: true},
+		PhotoUrl:        pgtype.Text{String: params.PhotoUrl, Valid: params.PhotoUrl != ""},
 	}
 }

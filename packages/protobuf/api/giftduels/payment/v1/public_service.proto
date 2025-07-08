@@ -35,105 +35,16 @@ message GetWithdrawOptionsResponse {
   StarsOption stars = 2;
 }
 
-message CreateWithdrawCommissionReceiptRequest {
-  shared.v1.GiftId gift_id = 1;
-}
-
-message CreateWithdrawCommissionReceiptResponse {
-  oneof details {
-    string ton_comment = 1;
-    string invoice_url = 2;
-  }
-  shared.v1.TonAmount ton_amount = 3;
-  shared.v1.StarsAmount stars_amount = 4;
-}
-
 message DepositTonRequest {
   shared.v1.TonAmount ton_amount = 1;
 }
 
 message DepositTonResponse {
-  uint64 nano_ton_amount = 1;
-  string comment = 2;
-}
-
-message DepositStarsRequest {
-  shared.v1.StarsAmount stars_amount = 1;
-  string description = 2;
-}
-
-message DepositStarsResponse {
-  string invoice_url = 1;
-  shared.v1.StarsAmount stars_amount = 2;
+  string deposit_id = 1;
+  uint64 nano_ton_amount = 2;
+  string payload = 3;
 }
 
 message GetBalanceResponse {
-  UserBalance balance = 1;
-}
-
-message CalculateWithdrawCommissionRequest {
-  shared.v1.GiftId gift_id = 1;
-}
-
-message CalculateWithdrawCommissionResponse {
-  shared.v1.TonAmount ton_amount = 1;
-  shared.v1.StarsAmount stars_amount = 2;
-}
-
-message GetTransactionHistoryRequest {
-  TransactionFilters filters = 1;
-  TransactionSortOptions sort = 2;
-  shared.v1.PageRequest pagination = 3;
-}
-
-message GetTransactionHistoryResponse {
-  repeated TransactionSummary transactions = 1;
-  shared.v1.PageResponse pagination = 2;
-  TransactionStats stats = 3;
-}
-
-message TransactionFilters {
-  repeated StarTransactionType star_types = 1;
-  repeated TonTransactionType ton_types = 2;
-  repeated StarTransactionPurpose star_purposes = 3;
-  repeated TonTransactionPurpose ton_purposes = 4;
-  shared.v1.TimeRangeFilter time_range = 5;
-  shared.v1.NumericRangeFilter amount_range = 6; // In smallest units
-}
-
-message TransactionSortOptions {
-  TransactionSortField field = 1;
-  shared.v1.SortOrder order = 2;
-}
-
-enum TransactionSortField {
-  TRANSACTION_SORT_FIELD_UNSPECIFIED = 0;
-  TRANSACTION_SORT_FIELD_CREATED_AT = 1;
-  TRANSACTION_SORT_FIELD_AMOUNT = 2;
-  TRANSACTION_SORT_FIELD_TYPE = 3;
-}
-
-message TransactionSummary {
-  string id = 1;
-  oneof transaction {
-    StarTransaction star_transaction = 2;
-    TonTransaction ton_transaction = 3;
-  }
-  string description = 4;
-}
-
-message TransactionStats {
-  uint32 total_count = 1;
-  shared.v1.StarsAmount total_stars_in = 2;
-  shared.v1.StarsAmount total_stars_out = 3;
-  shared.v1.TonAmount total_ton_in = 4;
-  shared.v1.TonAmount total_ton_out = 5;
-}
-
-message GetWithdrawalStatusRequest {
-  string withdrawal_id = 1;
-}
-
-message GetWithdrawalStatusResponse {
-  TonWithdrawal withdrawal = 1;
+  UserBalanceView balance = 1;
 }

@@ -3,7 +3,6 @@ syntax = "proto3";
 package giftduels.event.v1;
 
 import "giftduels/duel/v1/event.proto";
-import "giftduels/payment/v1/events.proto";
 import "google/protobuf/empty.proto";
 
 option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/event/v1;eventv1";
@@ -18,7 +17,6 @@ service EventPublicService {
 message SocketResponse {
   oneof payload {
     OnlineCountEvent online_count = 1;
-    payment.v1.InvoicePaymentEvent invoice_payment = 2;
     giftduels.duel.v1.DuelEvent duel_event = 100;
   }
 }

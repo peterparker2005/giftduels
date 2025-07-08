@@ -6,16 +6,19 @@ require (
 	github.com/ThreeDotsLabs/watermill v1.4.7
 	github.com/ThreeDotsLabs/watermill-amqp/v3 v3.0.1
 	github.com/golang-migrate/migrate/v4 v4.18.3
+	github.com/google/uuid v1.6.0
+	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/peterparker2005/giftduels/packages/cli-go v0.0.0-20250708064016-7a49ea4eb2fd
 	github.com/peterparker2005/giftduels/packages/configs v0.0.0-20250706093708-5d489ad138ec
-	github.com/peterparker2005/giftduels/packages/events v0.0.0-20250708064016-7a49ea4eb2fd
+	github.com/peterparker2005/giftduels/packages/events v0.0.0-20250708080159-bbee3c3e4f5e
 	github.com/peterparker2005/giftduels/packages/grpc-go v0.0.0-20250708064016-7a49ea4eb2fd
 	github.com/peterparker2005/giftduels/packages/logger-go v0.0.0-20250706093708-5d489ad138ec
 	github.com/peterparker2005/giftduels/packages/protobuf-go v0.0.0-20250706093708-5d489ad138ec
 	github.com/peterparker2005/giftduels/packages/version-go v0.0.0-20250706093708-5d489ad138ec
 	github.com/spf13/cobra v1.9.1
+	github.com/xssnick/tonutils-go v1.13.0
 	go.uber.org/fx v1.24.0
 	go.uber.org/zap v1.27.0
 	google.golang.org/grpc v1.73.0
@@ -25,7 +28,6 @@ require (
 require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -36,11 +38,13 @@ require (
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
+	github.com/oasisprotocol/curve25519-voi v0.0.0-20220328075252-7dd334e3daae // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/peterparker2005/giftduels/packages/errors v0.0.0-20250706215627-2babd89ada5a // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rabbitmq/amqp091-go v1.10.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
+	github.com/sigurn/crc16 v0.0.0-20211026045750-20ab5afb07e3 // indirect
 	github.com/sony/gobreaker v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	go.uber.org/atomic v1.7.0 // indirect

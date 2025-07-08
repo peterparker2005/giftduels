@@ -11,6 +11,11 @@ SELECT *
  LIMIT  $2
  OFFSET $3;
 
+-- name: GetUserGiftsCount :one
+SELECT COUNT(*)
+  FROM gifts
+ WHERE owner_telegram_id = $1;
+
 -- name: UpdateGiftStatus :one
 UPDATE gifts 
 SET status = $2, updated_at = NOW()

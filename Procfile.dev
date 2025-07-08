@@ -1,5 +1,6 @@
 payment-server: cd apps/service-payment && go run ./cmd/cli/main.go serve
-payment-worker: cd apps/service-payment && go run ./cmd/cli/main.go worker
+payment-worker-event: cd apps/service-payment && go run ./cmd/cli/main.go worker event
+payment-worker-ton: cd apps/service-payment && go run ./cmd/cli/main.go worker ton
 
 identity-server: cd apps/service-identity && go run ./cmd/cli/main.go serve
 

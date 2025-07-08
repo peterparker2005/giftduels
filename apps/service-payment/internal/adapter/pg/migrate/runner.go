@@ -6,7 +6,6 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/peterparker2005/giftduels/apps/service-payment/internal/config"
 )
 
 const migrationsPath = "file://db/migrations"
@@ -15,8 +14,8 @@ type Runner struct {
 	m *migrate.Migrate
 }
 
-func New(cfg *config.Config) (*Runner, error) {
-	m, err := migrate.New(migrationsPath, cfg.Database.DSN())
+func NewWithDSN(dsn string) (*Runner, error) {
+	m, err := migrate.New(migrationsPath, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create migrator: %w", err)
 	}

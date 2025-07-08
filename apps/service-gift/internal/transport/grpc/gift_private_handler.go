@@ -31,8 +31,8 @@ func (h *giftPrivateHandler) GetUserGifts(ctx context.Context, req *giftv1.GetUs
 	}
 
 	// Convert domain gifts to protobuf
-	giftViews := make([]*giftv1.Gift, len(domainGifts))
-	for i, g := range domainGifts {
+	giftViews := make([]*giftv1.Gift, len(domainGifts.Gifts))
+	for i, g := range domainGifts.Gifts {
 		giftViews[i] = domainGift.ConvertDomainGiftToProto(g)
 	}
 
@@ -41,8 +41,8 @@ func (h *giftPrivateHandler) GetUserGifts(ctx context.Context, req *giftv1.GetUs
 		Pagination: &sharedv1.PageResponse{
 			Page:       pagination.Page(),
 			PageSize:   pagination.PageSize(),
-			Total:      int32(len(domainGifts)),
-			TotalPages: pagination.TotalPages(int32(len(domainGifts))),
+			Total:      domainGifts.Total,
+			TotalPages: pagination.TotalPages(domainGifts.Total),
 		},
 	}, nil
 }

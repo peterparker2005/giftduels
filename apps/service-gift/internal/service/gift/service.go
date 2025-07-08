@@ -23,13 +23,28 @@ func (s *Service) GetGiftByID(ctx context.Context, id string) (*gift.Gift, error
 	return gift, nil
 }
 
-func (s *Service) GetUserGifts(ctx context.Context, telegramUserID int64, pagination *shared.PageRequest) ([]*gift.Gift, error) {
-	gifts, err := s.repo.GetUserGifts(ctx, pagination.PageSize(), pagination.Offset(), telegramUserID)
+type GetUserGiftsResult struct {
+	Gifts      []*gift.Gift
+	Total      int32
+	TotalValue float64
+}
+
+func (s *Service) GetUserGifts(ctx context.Context, telegramUserID int64, pagination *shared.PageRequest) (*GetUserGiftsResult, error) {
+	res, err := s.repo.GetUserGifts(ctx, pagination.PageSize(), pagination.Offset(), telegramUserID)
 	if err != nil {
 		return nil, err
 	}
 
-	return gifts, nil
+	totalValue := float64(0)
+	for _, g := range res.Gifts {
+		totalValue += float64(g.Price)
+	}
+
+	return &GetUserGiftsResult{
+		Gifts:      res.Gifts,
+		Total:      int32(res.Total),
+		TotalValue: totalValue,
+	}, nil
 }
 
 func (s *Service) StakeGift(ctx context.Context, giftID string) (*gift.Gift, error) {

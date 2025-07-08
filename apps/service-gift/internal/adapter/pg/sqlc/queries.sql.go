@@ -293,6 +293,19 @@ func (q *Queries) GetUserGifts(ctx context.Context, arg GetUserGiftsParams) ([]G
 	return items, nil
 }
 
+const getUserGiftsCount = `-- name: GetUserGiftsCount :one
+SELECT COUNT(*)
+  FROM gifts
+ WHERE owner_telegram_id = $1
+`
+
+func (q *Queries) GetUserGiftsCount(ctx context.Context, ownerTelegramID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, getUserGiftsCount, ownerTelegramID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const markGiftForWithdrawal = `-- name: MarkGiftForWithdrawal :one
 UPDATE gifts 
 SET status = 'withdraw_pending', withdraw_requested = NOW(), updated_at = NOW()
