@@ -56,6 +56,7 @@ func (h *TelegramGiftReceivedHandler) Handle(msg *message.Message) error {
 		OwnerTelegramID:  ev.OwnerTelegramId.Value,
 		UpgradeMessageID: ev.UpgradeMessageId,
 		Status:           giftdomain.StatusOwned,
+		EmojiID:          ev.EmojiId,
 		CreatedAt:        time.Now(),
 		UpdatedAt:        time.Now(),
 	}
@@ -68,10 +69,10 @@ func (h *TelegramGiftReceivedHandler) Handle(msg *message.Message) error {
 			return err
 		}
 		createAttributes = append(createAttributes, giftdomain.CreateGiftAttributeParams{
-			GiftID:          id,
-			AttributeType:   attrType,
-			AttributeName:   attr.Name,
-			AttributeRarity: attr.Rarity,
+			GiftID:                  id,
+			AttributeType:           attrType,
+			AttributeName:           attr.Name,
+			AttributeRarityPerMille: attr.RarityPerMille,
 		})
 	}
 

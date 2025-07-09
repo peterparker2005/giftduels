@@ -1,6 +1,6 @@
 {
-	"biome.lsp.bin": "./node_modules/@biomejs/biome/bin/biome",
-	// "biome.lsp.bin": "/opt/homebrew/bin/biome",
+	// "biome.lsp.bin": "./node_modules/@biomejs/biome/bin/biome",
+	"biome.lsp.bin": "/opt/homebrew/bin/biome",
 	"editor.formatOnSave": true,
 	"biome.requireConfiguration": false,
 	"editor.codeActionsOnSave": {

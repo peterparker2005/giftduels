@@ -17,7 +17,8 @@ CREATE TABLE gifts (
   upgrade_message_id INT      NOT NULL,
   title            TEXT      NOT NULL,
   slug             TEXT      NOT NULL,
-  ton_price        FLOAT     NOT NULL,
+  price            FLOAT     NOT NULL,
+  emoji_id         BIGINT    NOT NULL,
   status           gift_status NOT NULL DEFAULT 'owned',
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -29,7 +30,7 @@ CREATE TABLE gift_attributes (
   gift_id UUID          REFERENCES gifts(id) ON DELETE CASCADE,
   type    gift_attribute_type          NOT NULL,
   name    TEXT          NOT NULL,
-  rarity  INT           NOT NULL,
+  rarity_per_mille  INT           NOT NULL,
   PRIMARY KEY (gift_id, type)
 );
 

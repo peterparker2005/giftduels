@@ -113,7 +113,7 @@ func (s *Service) PreviewWithdraw(ctx context.Context, giftIDs []string) (*payme
 
 	fees := make([]payment.GiftFee, len(gifts.Gifts))
 	for i, gift := range gifts.Gifts {
-		giftTonPrice := gift.GetOriginalPrice().GetValue()
+		giftTonPrice := gift.GetPrice().GetValue()
 		starsCost := calculateStarsCommission(giftTonPrice)
 		tonFee := calculateTonCommission(starsCost)
 

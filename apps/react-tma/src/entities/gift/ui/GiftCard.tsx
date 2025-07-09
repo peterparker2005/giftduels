@@ -30,7 +30,7 @@ export const GiftCard = ({ gift }: { gift: GiftView }) => {
 				>
 					<div>
 						<Icon icon="TON" className="w-5 h-5 shrink-0" />
-						<span>{formatThousands(gift.originalPrice?.value)}</span>
+						<span>{formatThousands(gift.price?.value)}</span>
 					</div>
 				</Button>
 				<Button

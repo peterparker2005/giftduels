@@ -44,7 +44,7 @@ export const WithdrawGiftCard = ({
 						<Icon icon="TON" className="w-3 h-3 shrink-0" />
 					</div>
 					<span className="text-xs font-medium">
-						{formatThousands(gift.originalPrice?.value)}
+						{formatThousands(gift.price?.value)}
 					</span>
 				</div>
 			</div>

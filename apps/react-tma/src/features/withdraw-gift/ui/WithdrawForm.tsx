@@ -1,6 +1,9 @@
 import { GiftView } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
+import { useEffect } from "react";
+import { usePreviewWithdraw } from "@/shared/api/queries/usePreviewWithdraw";
 import { Button } from "@/shared/ui/Button";
 import { useWithdrawForm } from "../model/useWithdrawForm";
+import { TonWithdrawalCost } from "./TonWithdrawalCost";
 import { WithdrawGiftCard } from "./WithdrawGiftCard";
 
 interface WithdrawFormProps {
@@ -10,6 +13,11 @@ interface WithdrawFormProps {
 
 export const WithdrawForm = ({ gifts, onSubmit }: WithdrawFormProps) => {
 	const form = useWithdrawForm(gifts);
+	const {
+		mutate: previewWithdraw,
+		data: previewWithdrawData,
+		isPending,
+	} = usePreviewWithdraw();
 
 	const handleFormSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -27,13 +35,23 @@ export const WithdrawForm = ({ gifts, onSubmit }: WithdrawFormProps) => {
 		}
 	};
 
+	useEffect(() => {
+		if (form.hasSelection) {
+			previewWithdraw(form.selectedGifts);
+		}
+	}, [form.selectedGifts, form.hasSelection, previewWithdraw]);
+
 	return (
 		<form onSubmit={handleFormSubmit} className="flex flex-col h-full">
 			<div className="flex items-center justify-between gap-2 mt-4 mb-4">
-				<p className="text-muted-foreground">
-					Withdrawal cost 0.1 TON
-					{form.hasSelection && ` • ${form.selectedCount} selected`}
-				</p>
+				<div className="text-muted-foreground flex items-center gap-1">
+					<p>Withdrawal cost</p>
+					<TonWithdrawalCost
+						isPending={isPending}
+						fee={previewWithdrawData?.totalTonFee?.value}
+					/>
+					<p>TON</p>
+				</div>
 				<button
 					type="button"
 					onClick={handleSelectAllToggle}

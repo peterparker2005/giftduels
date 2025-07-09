@@ -15,7 +15,7 @@ service GiftPublicService {
   rpc GetGift(GetGiftRequest) returns (GetGiftResponse) {}
 
   // Initiate gift withdrawal process
-  rpc WithdrawGift(WithdrawGiftRequest) returns (WithdrawGiftResponse) {}
+  rpc ExecuteWithdraw(ExecuteWithdrawRequest) returns (ExecuteWithdrawResponse) {}
 }
 
 message GetStatsRequest {
@@ -30,18 +30,12 @@ message GetGiftResponse {
   GiftView gift = 1;
 }
 
-message WithdrawGiftRequest {
-  shared.v1.GiftId gift_id = 1;
-  string wallet_address = 2; // For TON withdrawals
+message ExecuteWithdrawRequest {
+  repeated shared.v1.GiftId gift_ids = 1;
 }
 
-message WithdrawGiftResponse {
-  oneof result {
-    string stars_invoice_url = 1;
-    // payment.v1.TonWithdrawal ton_withdrawal = 2;
-    shared.v1.SuccessResponse success = 3;
-  }
-  string withdrawal_id = 4; // Track withdrawal status
+message ExecuteWithdrawResponse {
+  shared.v1.SuccessResponse success = 2;
 }
 
 message GetGiftsRequest {

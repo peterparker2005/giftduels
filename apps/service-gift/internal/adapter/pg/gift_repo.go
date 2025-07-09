@@ -26,7 +26,13 @@ func (r *GiftRepository) GetGiftByID(ctx context.Context, id string) (*gift.Gift
 	if err != nil {
 		return nil, err
 	}
-	return GiftToDomain(dbGift), nil
+
+	attrs, err := r.q.GetGiftAttributes(ctx, dbGift.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return GiftToDomain(dbGift, attrs), nil
 }
 
 func (r *GiftRepository) GetUserGifts(ctx context.Context, limit, offset int32, ownerTelegramID int64) (*gift.GetUserGiftsResult, error) {
@@ -46,7 +52,11 @@ func (r *GiftRepository) GetUserGifts(ctx context.Context, limit, offset int32, 
 
 	out := make([]*gift.Gift, len(rows))
 	for i, row := range rows {
-		out[i] = GiftToDomain(row)
+		attrs, err := r.q.GetGiftAttributes(ctx, row.ID)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = GiftToDomain(row, attrs)
 	}
 	return &gift.GetUserGiftsResult{
 		Gifts: out,
@@ -59,7 +69,11 @@ func (r *GiftRepository) StakeGiftForGame(ctx context.Context, id string) (*gift
 	if err != nil {
 		return nil, err
 	}
-	return GiftToDomain(dbGift), nil
+	attrs, err := r.q.GetGiftAttributes(ctx, dbGift.ID)
+	if err != nil {
+		return nil, err
+	}
+	return GiftToDomain(dbGift, attrs), nil
 }
 
 func (r *GiftRepository) UpdateGiftOwner(ctx context.Context, id string, ownerTelegramID int64) (*gift.Gift, error) {
@@ -70,7 +84,11 @@ func (r *GiftRepository) UpdateGiftOwner(ctx context.Context, id string, ownerTe
 	if err != nil {
 		return nil, err
 	}
-	return GiftToDomain(dbGift), nil
+	attrs, err := r.q.GetGiftAttributes(ctx, dbGift.ID)
+	if err != nil {
+		return nil, err
+	}
+	return GiftToDomain(dbGift, attrs), nil
 }
 
 func (r *GiftRepository) MarkGiftForWithdrawal(ctx context.Context, id string) (*gift.Gift, error) {
@@ -78,7 +96,11 @@ func (r *GiftRepository) MarkGiftForWithdrawal(ctx context.Context, id string) (
 	if err != nil {
 		return nil, err
 	}
-	return GiftToDomain(dbGift), nil
+	attrs, err := r.q.GetGiftAttributes(ctx, dbGift.ID)
+	if err != nil {
+		return nil, err
+	}
+	return GiftToDomain(dbGift, attrs), nil
 }
 
 func (r *GiftRepository) CompleteGiftWithdrawal(ctx context.Context, id string) (*gift.Gift, error) {
@@ -86,7 +108,11 @@ func (r *GiftRepository) CompleteGiftWithdrawal(ctx context.Context, id string) 
 	if err != nil {
 		return nil, err
 	}
-	return GiftToDomain(dbGift), nil
+	attrs, err := r.q.GetGiftAttributes(ctx, dbGift.ID)
+	if err != nil {
+		return nil, err
+	}
+	return GiftToDomain(dbGift, attrs), nil
 }
 
 func (r *GiftRepository) CreateGiftEvent(ctx context.Context, giftID string, fromUserID, toUserID int64) (*gift.GiftEvent, error) {
@@ -131,7 +157,11 @@ func (r *GiftRepository) CreateGiftWithDetails(
 		return nil, fmt.Errorf("commit: %w", err)
 	}
 
-	return GiftToDomain(dbGift), nil
+	sqlcAttrs, err := r.q.GetGiftAttributes(ctx, dbGift.ID)
+	if err != nil {
+		return nil, err
+	}
+	return GiftToDomain(dbGift, sqlcAttrs), nil
 }
 
 func (r *GiftRepository) GetGiftsByIDs(ctx context.Context, ids []string) ([]*gift.Gift, error) {
@@ -142,7 +172,11 @@ func (r *GiftRepository) GetGiftsByIDs(ctx context.Context, ids []string) ([]*gi
 
 	out := make([]*gift.Gift, len(dbGifts))
 	for i, dbGift := range dbGifts {
-		out[i] = GiftToDomain(dbGift)
+		attrs, err := r.q.GetGiftAttributes(ctx, dbGift.ID)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = GiftToDomain(dbGift, attrs)
 	}
 	return out, nil
 }

@@ -31,7 +31,8 @@ func ConvertDomainGiftToProto(domainGift *Gift) *giftv1.Gift {
 		Status:            ConvertDomainStatusToProto(domainGift.Status),
 		TelegramMessageId: domainGift.UpgradeMessageID,
 		Date:              timestamppb.New(domainGift.CreatedAt),
-		OriginalPrice:     &sharedv1.TonAmount{Value: domainGift.Price},
+		Price:             &sharedv1.TonAmount{Value: domainGift.Price},
+		EmojiId:           domainGift.EmojiID,
 	}
 
 	// Handle optional fields
@@ -61,11 +62,12 @@ func ConvertDomainGiftToProto(domainGift *Gift) *giftv1.Gift {
 // ConvertDomainGiftToProtoView converts domain Gift to protobuf GiftView
 func ConvertDomainGiftToProtoView(domainGift *Gift) *giftv1.GiftView {
 	protoView := &giftv1.GiftView{
-		GiftId:        &sharedv1.GiftId{Value: domainGift.ID},
-		Status:        ConvertDomainStatusToProto(domainGift.Status),
-		Title:         domainGift.Title,
-		Slug:          domainGift.Slug,
-		OriginalPrice: &sharedv1.TonAmount{Value: domainGift.Price},
+		GiftId:  &sharedv1.GiftId{Value: domainGift.ID},
+		Status:  ConvertDomainStatusToProto(domainGift.Status),
+		Title:   domainGift.Title,
+		Slug:    domainGift.Slug,
+		Price:   &sharedv1.TonAmount{Value: domainGift.Price},
+		EmojiId: domainGift.EmojiID,
 	}
 
 	// Handle optional fields

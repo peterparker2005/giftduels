@@ -107,7 +107,8 @@ type Gift struct {
 	UpgradeMessageID int32
 	Title            string
 	Slug             string
-	TonPrice         float64
+	Price            float64
+	EmojiID          int64
 	Status           GiftStatus
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
@@ -115,10 +116,10 @@ type Gift struct {
 }
 
 type GiftAttribute struct {
-	GiftID pgtype.UUID
-	Type   GiftAttributeType
-	Name   string
-	Rarity int32
+	GiftID         pgtype.UUID
+	Type           GiftAttributeType
+	Name           string
+	RarityPerMille int32
 }
 
 type GiftEvent struct {

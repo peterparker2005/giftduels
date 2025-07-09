@@ -23,4 +23,6 @@ message TelegramGiftReceivedEvent {
   // Collectible information (if applicable)
   int32 collectible_id = 8;
   int32 upgrade_message_id = 9; // Used to transfer gift
+
+  int64 emoji_id = 10;
 }

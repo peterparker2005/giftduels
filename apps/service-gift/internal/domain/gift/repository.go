@@ -6,10 +6,10 @@ import (
 )
 
 type CreateGiftAttributeParams struct {
-	GiftID          string
-	AttributeType   AttributeType
-	AttributeName   string
-	AttributeRarity int32
+	GiftID                  string
+	AttributeType           AttributeType
+	AttributeName           string
+	AttributeRarityPerMille int32
 }
 
 type CreateGiftParams struct {
@@ -20,6 +20,7 @@ type CreateGiftParams struct {
 	TelegramGiftID   int64
 	Status           Status
 	Price            float64
+	EmojiID          int64
 	Title            string
 	Slug             string
 	CreatedAt        time.Time

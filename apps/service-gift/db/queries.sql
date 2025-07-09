@@ -76,19 +76,20 @@ INSERT INTO gifts (
     slug,
     owner_telegram_id,
     upgrade_message_id,
-    ton_price,
+    price,
+    emoji_id,
     collectible_id,
     status,
     created_at,
     updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
 )
 RETURNING *;
 
 -- name: SaveGiftWithPrice :one
 UPDATE gifts 
-SET ton_price = $2, updated_at = NOW()
+SET price = $2, updated_at = NOW()
 WHERE id = $1
 RETURNING *;
 
@@ -97,8 +98,12 @@ INSERT INTO gift_attributes (
     gift_id,
     type,
     name,
-    rarity
+    rarity_per_mille
 ) VALUES (
     $1, $2, $3, $4
 )
 RETURNING *;
+
+-- name: GetGiftAttributes :many
+SELECT * FROM gift_attributes
+WHERE gift_id = $1;
