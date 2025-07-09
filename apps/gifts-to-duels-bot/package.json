@@ -10,8 +10,8 @@
 		"generate-session": "tsx scripts/generate_session.ts",
 		"build": "tsx scripts/build.cjs",
 		"start": "node dist/index.cjs",
-		"lint": "npm run typecheck && eslint src/**/*.ts",
-		"lint:fix": "npm run typecheck && eslint src/**/*.ts",
+		"lint": "npm run typecheck && biome check",
+		"lint:fix": "npm run typecheck && biome check --write",
 		"typecheck": "tsc --noEmit",
 		"seed": "tsx scripts/seed.ts"
 	},

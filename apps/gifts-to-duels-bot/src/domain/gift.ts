@@ -57,20 +57,20 @@ function parseAttributes(
 	const mappedAttributes = telegramAttributes.map((attr) => {
 		let attributeType: GiftAttributeType | undefined;
 		let name = "";
-		let rarity = 0;
+		let rarityPermille = 0;
 
 		if (attr instanceof Api.StarGiftAttributeModel) {
 			attributeType = GiftAttributeType.MODEL;
 			name = attr.name;
-			rarity = attr.rarityPermille;
+			rarityPermille = attr.rarityPermille;
 		} else if (attr instanceof Api.StarGiftAttributePattern) {
 			attributeType = GiftAttributeType.SYMBOL;
 			name = attr.name;
-			rarity = attr.rarityPermille;
+			rarityPermille = attr.rarityPermille;
 		} else if (attr instanceof Api.StarGiftAttributeBackdrop) {
 			attributeType = GiftAttributeType.BACKDROP;
 			name = attr.name;
-			rarity = attr.rarityPermille;
+			rarityPermille = attr.rarityPermille;
 		} else if (attr instanceof Api.StarGiftAttributeOriginalDetails) {
 			logger.warn(
 				"⚠️ StarGiftAttributeOriginalDetails is not handled yet, skipping",
@@ -87,7 +87,7 @@ function parseAttributes(
 		return create(GiftAttributeSchema, {
 			type: attributeType,
 			name: name,
-			rarity: rarity,
+			rarityPerMille: rarityPermille,
 		});
 	});
 
@@ -158,9 +158,7 @@ export function parseSavedStarGift(
 		telegramMessageId: savedGift.msgId || 0,
 		title,
 		slug,
-		imageUrl: "", // Not available in SavedStarGift
 		attributes,
-		originalPrice: undefined, // Not available in SavedStarGift
 		status,
 		withdrawnAt: undefined,
 	});
@@ -255,7 +253,7 @@ export function parseMessageActionStarGiftUnique(
 		title = uniqueGift.title || "Unique Gift";
 		slug = uniqueGift.slug || slugify(title);
 		attributes = parseAttributes(uniqueGift.attributes);
-		collectibleId = uniqueGift.num || 0; // Use num as collectible ID
+		collectibleId = uniqueGift.num;
 	} else {
 		logger.warn(
 			`Unexpected gift type in MessageActionStarGiftUnique: ${gift.className}`,
@@ -309,8 +307,7 @@ export function parseSavedStarGiftToView(
 		telegramGiftId: fullGift.telegramGiftId,
 		title: fullGift.title,
 		slug: fullGift.slug,
-		imageUrl: fullGift.imageUrl,
-		originalPrice: fullGift.originalPrice,
+		price: fullGift.price,
 		collectibleId: fullGift.collectibleId,
 		status: fullGift.status,
 		withdrawnAt: fullGift.withdrawnAt,

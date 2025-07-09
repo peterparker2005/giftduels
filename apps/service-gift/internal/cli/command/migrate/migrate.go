@@ -166,8 +166,8 @@ func newCreateCmd(cfg *config.Config) *cobra.Command {
 			name := args[0]
 			timestamp := time.Now().Format("20060102150405")
 
-			upFile := fmt.Sprintf("internal/db/migrations/%s_%s.up.sql", timestamp, name)
-			downFile := fmt.Sprintf("internal/db/migrations/%s_%s.down.sql", timestamp, name)
+			upFile := fmt.Sprintf("db/migrations/%s_%s.up.sql", timestamp, name)
+			downFile := fmt.Sprintf("db/migrations/%s_%s.down.sql", timestamp, name)
 
 			// Create up migration file
 			upContent := fmt.Sprintf(`-- Migration: %s

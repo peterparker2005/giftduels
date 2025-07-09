@@ -11,6 +11,7 @@ import (
 var Module = fx.Module("pg",
 	fx.Provide(
 		NewGiftRepo,
+		NewPgxTxManager,
 		func(cfg *config.Config) (*pgxpool.Pool, error) {
 			return Connect(context.Background(), Config{
 				DSN:             cfg.Database.DSN(),

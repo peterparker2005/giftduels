@@ -1,106 +1,81 @@
 import { DescMessage, Message, toBinary } from "@bufbuild/protobuf";
-import type { ChannelWrapper } from "amqp-connection-manager";
-import type { ConfirmChannel } from "amqplib";
-import { getConnection } from "@/amqp/connection";
+import { ChannelWrapper } from "amqp-connection-manager";
+import { ConfirmChannel, Options } from "amqplib";
+import { createChannel } from "@/amqp/connection";
 import { logger } from "@/logger";
 
-const EXCHANGE_MAIN = "telegram.events";
-const MAX_RETRY_ATTEMPTS = 5;
-const BASE_BACKOFF_MS = 500;
-
-/* ---------- ленивый канал ---------- */
-let channelPromise: Promise<ChannelWrapper> | undefined;
-
-async function getChannel(): Promise<ChannelWrapper> {
-	if (channelPromise) return channelPromise; // уже создан
-
-	channelPromise = getConnection().then(async (conn) => {
-		const ch = conn.createChannel({
-			json: false,
-			confirm: true,
-			setup: async (c: ConfirmChannel) => {
-				await c.assertExchange(EXCHANGE_MAIN, "topic", { durable: true });
-			},
-		});
-		await ch.waitForConnect(); // дожидаемся open
-		logger.info("[AMQP] channel ready");
-		return ch;
-	});
-
-	return channelPromise;
+export interface PublishOptions {
+	messageId?: string;
+	persistent?: boolean;
+	mandatory?: boolean;
+	headers?: Record<string, unknown>;
 }
 
-/* ---------- retry helper ---------- */
-async function withRetry(
-	action: () => Promise<unknown>,
-	rk: string,
-	attempt = 0,
-): Promise<void> {
-	try {
-		await action();
-	} catch (err) {
-		if (attempt >= MAX_RETRY_ATTEMPTS) {
-			logger.error({ err, rk }, "❌ Publish failed after retries");
-			throw err;
+export class Publisher {
+	private channel: ChannelWrapper | null = null;
+	private channelPromise: Promise<ChannelWrapper> | null = null;
+
+	constructor(private readonly exchange: string) {
+		// Don't create channel immediately - defer until first use
+	}
+
+	private async getChannel(): Promise<ChannelWrapper> {
+		if (this.channel) return this.channel;
+
+		if (!this.channelPromise) {
+			this.channelPromise = this.createChannelWhenReady();
 		}
-		const delay = BASE_BACKOFF_MS * 2 ** attempt;
-		logger.warn({ rk, delay, attempt }, "🔁 Publish retry");
-		await new Promise((r) => setTimeout(r, delay));
-		return withRetry(action, rk, attempt + 1);
+
+		return this.channelPromise;
+	}
+
+	private async createChannelWhenReady(): Promise<ChannelWrapper> {
+		// setupChannel will be called automatically on (re)connect
+		this.channel = createChannel(this.setupChannel.bind(this), { json: false });
+		return this.channel;
+	}
+
+	private async setupChannel(ch: ConfirmChannel) {
+		// Declare главный exchange вашего сервиса
+		await ch.assertExchange(this.exchange, "topic", { durable: true });
+		// TODO: тут же можно объявить DLX-exchange для poison-очередей
+	}
+
+	/**
+	 * Публикует protobuf-сообщение.
+	 */
+	public async publishProto<T extends Message>(args: {
+		routingKey: string;
+		schema: DescMessage;
+		msg: T;
+		opts?: PublishOptions;
+	}): Promise<void> {
+		const { routingKey, schema, msg, opts } = args;
+
+		const channel = await this.getChannel();
+
+		const buffer = Buffer.from(toBinary(schema, msg));
+
+		const typeName = msg.$typeName;
+
+		const headers = {
+			...opts?.headers,
+			"x-proto-type": typeName ?? routingKey,
+			"x-message-id": opts?.messageId,
+		};
+
+		await channel.publish(this.exchange, routingKey, buffer, {
+			persistent: opts?.persistent ?? true,
+			mandatory: opts?.mandatory ?? false,
+			messageId: opts?.messageId,
+			headers,
+			contentType: "application/x-protobuf",
+		} as Options.Publish);
+		logger.info(
+			{ exchange: this.exchange, routingKey, payloadType: "protobuf" },
+			"[AMQP] proto message published",
+		);
 	}
 }
 
-/* ---------- JSON publisher ---------- */
-export async function publish<T>(opts: {
-	routingKey: string;
-	body: T;
-	headers?: Record<string, unknown>;
-	messageId?: string;
-}): Promise<void> {
-	const payload = Buffer.from(JSON.stringify(opts.body));
-	const headers = { "x-message-id": opts.messageId, ...opts.headers };
-
-	const ch = await getChannel();
-	await withRetry(
-		() =>
-			ch
-				.publish(EXCHANGE_MAIN, opts.routingKey, payload, {
-					persistent: true,
-					contentType: "application/json",
-					headers,
-				})
-				.then(() => undefined),
-		opts.routingKey,
-	);
-}
-
-export async function publishProto<T extends Message>(opts: {
-	routingKey: string;
-	schema: DescMessage;
-	msg: T; // экземпляр protobuf-es сообщения
-	headers?: Record<string, unknown>;
-	messageId?: string;
-}) {
-	const buffer = Buffer.from(toBinary(opts.schema, opts.msg));
-
-	const typeName = opts.msg.$typeName;
-
-	const headers = {
-		"x-proto-type": typeName ?? opts.routingKey,
-		"x-message-id": opts.messageId,
-		...opts.headers,
-	};
-
-	const ch = await getChannel();
-	await withRetry(
-		() =>
-			ch
-				.publish(EXCHANGE_MAIN, opts.routingKey, buffer, {
-					persistent: true,
-					contentType: "application/x-protobuf",
-					headers,
-				})
-				.then(() => void 0),
-		opts.routingKey,
-	);
-}
+export const publisher = new Publisher("telegram.events");

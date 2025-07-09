@@ -1,50 +1,67 @@
-import { AmqpConnectionManagerOptions, connect } from "amqp-connection-manager";
+import {
+	AmqpConnectionManager,
+	AmqpConnectionManagerOptions,
+	ChannelWrapper,
+	connect,
+} from "amqp-connection-manager";
+import { ConfirmChannel } from "amqplib";
 import { config } from "@/config";
 import { logger } from "@/logger";
 
-type AmqpConn = ReturnType<typeof connect>;
-
-let _connection: AmqpConn | undefined;
-let resolveConn!: (c: AmqpConn) => void;
-
-/** Промис, который резолвится после connectAmqp() */
-const connectionReady: Promise<AmqpConn> = new Promise((res) => {
-	resolveConn = res;
+let connection: AmqpConnectionManager;
+let readyResolver: (conn: AmqpConnectionManager) => void;
+const readyPromise = new Promise<AmqpConnectionManager>((res) => {
+	readyResolver = res;
 });
 
-export async function connectAmqp() {
-	const amqpUrl = config.amqp.url();
-	logger.info(
-		`[AMQP] Attempting to connect to: ${amqpUrl.replace(/:.*@/, ":***@")}`,
+export async function connectAmqp(): Promise<AmqpConnectionManager> {
+	if (connection) return readyPromise;
+
+	const url = config.amqp.url();
+	logger.info(`[AMQP] Connecting to ${url.replace(/:.*@/, ":***@")}...`);
+
+	connection = connect([url], {
+		heartbeatIntervalInSeconds: 15,
+		reconnectTimeInSeconds: 5,
+	} satisfies AmqpConnectionManagerOptions);
+
+	connection.on("connect", () => {
+		logger.info("[AMQP] connected");
+		readyResolver(connection);
+	});
+	connection.on("disconnect", ({ err }) =>
+		logger.warn({ err }, "[AMQP] disconnected"),
+	);
+	connection.on("error", (err) =>
+		logger.error({ err }, "[AMQP] connection error"),
 	);
 
-	try {
-		_connection = connect([amqpUrl], {
-			heartbeatIntervalInSeconds: 15,
-			reconnectTimeInSeconds: 5,
-		} satisfies AmqpConnectionManagerOptions);
-
-		_connection.on("connect", () => logger.info("[AMQP] connected"));
-		_connection.on("disconnect", ({ err }) =>
-			logger.warn({ err }, "[AMQP] disconnected"),
-		);
-		_connection.on("error", (err) =>
-			logger.error({ err }, "[AMQP] connection error"),
-		);
-
-		resolveConn(_connection); // 🔔 соединение готово
-		logger.info("[AMQP] Connection manager created successfully");
-	} catch (err) {
-		logger.error({ err }, "[AMQP] Failed to create connection");
-		throw err;
-	}
+	return readyPromise;
 }
 
-/** Получить connection или дождаться, пока он появится */
-export async function getConnection(): Promise<AmqpConn> {
-	return _connection ?? connectionReady;
+export function createChannel(
+	onSetup: (channel: ConfirmChannel) => Promise<void>,
+	opts?: { json?: boolean },
+): ChannelWrapper {
+	if (!connection) {
+		throw new Error(
+			"AMQP connection is not established, call connectAmqp() first",
+		);
+	}
+
+	const channel = connection.createChannel({
+		json: opts?.json ?? false,
+		setup: onSetup,
+	});
+
+	channel.on("error", (err) => logger.error({ err }, "[AMQP] channel error"));
+	channel.on("close", () => logger.info("[AMQP] channel closed"));
+
+	return channel;
 }
 
 export async function closeAmqp() {
-	if (_connection) await _connection.close();
+	if (connection) {
+		await connection.close();
+	}
 }

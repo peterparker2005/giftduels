@@ -39,7 +39,7 @@ export function TonWithdrawalCost({ isPending, fee }: TonWithdrawalCostProps) {
 					exit={{ opacity: 0 }}
 					transition={{ duration: 0.2 }}
 				>
-					{fee ?? "0.15"}
+					{fee ?? "0.1"}
 				</motion.p>
 			)}
 		</AnimatePresence>

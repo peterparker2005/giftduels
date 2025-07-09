@@ -1,9 +1,6 @@
-import {
-	TelegramGiftReceivedEvent,
-	TelegramGiftReceivedEventSchema,
-} from "@giftduels/protobuf-js/giftduels/gift/v1/events_pb";
+import { TelegramGiftReceivedEventSchema } from "@giftduels/protobuf-js/giftduels/gift/v1/events_pb";
 import { Api, TelegramClient } from "telegram";
-import { publishProto } from "@/amqp/publisher";
+import { publisher } from "@/amqp/publisher";
 import { parseMessageActionStarGiftUnique } from "@/domain/gift";
 import { logger } from "@/logger";
 
@@ -51,7 +48,7 @@ export async function nftGiftHandler(client: TelegramClient) {
 
 			logger.debug({ gift }, "📦 Parsed NFT gift");
 
-			await publishProto<TelegramGiftReceivedEvent>({
+			await publisher.publishProto({
 				routingKey: "telegram.gift.received",
 				schema: TelegramGiftReceivedEventSchema,
 				msg: gift,

@@ -21,6 +21,21 @@ SELECT COUNT(*)
   FROM gifts
  WHERE owner_telegram_id = $1;
 
+-- name: GetUserActiveGifts :many
+SELECT *
+  FROM gifts
+ WHERE owner_telegram_id = $1
+   AND status NOT IN ('withdrawn', 'withdraw_pending')
+ ORDER BY created_at DESC
+ LIMIT  $2
+ OFFSET $3;
+
+-- name: GetUserActiveGiftsCount :one
+SELECT COUNT(*)
+  FROM gifts
+ WHERE owner_telegram_id = $1
+   AND status NOT IN ('withdrawn', 'withdraw_pending');
+
 -- name: UpdateGiftStatus :one
 UPDATE gifts 
 SET status = $2, updated_at = NOW()
@@ -35,8 +50,14 @@ RETURNING *;
 
 -- name: MarkGiftForWithdrawal :one
 UPDATE gifts 
-SET status = 'withdraw_pending', withdraw_requested = NOW(), updated_at = NOW()
+SET status = 'withdraw_pending', updated_at = NOW()
 WHERE id = $1 AND status = 'owned'
+RETURNING *;
+
+-- name: CancelGiftWithdrawal :one
+UPDATE gifts 
+SET status = 'owned', updated_at = NOW()
+WHERE id = $1 AND status = 'withdraw_pending'
 RETURNING *;
 
 -- name: CompleteGiftWithdrawal :one

@@ -4,6 +4,6 @@
 	"extends": "//",
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["src/**/*"]
+		"includes": ["src/**/*", "scripts/**/*"]
 	}
 }

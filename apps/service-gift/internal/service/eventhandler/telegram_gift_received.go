@@ -1,4 +1,4 @@
-package event
+package eventhandler
 
 import (
 	"context"
@@ -56,7 +56,6 @@ func (h *TelegramGiftReceivedHandler) Handle(msg *message.Message) error {
 		OwnerTelegramID:  ev.OwnerTelegramId.Value,
 		UpgradeMessageID: ev.UpgradeMessageId,
 		Status:           giftdomain.StatusOwned,
-		EmojiID:          ev.EmojiId,
 		CreatedAt:        time.Now(),
 		UpdatedAt:        time.Now(),
 	}

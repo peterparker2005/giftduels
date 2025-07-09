@@ -3,16 +3,29 @@ package gift
 import (
 	"context"
 
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill-sql/v3/pkg/sql"
+	"github.com/ThreeDotsLabs/watermill/components/forwarder"
+	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/adapter/pg"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
+	giftEvents "github.com/peterparker2005/giftduels/packages/events/gift"
+	"github.com/peterparker2005/giftduels/packages/logger-go"
+	giftv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1"
+	sharedv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/shared/v1"
 	"github.com/peterparker2005/giftduels/packages/shared"
+	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 )
 
 type Service struct {
-	repo gift.GiftRepository
+	txMgr pg.TxManager
+	repo  gift.GiftRepository
+	log   *logger.Logger
 }
 
-func New(repo gift.GiftRepository) *Service {
-	return &Service{repo: repo}
+func New(repo gift.GiftRepository, txMgr pg.TxManager, log *logger.Logger) *Service {
+	return &Service{repo: repo, txMgr: txMgr, log: log}
 }
 
 func (s *Service) GetGiftByID(ctx context.Context, id string) (*gift.Gift, error) {
@@ -31,6 +44,24 @@ type GetUserGiftsResult struct {
 
 func (s *Service) GetUserGifts(ctx context.Context, telegramUserID int64, pagination *shared.PageRequest) (*GetUserGiftsResult, error) {
 	res, err := s.repo.GetUserGifts(ctx, pagination.PageSize(), pagination.Offset(), telegramUserID)
+	if err != nil {
+		return nil, err
+	}
+
+	totalValue := float64(0)
+	for _, g := range res.Gifts {
+		totalValue += float64(g.Price)
+	}
+
+	return &GetUserGiftsResult{
+		Gifts:      res.Gifts,
+		Total:      int32(res.Total),
+		TotalValue: totalValue,
+	}, nil
+}
+
+func (s *Service) GetUserActiveGifts(ctx context.Context, telegramUserID int64, pagination *shared.PageRequest) (*GetUserGiftsResult, error) {
+	res, err := s.repo.GetUserActiveGifts(ctx, pagination.PageSize(), pagination.Offset(), telegramUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -71,11 +102,69 @@ func (s *Service) TransferGiftToUser(ctx context.Context, giftID string, telegra
 	return gift, nil
 }
 
-func (s *Service) WithdrawGift(ctx context.Context, giftID string) (*gift.Gift, error) {
-	gift, err := s.repo.MarkGiftForWithdrawal(ctx, giftID)
+func (s *Service) ExecuteWithdraw(ctx context.Context, giftIDs []string) (*gift.Gift, error) {
+	log := s.log.With(zap.Strings("giftIDs", giftIDs))
+	tx, err := s.txMgr.BeginTx(ctx)
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if err != nil {
+			err = tx.Rollback(ctx)
+			if err != nil {
+				log.Error("Failed to rollback transaction", zap.Error(err))
+			}
+		}
+	}()
+
+	repo := s.repo.WithTx(tx)
+	gift, err := repo.MarkGiftForWithdrawal(ctx, giftIDs[0])
+	if err != nil {
+		log.Error("Failed to mark gift for withdrawal", zap.Error(err))
+		return nil, err
+	}
+
+	sqlPub, err := sql.NewPublisher(
+		s.txMgr.Sql(),
+		sql.PublisherConfig{
+			SchemaAdapter: sql.DefaultPostgreSQLSchema{},
+		},
+		logger.NewWatermill(s.log),
+	)
+	if err != nil {
+		log.Error("Failed to create publisher", zap.Error(err))
+		return nil, err
+	}
+
+	fwdPub := forwarder.NewPublisher(sqlPub, forwarder.PublisherConfig{
+		ForwarderTopic: giftEvents.SqlOutboxTopic,
+	})
+
+	protoGift := &giftv1.GiftWithdrawRequestedEvent{
+		GiftId:           &sharedv1.GiftId{Value: gift.ID},
+		OwnerTelegramId:  &sharedv1.TelegramUserId{Value: gift.OwnerTelegramID},
+		TelegramGiftId:   &sharedv1.GiftTelegramId{Value: gift.TelegramGiftID},
+		CollectibleId:    int32(gift.CollectibleID),
+		UpgradeMessageId: gift.UpgradeMessageID,
+		Price:            gift.Price,
+	}
+	payload, err := proto.Marshal(protoGift)
+	if err != nil {
+		log.Error("Failed to marshal gift withdraw requested event", zap.Error(err))
+		return nil, err
+	}
+	msg := message.NewMessage(watermill.NewUUID(), payload)
+	if err = fwdPub.Publish(giftEvents.TopicGiftWithdrawRequested.String(), msg); err != nil {
+		log.Error("Failed to publish gift withdraw requested event", zap.Error(err))
+		return nil, err
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		log.Error("Failed to commit transaction", zap.Error(err))
+		return nil, err
+	}
+
 	return gift, nil
 }
 

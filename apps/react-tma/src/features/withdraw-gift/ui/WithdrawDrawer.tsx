@@ -14,11 +14,6 @@ interface WithdrawDrawerProps {
 export const WithdrawDrawer = ({ children }: WithdrawDrawerProps) => {
 	const { data, isLoading } = useGiftsQuery();
 
-	const handleWithdraw = (selectedGiftIds: string[]) => {
-		// TODO: Implement actual withdrawal API call
-		console.log("Withdrawing gifts:", selectedGiftIds);
-	};
-
 	return (
 		<Drawer>
 			<DrawerTrigger asChild>{children}</DrawerTrigger>
@@ -30,7 +25,7 @@ export const WithdrawDrawer = ({ children }: WithdrawDrawerProps) => {
 						<p className="text-muted-foreground">Loading gifts...</p>
 					</div>
 				) : data?.gifts && data.gifts.length > 0 ? (
-					<WithdrawForm gifts={data.gifts} onSubmit={handleWithdraw} />
+					<WithdrawForm gifts={data.gifts} />
 				) : (
 					<div className="flex items-center justify-center flex-1">
 						<p className="text-muted-foreground">

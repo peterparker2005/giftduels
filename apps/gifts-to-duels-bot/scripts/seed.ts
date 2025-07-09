@@ -1,4 +1,4 @@
-import { Userbot } from "@/core/userbot";
+import { Userbot } from "@/telegram/userbot";
 
 async function seed() {
 	const userbot = new Userbot();

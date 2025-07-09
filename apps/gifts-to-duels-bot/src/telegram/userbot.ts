@@ -30,6 +30,70 @@ export class Userbot {
 		return this.client;
 	}
 
+	/**
+	 * Robustly resolve a user ID to InputPeer with multiple fallback strategies
+	 */
+	private async getInputPeerForUser(
+		userId: number,
+	): Promise<Api.TypeInputPeer> {
+		try {
+			// Try direct getInputEntity first
+			const inputPeer = await this.client.getInputEntity(userId);
+			if (
+				inputPeer instanceof Api.InputPeerUser ||
+				inputPeer instanceof Api.InputPeerChannel
+			) {
+				return inputPeer;
+			}
+		} catch (e) {
+			logger.warn(
+				`⚠️ getInputEntity(${userId}) failed: ${(e as Error).message}`,
+			);
+		}
+
+		try {
+			// Try to get entity first, then input entity
+			const entity = await this.client.getEntity(userId);
+			const inputPeer = await this.client.getInputEntity(entity);
+			if (
+				inputPeer instanceof Api.InputPeerUser ||
+				inputPeer instanceof Api.InputPeerChannel
+			) {
+				return inputPeer;
+			}
+		} catch (e) {
+			logger.warn(`⚠️ getEntity(${userId}) failed: ${(e as Error).message}`);
+		}
+
+		// Try to find user in dialogs/chats
+		try {
+			const dialogs = await this.client.getDialogs({ limit: 100 });
+			for (const dialog of dialogs) {
+				if (
+					dialog.entity instanceof Api.User &&
+					Number(dialog.entity.id) === userId
+				) {
+					const inputPeer = await this.client.getInputEntity(dialog.entity);
+					if (inputPeer instanceof Api.InputPeerUser) {
+						logger.info(`✅ Found user ${userId} in dialogs`);
+						return inputPeer;
+					}
+				}
+			}
+		} catch (e) {
+			logger.warn(
+				`⚠️ Could not find user ${userId} in dialogs: ${(e as Error).message}`,
+			);
+		}
+
+		// Last resort: throw error with helpful message
+		const error = new Error(
+			`Could not resolve user entity for ID ${userId}. The user may need to start a conversation with the bot first or be found in a mutual chat.`,
+		);
+		logger.error({ userId }, error.message);
+		throw error;
+	}
+
 	async sendGift(params: {
 		userId: number;
 		giftId: string | number | bigint;
@@ -37,7 +101,7 @@ export class Userbot {
 		hideName?: boolean;
 		includeUpgrade?: boolean;
 	}) {
-		const peer = await this.client.getInputEntity(params.userId);
+		const peer = await this.getInputPeerForUser(params.userId);
 
 		const invoice = new Api.InputInvoiceStarGift({
 			peer,
@@ -184,7 +248,7 @@ export class Userbot {
 
 	async transferGift(params: { userId: number; messageId: number }) {
 		const { userId, messageId } = params;
-		const peer = await this.client.getInputEntity(userId);
+		const peer = await this.getInputPeerForUser(userId);
 		logger.info(`🎁 Transferring gift from msg ${messageId} to user ${userId}`);
 
 		try {

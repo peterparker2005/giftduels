@@ -59,7 +59,6 @@ type GiftStatus string
 const (
 	GiftStatusOwned           GiftStatus = "owned"
 	GiftStatusInGame          GiftStatus = "in_game"
-	GiftStatusLost            GiftStatus = "lost"
 	GiftStatusWithdrawPending GiftStatus = "withdraw_pending"
 	GiftStatusWithdrawn       GiftStatus = "withdrawn"
 )

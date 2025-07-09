@@ -33,11 +33,9 @@ message Gift {
   // Pricing information
   shared.v1.TonAmount price = 10;
 
-  int64 emoji_id = 11;
-
   // Gift status tracking
-  GiftStatus status = 12;
-  google.protobuf.Timestamp withdrawn_at = 13;
+  GiftStatus status = 11;
+  google.protobuf.Timestamp withdrawn_at = 12;
 }
 
 message GiftView {
@@ -47,10 +45,9 @@ message GiftView {
   string slug = 4;
   shared.v1.TonAmount price = 5;
   int32 collectible_id = 6;
-  int64 emoji_id = 7;
-  GiftStatus status = 8;
-  google.protobuf.Timestamp withdrawn_at = 9;
-  repeated GiftAttribute attributes = 10;
+  GiftStatus status = 7;
+  google.protobuf.Timestamp withdrawn_at = 8;
+  repeated GiftAttribute attributes = 9;
 }
 
 message GiftAttribute {

@@ -50,6 +50,8 @@ func (c *AMQPConfig) Build() watermillAmqp.Config {
 			Qos: watermillAmqp.QosConfig{PrefetchCount: 1},
 		},
 		TopologyBuilder: &watermillAmqp.DefaultTopologyBuilder{},
-		Marshaler:       watermillAmqp.DefaultMarshaler{},
+		Marshaler: watermillAmqp.DefaultMarshaler{
+			MessageUUIDHeaderKey: "x-message-id",
+		},
 	}
 }

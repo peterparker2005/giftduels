@@ -11,6 +11,34 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const cancelGiftWithdrawal = `-- name: CancelGiftWithdrawal :one
+UPDATE gifts 
+SET status = 'owned', updated_at = NOW()
+WHERE id = $1 AND status = 'withdraw_pending'
+RETURNING id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, emoji_id, status, created_at, updated_at, withdrawn_at
+`
+
+func (q *Queries) CancelGiftWithdrawal(ctx context.Context, id pgtype.UUID) (Gift, error) {
+	row := q.db.QueryRow(ctx, cancelGiftWithdrawal, id)
+	var i Gift
+	err := row.Scan(
+		&i.ID,
+		&i.TelegramGiftID,
+		&i.CollectibleID,
+		&i.OwnerTelegramID,
+		&i.UpgradeMessageID,
+		&i.Title,
+		&i.Slug,
+		&i.Price,
+		&i.EmojiID,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.WithdrawnAt,
+	)
+	return i, err
+}
+
 const completeGiftWithdrawal = `-- name: CompleteGiftWithdrawal :one
 UPDATE gifts 
 SET status = 'withdrawn', withdrawn_at = NOW(), updated_at = NOW()
@@ -321,6 +349,70 @@ func (q *Queries) GetGiftsByIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]
 	return items, nil
 }
 
+const getUserActiveGifts = `-- name: GetUserActiveGifts :many
+SELECT id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, emoji_id, status, created_at, updated_at, withdrawn_at
+  FROM gifts
+ WHERE owner_telegram_id = $1
+   AND status NOT IN ('withdrawn', 'withdraw_pending')
+ ORDER BY created_at DESC
+ LIMIT  $2
+ OFFSET $3
+`
+
+type GetUserActiveGiftsParams struct {
+	OwnerTelegramID int64
+	Limit           int32
+	Offset          int32
+}
+
+func (q *Queries) GetUserActiveGifts(ctx context.Context, arg GetUserActiveGiftsParams) ([]Gift, error) {
+	rows, err := q.db.Query(ctx, getUserActiveGifts, arg.OwnerTelegramID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Gift
+	for rows.Next() {
+		var i Gift
+		if err := rows.Scan(
+			&i.ID,
+			&i.TelegramGiftID,
+			&i.CollectibleID,
+			&i.OwnerTelegramID,
+			&i.UpgradeMessageID,
+			&i.Title,
+			&i.Slug,
+			&i.Price,
+			&i.EmojiID,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.WithdrawnAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUserActiveGiftsCount = `-- name: GetUserActiveGiftsCount :one
+SELECT COUNT(*)
+  FROM gifts
+ WHERE owner_telegram_id = $1
+   AND status NOT IN ('withdrawn', 'withdraw_pending')
+`
+
+func (q *Queries) GetUserActiveGiftsCount(ctx context.Context, ownerTelegramID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, getUserActiveGiftsCount, ownerTelegramID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getUserGifts = `-- name: GetUserGifts :many
 SELECT id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, emoji_id, status, created_at, updated_at, withdrawn_at
   FROM gifts
@@ -385,7 +477,7 @@ func (q *Queries) GetUserGiftsCount(ctx context.Context, ownerTelegramID int64) 
 
 const markGiftForWithdrawal = `-- name: MarkGiftForWithdrawal :one
 UPDATE gifts 
-SET status = 'withdraw_pending', withdraw_requested = NOW(), updated_at = NOW()
+SET status = 'withdraw_pending', updated_at = NOW()
 WHERE id = $1 AND status = 'owned'
 RETURNING id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, emoji_id, status, created_at, updated_at, withdrawn_at
 `

@@ -8,10 +8,13 @@ const EnvSchema = z.object({
 		.enum(["development", "production", "test"])
 		.default("development"),
 
+	SERVICE_NAME: z.string().default("gifts-to-duels-bot"),
 	// Telegram
 	API_ID: z.string().transform(Number),
 	API_HASH: z.string(),
 	SESSION_STRING: z.string(),
+
+	TELEGRAM_ADMIN_IDS: z.string().transform((ids) => ids.split(",").map(Number)),
 
 	// Amqp
 	AMQP_HOST: z.string(),
@@ -56,11 +59,16 @@ class Config {
 		return this.env.NODE_ENV === "development";
 	}
 
+	get serviceName() {
+		return this.env.SERVICE_NAME;
+	}
+
 	get telegram() {
 		return {
 			apiId: this.env.API_ID,
 			apiHash: this.env.API_HASH,
 			sessionString: this.env.SESSION_STRING,
+			adminIds: this.env.TELEGRAM_ADMIN_IDS,
 		};
 	}
 

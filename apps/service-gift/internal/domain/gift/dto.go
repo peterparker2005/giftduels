@@ -7,10 +7,9 @@ type Gift struct {
 	OwnerTelegramID  int64
 	Status           Status
 	Price            float64
-	EmojiID          int64
 	WithdrawnAt      *time.Time
 	Title, Slug      string
-	CollectibleID    int64
+	CollectibleID    int32
 	UpgradeMessageID int32
 	TelegramGiftID   int64
 	CreatedAt        time.Time

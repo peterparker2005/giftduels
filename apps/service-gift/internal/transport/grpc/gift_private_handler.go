@@ -34,7 +34,7 @@ func (h *giftPrivateHandler) PrivateGetGifts(ctx context.Context, req *giftv1.Pr
 
 	giftProtos := make([]*giftv1.Gift, len(gifts))
 	for i, g := range gifts {
-		giftProtos[i] = domainGift.ConvertDomainGiftToProto(g)
+		giftProtos[i] = domainGift.DomainGiftToProto(g)
 	}
 
 	return &giftv1.PrivateGetGiftsResponse{
@@ -53,7 +53,7 @@ func (h *giftPrivateHandler) GetUserGifts(ctx context.Context, req *giftv1.GetUs
 	// Convert domain gifts to protobuf
 	giftViews := make([]*giftv1.Gift, len(domainGifts.Gifts))
 	for i, g := range domainGifts.Gifts {
-		giftViews[i] = domainGift.ConvertDomainGiftToProto(g)
+		giftViews[i] = domainGift.DomainGiftToProto(g)
 	}
 
 	return &giftv1.GetUserGiftsResponse{
@@ -74,7 +74,7 @@ func (h *giftPrivateHandler) StakeGift(ctx context.Context, req *giftv1.StakeGif
 	}
 
 	return &giftv1.StakeGiftResponse{
-		Gift: domainGift.ConvertDomainGiftToProto(g),
+		Gift: domainGift.DomainGiftToProto(g),
 	}, nil
 }
 
@@ -85,7 +85,7 @@ func (h *giftPrivateHandler) TransferGiftToUser(ctx context.Context, req *giftv1
 	}
 
 	return &giftv1.TransferGiftToUserResponse{
-		Gift: domainGift.ConvertDomainGiftToProto(g),
+		Gift: domainGift.DomainGiftToProto(g),
 	}, nil
 }
 
@@ -96,6 +96,6 @@ func (h *giftPrivateHandler) PrivateGetGift(ctx context.Context, req *giftv1.Pri
 	}
 
 	return &giftv1.PrivateGetGiftResponse{
-		Gift: domainGift.ConvertDomainGiftToProto(g),
+		Gift: domainGift.DomainGiftToProto(g),
 	}, nil
 }

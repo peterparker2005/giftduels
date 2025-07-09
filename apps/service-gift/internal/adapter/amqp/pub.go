@@ -13,6 +13,6 @@ func ProvidePublisher(
 	cfg events.AMQPConfig,
 ) (message.Publisher, error) {
 	return amqp.NewPublisherWithConnection(
-		cfg.Build(), logger.NewWatermill(log.Zap()), conn,
+		cfg.Build(), logger.NewWatermill(log), conn,
 	)
 }

@@ -1,6 +1,6 @@
 -- 1. статусы
 CREATE TYPE gift_status AS ENUM (
-  'owned', 'in_game', 'lost',
+  'owned', 'in_game',
   'withdraw_pending', 'withdrawn'
 );
 

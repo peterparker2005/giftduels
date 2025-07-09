@@ -10,6 +10,6 @@ import (
 func ProvideConnection(cfg *config.Config, log *logger.Logger) (*amqp.ConnectionWrapper, error) {
 	return amqp.NewConnection(
 		amqp.ConnectionConfig{AmqpURI: cfg.AMQP.Address()},
-		logger.NewWatermill(log.Zap()),
+		logger.NewWatermill(log),
 	)
 }

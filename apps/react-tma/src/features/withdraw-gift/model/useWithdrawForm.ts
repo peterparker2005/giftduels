@@ -1,5 +1,7 @@
 import { GiftView } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
+import { useExecuteWithdrawMutation } from "@/shared/api/queries/useExecuteWithdrawMutation";
 
 export interface WithdrawFormData {
 	selectedGifts: string[]; // giftIds
@@ -7,7 +9,8 @@ export interface WithdrawFormData {
 
 export const useWithdrawForm = (gifts: GiftView[] = []) => {
 	const [selectedGifts, setSelectedGifts] = useState<string[]>([]);
-
+	const { mutate } = useExecuteWithdrawMutation();
+	const queryClient = useQueryClient();
 	const isGiftSelected = useCallback(
 		(giftId: string) => selectedGifts.includes(giftId),
 		[selectedGifts],
@@ -39,9 +42,14 @@ export const useWithdrawForm = (gifts: GiftView[] = []) => {
 	const selectedCount = selectedGifts.length;
 
 	const handleSubmit = useCallback(() => {
-		// TODO: Implement withdrawal logic
-		console.log("Withdrawing gifts:", selectedGifts);
-	}, [selectedGifts]);
+		mutate(selectedGifts, {
+			onSuccess: (data) => {
+				console.log("Withdrawal successful", data);
+				clearSelection();
+				queryClient.invalidateQueries({ queryKey: ["gifts"] });
+			},
+		});
+	}, [mutate, selectedGifts, clearSelection, queryClient]);
 
 	return {
 		selectedGifts,

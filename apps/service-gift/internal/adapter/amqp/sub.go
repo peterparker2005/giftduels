@@ -16,7 +16,7 @@ func ProvideSubFactory(
 ) SubFactory {
 	return func(cfg events.AMQPConfig) (message.Subscriber, error) {
 		return amqp.NewSubscriberWithConnection(
-			cfg.Build(), logger.NewWatermill(log.Zap()), conn,
+			cfg.Build(), logger.NewWatermill(log), conn,
 		)
 	}
 }

@@ -36,7 +36,7 @@ func (h *giftPublicHandler) GetGift(ctx context.Context, req *giftv1.GetGiftRequ
 	}
 
 	return &giftv1.GetGiftResponse{
-		Gift: domainGift.ConvertDomainGiftToProtoView(g),
+		Gift: domainGift.DomainGiftToProtoView(g),
 	}, nil
 }
 
@@ -46,18 +46,18 @@ func (h *giftPublicHandler) GetGifts(ctx context.Context, req *giftv1.GetGiftsRe
 		return nil, err
 	}
 
+	log := h.logger.With(zap.Int64("telegramUserID", telegramUserID))
+
 	pagination := shared.NewPageRequest(req.GetPagination().GetPage(), req.GetPagination().GetPageSize())
-	h.logger.Info("GetGifts", zap.Any("pagination", pagination))
-	domainGifts, err := h.giftService.GetUserGifts(ctx, telegramUserID, pagination)
+	domainGifts, err := h.giftService.GetUserActiveGifts(ctx, telegramUserID, pagination)
 	if err != nil {
-		h.logger.Error("GetGifts", zap.Error(err))
+		log.Error("Failed to get user active gifts", zap.Error(err))
 		return nil, err
 	}
 
 	giftViews := make([]*giftv1.GiftView, len(domainGifts.Gifts))
 	for i, g := range domainGifts.Gifts {
-		h.logger.Info("GetGifts", zap.Any("domainGift", g))
-		giftViews[i] = domainGift.ConvertDomainGiftToProtoView(g)
+		giftViews[i] = domainGift.DomainGiftToProtoView(g)
 	}
 
 	return &giftv1.GetGiftsResponse{
@@ -72,21 +72,22 @@ func (h *giftPublicHandler) GetGifts(ctx context.Context, req *giftv1.GetGiftsRe
 	}, nil
 }
 
-func (h *giftPublicHandler) WithdrawGift(ctx context.Context, req *giftv1.WithdrawGiftRequest) (*giftv1.WithdrawGiftResponse, error) {
-	_, err := h.giftService.WithdrawGift(ctx, req.GetGiftId().Value)
+func (h *giftPublicHandler) ExecuteWithdraw(ctx context.Context, req *giftv1.ExecuteWithdrawRequest) (*giftv1.ExecuteWithdrawResponse, error) {
+	ids := make([]string, len(req.GetGiftIds()))
+	for i, id := range req.GetGiftIds() {
+		ids[i] = id.Value
+	}
+	_, err := h.giftService.ExecuteWithdraw(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
 
 	// For now, return success response
 	// TODO: implement actual withdrawal logic based on method
-	return &giftv1.WithdrawGiftResponse{
-		Result: &giftv1.WithdrawGiftResponse_Success{
-			Success: &sharedv1.SuccessResponse{
-				Success: true,
-				Message: "Withdrawal request received",
-			},
+	return &giftv1.ExecuteWithdrawResponse{
+		Success: &sharedv1.SuccessResponse{
+			Success: true,
+			Message: "Withdrawal request received",
 		},
-		WithdrawalId: "temp-withdrawal-id", // TODO: generate proper withdrawal ID
 	}, nil
 }

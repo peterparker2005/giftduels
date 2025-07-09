@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/adapter/pg/sqlc"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
@@ -19,6 +20,10 @@ type GiftRepository struct {
 
 func NewGiftRepo(pool *pgxpool.Pool, logger *logger.Logger) gift.GiftRepository {
 	return &GiftRepository{pool: pool, q: sqlc.New(pool), logger: logger}
+}
+
+func (r *GiftRepository) WithTx(tx pgx.Tx) gift.GiftRepository {
+	return &GiftRepository{pool: r.pool, q: r.q.WithTx(tx), logger: r.logger}
 }
 
 func (r *GiftRepository) GetGiftByID(ctx context.Context, id string) (*gift.Gift, error) {
@@ -42,6 +47,35 @@ func (r *GiftRepository) GetUserGifts(ctx context.Context, limit, offset int32, 
 	}
 
 	rows, err := r.q.GetUserGifts(ctx, sqlc.GetUserGiftsParams{
+		Limit:           limit,
+		Offset:          offset,
+		OwnerTelegramID: ownerTelegramID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]*gift.Gift, len(rows))
+	for i, row := range rows {
+		attrs, err := r.q.GetGiftAttributes(ctx, row.ID)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = GiftToDomain(row, attrs)
+	}
+	return &gift.GetUserGiftsResult{
+		Gifts: out,
+		Total: total,
+	}, nil
+}
+
+func (r *GiftRepository) GetUserActiveGifts(ctx context.Context, limit, offset int32, ownerTelegramID int64) (*gift.GetUserGiftsResult, error) {
+	total, err := r.q.GetUserActiveGiftsCount(ctx, ownerTelegramID)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := r.q.GetUserActiveGifts(ctx, sqlc.GetUserActiveGiftsParams{
 		Limit:           limit,
 		Offset:          offset,
 		OwnerTelegramID: ownerTelegramID,
@@ -93,6 +127,18 @@ func (r *GiftRepository) UpdateGiftOwner(ctx context.Context, id string, ownerTe
 
 func (r *GiftRepository) MarkGiftForWithdrawal(ctx context.Context, id string) (*gift.Gift, error) {
 	dbGift, err := r.q.MarkGiftForWithdrawal(ctx, mustPgUUID(id))
+	if err != nil {
+		return nil, err
+	}
+	attrs, err := r.q.GetGiftAttributes(ctx, dbGift.ID)
+	if err != nil {
+		return nil, err
+	}
+	return GiftToDomain(dbGift, attrs), nil
+}
+
+func (r *GiftRepository) CancelGiftWithdrawal(ctx context.Context, id string) (*gift.Gift, error) {
+	dbGift, err := r.q.CancelGiftWithdrawal(ctx, mustPgUUID(id))
 	if err != nil {
 		return nil, err
 	}

@@ -23,33 +23,45 @@ func AttributeTypeFromProto(t giftv1.GiftAttributeType) (AttributeType, error) {
 	}
 }
 
-// ConvertDomainGiftToProto converts domain Gift to protobuf Gift
-func ConvertDomainGiftToProto(domainGift *Gift) *giftv1.Gift {
+func DomainAttributesToProto(attributes []Attribute) []*giftv1.GiftAttribute {
+	protoAttributes := make([]*giftv1.GiftAttribute, len(attributes))
+	for i, attr := range attributes {
+		protoAttributes[i] = &giftv1.GiftAttribute{
+			Type:           DomainAttributeTypeToProto(attr.Type),
+			Name:           attr.Name,
+			RarityPerMille: attr.RarityPerMille,
+		}
+	}
+	return protoAttributes
+}
+
+func DomainAttributeTypeToProto(attributeType AttributeType) giftv1.GiftAttributeType {
+	switch attributeType {
+	case AttributeTypeModel:
+		return giftv1.GiftAttributeType_GIFT_ATTRIBUTE_TYPE_MODEL
+	case AttributeTypeSymbol:
+		return giftv1.GiftAttributeType_GIFT_ATTRIBUTE_TYPE_SYMBOL
+	case AttributeTypeBackdrop:
+		return giftv1.GiftAttributeType_GIFT_ATTRIBUTE_TYPE_BACKDROP
+	default:
+		return giftv1.GiftAttributeType_GIFT_ATTRIBUTE_TYPE_UNSPECIFIED
+	}
+}
+
+// DomainGiftToProto s domain Gift to protobuf Gift
+func DomainGiftToProto(domainGift *Gift) *giftv1.Gift {
 	protoGift := &giftv1.Gift{
 		GiftId:            &sharedv1.GiftId{Value: domainGift.ID},
 		OwnerTelegramId:   &sharedv1.TelegramUserId{Value: domainGift.OwnerTelegramID},
-		Status:            ConvertDomainStatusToProto(domainGift.Status),
+		Status:            DomainStatusToProto(domainGift.Status),
 		TelegramMessageId: domainGift.UpgradeMessageID,
 		Date:              timestamppb.New(domainGift.CreatedAt),
 		Price:             &sharedv1.TonAmount{Value: domainGift.Price},
-		EmojiId:           domainGift.EmojiID,
-	}
-
-	// Handle optional fields
-	if domainGift.TelegramGiftID != 0 {
-		protoGift.TelegramGiftId = &sharedv1.GiftTelegramId{Value: domainGift.TelegramGiftID}
-	}
-
-	if domainGift.CollectibleID != 0 {
-		protoGift.CollectibleId = int32(domainGift.CollectibleID)
-	}
-
-	if domainGift.Title != "" {
-		protoGift.Title = domainGift.Title
-	}
-
-	if domainGift.Slug != "" {
-		protoGift.Slug = domainGift.Slug
+		TelegramGiftId:    &sharedv1.GiftTelegramId{Value: domainGift.TelegramGiftID},
+		CollectibleId:     domainGift.CollectibleID,
+		Title:             domainGift.Title,
+		Slug:              domainGift.Slug,
+		Attributes:        DomainAttributesToProto(domainGift.Attributes),
 	}
 
 	if domainGift.WithdrawnAt != nil {
@@ -59,24 +71,17 @@ func ConvertDomainGiftToProto(domainGift *Gift) *giftv1.Gift {
 	return protoGift
 }
 
-// ConvertDomainGiftToProtoView converts domain Gift to protobuf GiftView
-func ConvertDomainGiftToProtoView(domainGift *Gift) *giftv1.GiftView {
+// DomainGiftToProtoView s domain Gift to protobuf GiftView
+func DomainGiftToProtoView(domainGift *Gift) *giftv1.GiftView {
 	protoView := &giftv1.GiftView{
-		GiftId:  &sharedv1.GiftId{Value: domainGift.ID},
-		Status:  ConvertDomainStatusToProto(domainGift.Status),
-		Title:   domainGift.Title,
-		Slug:    domainGift.Slug,
-		Price:   &sharedv1.TonAmount{Value: domainGift.Price},
-		EmojiId: domainGift.EmojiID,
-	}
-
-	// Handle optional fields
-	if domainGift.TelegramGiftID != 0 {
-		protoView.TelegramGiftId = &sharedv1.GiftTelegramId{Value: domainGift.TelegramGiftID}
-	}
-
-	if domainGift.CollectibleID != 0 {
-		protoView.CollectibleId = int32(domainGift.CollectibleID)
+		GiftId:         &sharedv1.GiftId{Value: domainGift.ID},
+		Status:         DomainStatusToProto(domainGift.Status),
+		Title:          domainGift.Title,
+		Slug:           domainGift.Slug,
+		Price:          &sharedv1.TonAmount{Value: domainGift.Price},
+		Attributes:     DomainAttributesToProto(domainGift.Attributes),
+		TelegramGiftId: &sharedv1.GiftTelegramId{Value: domainGift.TelegramGiftID},
+		CollectibleId:  domainGift.CollectibleID,
 	}
 
 	if domainGift.WithdrawnAt != nil {
@@ -86,8 +91,8 @@ func ConvertDomainGiftToProtoView(domainGift *Gift) *giftv1.GiftView {
 	return protoView
 }
 
-// ConvertDomainStatusToProto converts domain Status to protobuf GiftStatus
-func ConvertDomainStatusToProto(domainStatus Status) giftv1.GiftStatus {
+// DomainStatusToProto s domain Status to protobuf GiftStatus
+func DomainStatusToProto(domainStatus Status) giftv1.GiftStatus {
 	switch domainStatus {
 	case StatusPending:
 		return giftv1.GiftStatus_GIFT_STATUS_OWNED

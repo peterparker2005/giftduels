@@ -4,7 +4,7 @@ import (
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/adapter/pg"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/app"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/config"
-	"github.com/peterparker2005/giftduels/apps/service-gift/internal/event"
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/service/eventhandler"
 	"github.com/spf13/cobra"
 	"go.uber.org/fx"
 )
@@ -23,7 +23,7 @@ func runWorker(cfg *config.Config) error {
 	app := fx.New(
 		app.LoggerModule,
 		pg.Module,
-		event.Module,
+		eventhandler.Module,
 		fx.Provide(func() *config.Config { return cfg }),
 	)
 

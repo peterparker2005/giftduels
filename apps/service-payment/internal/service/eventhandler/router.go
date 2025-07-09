@@ -14,7 +14,7 @@ func ProvideRouter(
 	pub message.Publisher,
 	poisonKey string, // payment.events.poison и т.п.
 ) (*message.Router, error) {
-	r, err := message.NewRouter(message.RouterConfig{}, logger.NewWatermill(log.Zap()))
+	r, err := message.NewRouter(message.RouterConfig{}, logger.NewWatermill(log))
 	if err != nil {
 		return nil, err
 	}

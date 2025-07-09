@@ -7,18 +7,18 @@ import (
 
 // WatermillLogger адаптер zap логгера для Watermill
 type WatermillLogger struct {
-	logger *zap.SugaredLogger
+	logger *Logger
 }
 
 // NewWatermillLogger создает новый адаптер логгера
-func NewWatermill(logger *zap.Logger) watermill.LoggerAdapter {
+func NewWatermill(logger *Logger) watermill.LoggerAdapter {
 	return &WatermillLogger{
-		logger: logger.WithOptions(zap.AddCallerSkip(1)).Sugar(),
+		logger: logger,
 	}
 }
 
 func (l *WatermillLogger) Error(msg string, err error, fields watermill.LogFields) {
-	l.logger.With(l.convertFields(fields)...).With("error", err).Error(msg)
+	l.logger.With(l.convertFields(fields)...).With(zap.Error(err)).Error(msg)
 }
 
 func (l *WatermillLogger) Info(msg string, fields watermill.LogFields) {
@@ -39,10 +39,10 @@ func (l *WatermillLogger) With(fields watermill.LogFields) watermill.LoggerAdapt
 	}
 }
 
-func (l *WatermillLogger) convertFields(fields watermill.LogFields) []interface{} {
-	var zapFields []interface{}
+func (l *WatermillLogger) convertFields(fields watermill.LogFields) []zap.Field {
+	var zapFields []zap.Field
 	for key, value := range fields {
-		zapFields = append(zapFields, key, value)
+		zapFields = append(zapFields, zap.Any(key, value))
 	}
 	return zapFields
 }

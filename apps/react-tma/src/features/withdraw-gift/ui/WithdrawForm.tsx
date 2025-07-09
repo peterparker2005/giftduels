@@ -8,10 +8,9 @@ import { WithdrawGiftCard } from "./WithdrawGiftCard";
 
 interface WithdrawFormProps {
 	gifts: GiftView[];
-	onSubmit?: (selectedGiftIds: string[]) => void;
 }
 
-export const WithdrawForm = ({ gifts, onSubmit }: WithdrawFormProps) => {
+export const WithdrawForm = ({ gifts }: WithdrawFormProps) => {
 	const form = useWithdrawForm(gifts);
 	const {
 		mutate: previewWithdraw,
@@ -22,7 +21,6 @@ export const WithdrawForm = ({ gifts, onSubmit }: WithdrawFormProps) => {
 	const handleFormSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (form.hasSelection) {
-			onSubmit?.(form.selectedGifts);
 			form.handleSubmit();
 		}
 	};
