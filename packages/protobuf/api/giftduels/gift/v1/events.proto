@@ -31,7 +31,8 @@ message GiftWithdrawRequestedEvent {
   shared.v1.GiftTelegramId telegram_gift_id = 5;
   int32 collectible_id = 3;
   int32 upgrade_message_id = 4;
-  double price = 6;
+  shared.v1.TonAmount price = 6;
+  shared.v1.TonAmount commission_amount = 7;
 }
 
 // Event emitted when gift withdrawal fails and needs to be rolled back
@@ -41,7 +42,8 @@ message GiftWithdrawFailedEvent {
   shared.v1.GiftTelegramId telegram_gift_id = 3;
   int32 collectible_id = 4;
   int32 upgrade_message_id = 5;
-  double price = 6;
-  string error_reason = 7; // Reason for withdrawal failure
-  int32 attempts_made = 8; // Number of attempts made before failure
+  shared.v1.TonAmount price = 6;
+  shared.v1.TonAmount commission_amount = 7;
+  string error_reason = 8; // Reason for withdrawal failure
+  int32 attempts_made = 9; // Number of attempts made before failure
 }

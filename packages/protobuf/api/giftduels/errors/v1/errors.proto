@@ -4,106 +4,46 @@ package giftduels.errors.v1;
 
 option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/errors/v1;errorsv1";
 
-// ===== ERROR CATEGORIES =====
-
-enum ErrorCategory {
-  ERROR_CATEGORY_UNSPECIFIED = 0;
-  ERROR_CATEGORY_VALIDATION = 1;
-  ERROR_CATEGORY_AUTHENTICATION = 2;
-  ERROR_CATEGORY_AUTHORIZATION = 3;
-  ERROR_CATEGORY_NOT_FOUND = 4;
-  ERROR_CATEGORY_CONFLICT = 5;
-  ERROR_CATEGORY_RESOURCE = 6;
-  ERROR_CATEGORY_BUSINESS_LOGIC = 7;
-  ERROR_CATEGORY_EXTERNAL_SERVICE = 8;
-  ERROR_CATEGORY_INTERNAL = 9;
-}
-
-// ===== DETAILED ERROR CODES =====
-
 enum ErrorCode {
   ERROR_CODE_UNSPECIFIED = 0;
 
   // Validation errors (100-199)
   ERROR_CODE_VALIDATION_GENERAL = 100;
   ERROR_CODE_REQUIRED_FIELD = 101;
-  ERROR_CODE_INVALID_FORMAT = 102;
-  ERROR_CODE_VALUE_TOO_SMALL = 103;
-  ERROR_CODE_VALUE_TOO_LARGE = 104;
-  ERROR_CODE_INVALID_EMAIL = 105;
-  ERROR_CODE_INVALID_URL = 106;
-  ERROR_CODE_INVALID_UUID = 107;
-  ERROR_CODE_INVALID_ENUM_VALUE = 108;
-  ERROR_CODE_FIELD_TOO_SHORT = 109;
-  ERROR_CODE_FIELD_TOO_LONG = 110;
 
   // Authentication errors (200-299)
   ERROR_CODE_UNAUTHORIZED = 200;
-  ERROR_CODE_INVALID_TOKEN = 201;
-  ERROR_CODE_TOKEN_EXPIRED = 202;
-  ERROR_CODE_INVALID_CREDENTIALS = 203;
-  ERROR_CODE_ACCOUNT_SUSPENDED = 204;
 
   // Authorization errors (300-399)
   ERROR_CODE_FORBIDDEN = 300;
-  ERROR_CODE_INSUFFICIENT_PERMISSIONS = 301;
-  ERROR_CODE_RESOURCE_ACCESS_DENIED = 302;
-  ERROR_CODE_GIFT_NOT_OWNED = 303;
-  ERROR_CODE_DUEL_ACCESS_DENIED = 304;
+  ERROR_CODE_GIFT_NOT_OWNED = 301;
 
   // Not found errors (400-499)
   ERROR_CODE_NOT_FOUND = 400;
-  ERROR_CODE_USER_NOT_FOUND = 401;
-  ERROR_CODE_GIFT_NOT_FOUND = 402;
-  ERROR_CODE_DUEL_NOT_FOUND = 403;
-  ERROR_CODE_TRANSACTION_NOT_FOUND = 404;
-  ERROR_CODE_INVOICE_NOT_FOUND = 405;
+  ERROR_CODE_GIFT_NOT_FOUND = 401;
 
   // Conflict errors (500-599)
   ERROR_CODE_ALREADY_EXISTS = 500;
-  ERROR_CODE_USER_ALREADY_EXISTS = 501;
-  ERROR_CODE_DUEL_ALREADY_JOINED = 502;
-  ERROR_CODE_GIFT_ALREADY_STAKED = 503;
-  ERROR_CODE_INVALID_STATE_TRANSITION = 504;
+  ERROR_CODE_GIFT_ALREADY_STAKED = 501;
 
   // Resource errors (600-699)
-  ERROR_CODE_INSUFFICIENT_BALANCE = 600;
-  ERROR_CODE_INSUFFICIENT_STARS = 601;
-  ERROR_CODE_INSUFFICIENT_TON = 602;
-  ERROR_CODE_GIFT_NOT_AVAILABLE = 603;
-  ERROR_CODE_DUEL_FULL = 604;
-  ERROR_CODE_RATE_LIMIT_EXCEEDED = 605;
+  ERROR_CODE_RATE_LIMIT_EXCEEDED = 600;
+  ERROR_CODE_INSUFFICIENT_TON = 601;
+  ERROR_CODE_GIFT_NOT_AVAILABLE = 602;
+  ERROR_CODE_DUEL_FULL = 603;
 
-  // Business logic errors (700-799)
-  ERROR_CODE_GAME_ALREADY_STARTED = 700;
-  ERROR_CODE_GAME_ALREADY_FINISHED = 701;
-  ERROR_CODE_INVALID_MOVE = 702;
-  ERROR_CODE_TIMEOUT_EXCEEDED = 703;
-  ERROR_CODE_MINIMUM_STAKE_NOT_MET = 704;
-  ERROR_CODE_MAXIMUM_STAKE_EXCEEDED = 705;
-
-  // External service errors (800-899)
-  ERROR_CODE_TELEGRAM_API_ERROR = 800;
-  ERROR_CODE_TON_BLOCKCHAIN_ERROR = 801;
-  ERROR_CODE_PAYMENT_PROVIDER_ERROR = 802;
-  ERROR_CODE_EXTERNAL_TIMEOUT = 803;
-
-  // Internal errors (900-999)
-  ERROR_CODE_INTERNAL = 900;
-  ERROR_CODE_DATABASE_ERROR = 901;
-  ERROR_CODE_SERVICE_UNAVAILABLE = 902;
-  ERROR_CODE_CONFIGURATION_ERROR = 903;
+  // Internal errors (700-799)
+  ERROR_CODE_INTERNAL = 700;
+  ERROR_CODE_DATABASE_ERROR = 701;
+  ERROR_CODE_SERVICE_UNAVAILABLE = 702;
 }
 
 // ===== ERROR DETAILS =====
 
 message ErrorDetail {
   ErrorCode code = 1;
-  ErrorCategory category = 2;
   string message = 3; // Human-readable error message
   string field = 4; // Field name for validation errors
-  ErrorContext context = 5; // Additional context
-  repeated ErrorDetail nested_errors = 6; // For grouped errors
 }
 
 message ErrorContext {
@@ -113,33 +53,6 @@ message ErrorContext {
   string resource_type = 4; // Type of resource (gift, duel, user, etc.)
 }
 
-// ===== ERROR RESPONSES =====
-
 message ErrorResponse {
-  int32 http_status = 1; // HTTP status code
-  string error_id = 2; // Unique error identifier for tracking
-  repeated ErrorDetail details = 3; // List of error details
-  string user_message = 4; // User-friendly message
-  string developer_message = 5; // Technical message for developers
-  string documentation_url = 6; // Link to error documentation
-}
-
-// ===== ERROR SEVERITY =====
-
-enum ErrorSeverity {
-  ERROR_SEVERITY_UNSPECIFIED = 0;
-  ERROR_SEVERITY_LOW = 1; // Warnings, non-critical issues
-  ERROR_SEVERITY_MEDIUM = 2; // User errors, recoverable issues
-  ERROR_SEVERITY_HIGH = 3; // System errors, need attention
-  ERROR_SEVERITY_CRITICAL = 4; // Service outages, data corruption
-}
-
-message ErrorReport {
-  string error_id = 1;
-  ErrorSeverity severity = 2;
-  repeated ErrorDetail details = 3;
-  ErrorContext context = 4;
-  string timestamp = 5; // ISO 8601 timestamp
-  string user_id = 6;
-  string service_name = 7;
+  repeated ErrorDetail details = 1; // List of error details
 }

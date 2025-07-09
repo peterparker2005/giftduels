@@ -44,32 +44,14 @@ func (h *PaymentPublicHandler) GetBalance(ctx context.Context, req *emptypb.Empt
 	}, nil
 }
 
-// TODO: Can have better mapping
 func (h *PaymentPublicHandler) PreviewWithdraw(ctx context.Context, req *paymentv1.PreviewWithdrawRequest) (*paymentv1.PreviewWithdrawResponse, error) {
-	giftIDs := make([]string, len(req.GetGiftIds()))
-	for i, giftID := range req.GetGiftIds() {
-		giftIDs[i] = giftID.GetValue()
-	}
-	resp, err := h.service.PreviewWithdraw(ctx, giftIDs)
+	tonAmount := req.GetTonAmount().GetValue()
+	resp, err := h.service.PreviewWithdraw(ctx, tonAmount)
 	if err != nil {
 		return nil, err
 	}
 
-	giftFees := make([]*paymentv1.GiftFee, len(resp.Fees))
-	for i, fee := range resp.Fees {
-		giftFees[i] = &paymentv1.GiftFee{
-			GiftId: &sharedv1.GiftId{Value: fee.GiftID},
-			StarsFee: &sharedv1.StarsAmount{
-				Value: uint32(fee.StarsFee),
-			},
-			TonFee: &sharedv1.TonAmount{
-				Value: fee.TonFee,
-			},
-		}
-	}
-
 	return &paymentv1.PreviewWithdrawResponse{
-		Fees: giftFees,
 		TotalStarsFee: &sharedv1.StarsAmount{
 			Value: resp.TotalStarsFee,
 		},

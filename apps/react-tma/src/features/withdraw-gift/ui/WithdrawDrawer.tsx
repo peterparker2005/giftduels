@@ -17,7 +17,7 @@ export const WithdrawDrawer = ({ children }: WithdrawDrawerProps) => {
 	return (
 		<Drawer>
 			<DrawerTrigger asChild>{children}</DrawerTrigger>
-			<DrawerContent className="h-[80vh] px-4 pt-4">
+			<DrawerContent className="h-[90vh] px-4 pt-4">
 				<DrawerTitle>Select gifts for withdrawal</DrawerTitle>
 
 				{isLoading ? (

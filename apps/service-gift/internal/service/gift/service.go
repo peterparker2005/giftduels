@@ -10,8 +10,10 @@ import (
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/adapter/pg"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
 	giftEvents "github.com/peterparker2005/giftduels/packages/events/gift"
+	"github.com/peterparker2005/giftduels/packages/grpc-go/clients"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	giftv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1"
+	paymentv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/payment/v1"
 	sharedv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/shared/v1"
 	"github.com/peterparker2005/giftduels/packages/shared"
 	"go.uber.org/zap"
@@ -19,13 +21,14 @@ import (
 )
 
 type Service struct {
-	txMgr pg.TxManager
-	repo  gift.GiftRepository
-	log   *logger.Logger
+	txMgr                pg.TxManager
+	repo                 gift.GiftRepository
+	log                  *logger.Logger
+	paymentPrivateClient paymentv1.PaymentPrivateServiceClient
 }
 
-func New(repo gift.GiftRepository, txMgr pg.TxManager, log *logger.Logger) *Service {
-	return &Service{repo: repo, txMgr: txMgr, log: log}
+func New(repo gift.GiftRepository, txMgr pg.TxManager, log *logger.Logger, clients *clients.Clients) *Service {
+	return &Service{repo: repo, txMgr: txMgr, log: log, paymentPrivateClient: clients.Payment.Private}
 }
 
 func (s *Service) GetGiftByID(ctx context.Context, id string) (*gift.Gift, error) {
@@ -102,70 +105,96 @@ func (s *Service) TransferGiftToUser(ctx context.Context, giftID string, telegra
 	return gift, nil
 }
 
-func (s *Service) ExecuteWithdraw(ctx context.Context, giftIDs []string) (*gift.Gift, error) {
+func (s *Service) ExecuteWithdraw(ctx context.Context, telegramUserID int64, giftIDs []string) ([]*gift.Gift, error) {
 	log := s.log.With(zap.Strings("giftIDs", giftIDs))
+
+	// 2) Начинаем транзакцию, чтобы сохранить пометки и публиковать события
 	tx, err := s.txMgr.BeginTx(ctx)
 	if err != nil {
 		return nil, err
 	}
+
+	var commitErr error
 	defer func() {
-		if err != nil {
-			err = tx.Rollback(ctx)
-			if err != nil {
-				log.Error("Failed to rollback transaction", zap.Error(err))
+		if commitErr != nil {
+			if rbErr := tx.Rollback(ctx); rbErr != nil {
+				log.Error("rollback failed", zap.Error(rbErr))
 			}
 		}
 	}()
 
 	repo := s.repo.WithTx(tx)
-	gift, err := repo.MarkGiftForWithdrawal(ctx, giftIDs[0])
-	if err != nil {
-		log.Error("Failed to mark gift for withdrawal", zap.Error(err))
-		return nil, err
-	}
 
+	// готовим Watermill-паблишер
 	sqlPub, err := sql.NewPublisher(
 		s.txMgr.Sql(),
-		sql.PublisherConfig{
-			SchemaAdapter: sql.DefaultPostgreSQLSchema{},
-		},
+		sql.PublisherConfig{SchemaAdapter: sql.DefaultPostgreSQLSchema{}},
 		logger.NewWatermill(s.log),
 	)
 	if err != nil {
-		log.Error("Failed to create publisher", zap.Error(err))
+		commitErr = err
+		log.Error("publisher init failed", zap.Error(err))
 		return nil, err
 	}
-
 	fwdPub := forwarder.NewPublisher(sqlPub, forwarder.PublisherConfig{
 		ForwarderTopic: giftEvents.SqlOutboxTopic,
 	})
 
-	protoGift := &giftv1.GiftWithdrawRequestedEvent{
-		GiftId:           &sharedv1.GiftId{Value: gift.ID},
-		OwnerTelegramId:  &sharedv1.TelegramUserId{Value: gift.OwnerTelegramID},
-		TelegramGiftId:   &sharedv1.GiftTelegramId{Value: gift.TelegramGiftID},
-		CollectibleId:    int32(gift.CollectibleID),
-		UpgradeMessageId: gift.UpgradeMessageID,
-		Price:            gift.Price,
-	}
-	payload, err := proto.Marshal(protoGift)
-	if err != nil {
-		log.Error("Failed to marshal gift withdraw requested event", zap.Error(err))
-		return nil, err
-	}
-	msg := message.NewMessage(watermill.NewUUID(), payload)
-	if err = fwdPub.Publish(giftEvents.TopicGiftWithdrawRequested.String(), msg); err != nil {
-		log.Error("Failed to publish gift withdraw requested event", zap.Error(err))
-		return nil, err
+	var result []*gift.Gift
+	for _, giftID := range giftIDs {
+		// 3) для каждого подарка списываем комиссию и получаем её величину
+		commResp, err := s.paymentPrivateClient.SpendWithdrawalCommission(ctx, &paymentv1.SpendWithdrawalCommissionRequest{
+			TelegramUserId: &sharedv1.TelegramUserId{Value: telegramUserID},
+			TonAmount:      &sharedv1.TonAmount{Value: 1},
+		})
+		if err != nil {
+			commitErr = err
+			log.Error("failed to spend withdrawal commission", zap.Error(err))
+			return nil, err
+		}
+		commissionAmt := commResp.CommissionAmount.GetValue()
+
+		// 4) помечаем подарок на вывод и сохраняем commissionAmount в БД
+		g, err := repo.MarkGiftForWithdrawal(ctx, giftID)
+		if err != nil {
+			commitErr = err
+			log.Error("failed to mark gift for withdrawal", zap.Error(err))
+			return nil, err
+		}
+		result = append(result, g)
+
+		// 5) публикуем событие с правильным полем CommissionAmount
+		ev := &giftv1.GiftWithdrawRequestedEvent{
+			GiftId:           &sharedv1.GiftId{Value: g.ID},
+			OwnerTelegramId:  &sharedv1.TelegramUserId{Value: g.OwnerTelegramID},
+			TelegramGiftId:   &sharedv1.GiftTelegramId{Value: g.TelegramGiftID},
+			CollectibleId:    int32(g.CollectibleID),
+			UpgradeMessageId: g.UpgradeMessageID,
+			Price:            &sharedv1.TonAmount{Value: g.Price},
+			CommissionAmount: &sharedv1.TonAmount{Value: commissionAmt},
+		}
+		payload, err := proto.Marshal(ev)
+		if err != nil {
+			commitErr = err
+			log.Error("marshal event failed", zap.Error(err))
+			return nil, err
+		}
+		msg := message.NewMessage(watermill.NewUUID(), payload)
+		if err = fwdPub.Publish(giftEvents.TopicGiftWithdrawRequested.String(), msg); err != nil {
+			commitErr = err
+			log.Error("publish event failed", zap.Error(err))
+			return nil, err
+		}
 	}
 
-	err = tx.Commit(ctx)
-	if err != nil {
-		log.Error("Failed to commit transaction", zap.Error(err))
-		return nil, err
+	// 6) коммитим всё
+	commitErr = tx.Commit(ctx)
+	if commitErr != nil {
+		log.Error("transaction commit failed", zap.Error(commitErr))
+		return nil, commitErr
 	}
 
-	return gift, nil
+	return result, nil
 }
 
 func (s *Service) GetGiftsByIDs(ctx context.Context, giftIDs []string) ([]*gift.Gift, error) {

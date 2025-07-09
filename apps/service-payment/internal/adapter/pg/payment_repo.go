@@ -4,13 +4,14 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/adapter/pg/sqlc"
 	payment "github.com/peterparker2005/giftduels/apps/service-payment/internal/domain/payment"
+	"github.com/peterparker2005/giftduels/packages/errors/pkg/errors"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
-	"go.uber.org/zap"
 )
 
 type repo struct {
@@ -24,6 +25,14 @@ func NewPaymentRepository(pool *pgxpool.Pool, logger *logger.Logger) payment.Rep
 		q:      sqlc.New(pool),
 		pool:   pool,
 		logger: logger,
+	}
+}
+
+func (r *repo) WithTx(tx pgx.Tx) payment.Repository {
+	return &repo{
+		q:      sqlc.New(tx),
+		pool:   r.pool,
+		logger: r.logger,
 	}
 }
 
@@ -54,7 +63,7 @@ func (r *repo) GetUserBalance(ctx context.Context, telegramUserID int64) (*payme
 }
 
 func (r *repo) CreateTransaction(ctx context.Context, params *payment.CreateTransactionParams) error {
-	_, err := r.q.CreateUserTransaction(ctx, sqlc.CreateUserTransactionParams{
+	_, err := r.q.CreateTransaction(ctx, sqlc.CreateTransactionParams{
 		TelegramUserID: params.TelegramUserID,
 		Amount:         params.Amount,
 		Reason:         sqlc.TransactionReason(params.Reason),
@@ -65,45 +74,40 @@ func (r *repo) CreateTransaction(ctx context.Context, params *payment.CreateTran
 	return nil
 }
 
-func (r *repo) AddUserBalance(ctx context.Context, params *payment.AddUserBalanceParams) error {
-	tx, err := r.pool.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err != nil {
-			if err := tx.Rollback(ctx); err != nil {
-				r.logger.Error("rollback", zap.Error(err))
-			}
-		}
-	}()
-
-	qtx := r.q.WithTx(tx)
-
-	err = qtx.AddUserBalance(ctx, sqlc.AddUserBalanceParams{
+func (r *repo) AddUserBalance(ctx context.Context, params *payment.AddUserBalanceParams) (*payment.Balance, error) {
+	balance, err := r.q.AddUserBalance(ctx, sqlc.AddUserBalanceParams{
 		TelegramUserID: params.TelegramUserID,
 		TonAmount:      params.Amount,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return ToBalanceDomain(balance), nil
 }
 
-func (r *repo) SpendUserBalance(ctx context.Context, params *payment.SpendUserBalanceParams) error {
-	err := r.q.SpendUserBalance(ctx, sqlc.SpendUserBalanceParams{
+func (r *repo) SpendUserBalance(ctx context.Context, params *payment.SpendUserBalanceParams) (*payment.Balance, error) {
+	// Сначала проверяем текущий баланс
+	currentBalance, err := r.GetUserBalance(ctx, params.TelegramUserID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Проверяем достаточность средств
+	if currentBalance.TonAmount < params.Amount {
+		return nil, errors.NewInsufficientTonError("insufficient balance for withdrawal")
+	}
+
+	// Списываем средства
+	balance, err := r.q.SpendUserBalance(ctx, sqlc.SpendUserBalanceParams{
 		TelegramUserID: params.TelegramUserID,
 		TonAmount:      params.Amount,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+
+	return ToBalanceDomain(balance), nil
 }
 
 func (r *repo) CreateDeposit(ctx context.Context, params *payment.CreateDepositParams) (*payment.Deposit, error) {
@@ -137,4 +141,12 @@ func (r *repo) SetDepositTransaction(ctx context.Context, params *payment.SetDep
 		return nil, err
 	}
 	return ToDepositDomain(deposit), nil
+}
+
+func (r *repo) DeleteTransaction(ctx context.Context, id int32) error {
+	err := r.q.DeleteTransaction(ctx, id)
+	if err != nil {
+		return err
+	}
+	return nil
 }

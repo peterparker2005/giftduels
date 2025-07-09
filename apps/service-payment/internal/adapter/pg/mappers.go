@@ -7,6 +7,16 @@ import (
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/domain/payment"
 )
 
+func ToBalanceDomain(b sqlc.UserBalance) *payment.Balance {
+	return &payment.Balance{
+		TelegramUserID: b.TelegramUserID,
+		TonAmount:      b.TonAmount,
+		ID:             b.ID,
+		CreatedAt:      b.CreatedAt.Time,
+		UpdatedAt:      b.UpdatedAt.Time,
+	}
+}
+
 func ToDepositDomain(d sqlc.Deposit) *payment.Deposit {
 	var txHash *string
 	if d.TxHash.Valid {

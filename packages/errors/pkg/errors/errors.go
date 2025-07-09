@@ -8,10 +8,12 @@ import (
 	"github.com/peterparker2005/giftduels/packages/errors/internal/builder"
 )
 
-// NewValidationError создает ошибку валидации для указанного поля.
-// Если требуется, можно сделать отдельную функцию для конкретных кодов ошибок.
 func NewValidationError(field, message string) error {
-	// Здесь используем, например, код ERROR_CODE_REQUIRED_FIELD для примера.
+	return builder.BuildValidationError(field, message, errorsv1.ErrorCode_ERROR_CODE_VALIDATION_GENERAL)
+}
+
+// NewRequiredFieldError создает ошибку валидации для указанного поля.
+func NewRequiredFieldError(field, message string) error {
 	return builder.BuildValidationError(field, message, errorsv1.ErrorCode_ERROR_CODE_REQUIRED_FIELD)
 }
 
@@ -50,18 +52,18 @@ func NewGiftNotOwnedError(message string) error {
 	return builder.BuildError(codes.PermissionDenied, "gift not owned", detail)
 }
 
-func NewInsufficientStarsError(message string) error {
-	detail := &errorsv1.ErrorDetail{
-		Code:    errorsv1.ErrorCode_ERROR_CODE_INSUFFICIENT_STARS,
-		Message: message,
-	}
-	return builder.BuildError(codes.FailedPrecondition, "insufficient stars", detail)
-}
-
 func NewInsufficientTonError(message string) error {
 	detail := &errorsv1.ErrorDetail{
 		Code:    errorsv1.ErrorCode_ERROR_CODE_INSUFFICIENT_TON,
 		Message: message,
 	}
 	return builder.BuildError(codes.FailedPrecondition, "insufficient ton", detail)
+}
+
+func IsInsufficientTon(err error) bool {
+	st, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	return st.Code() == codes.FailedPrecondition
 }

@@ -87,6 +87,7 @@ export async function handleGiftWithdrawRequested(
 					collectibleId: event.collectibleId,
 					upgradeMessageId: event.upgradeMessageId,
 					price: event.price,
+					commissionAmount: event.commissionAmount,
 					errorReason: `Failed after ${MAX_RETRIES} attempts: ${err instanceof Error ? err.message : String(err)}`,
 					attemptsMade: prevAttempts + 1,
 				});

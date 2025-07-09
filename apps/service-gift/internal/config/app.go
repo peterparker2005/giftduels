@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/peterparker2005/giftduels/packages/configs"
+	"go.uber.org/fx"
 )
 
 type TelegramConfig struct {
@@ -36,3 +37,7 @@ func LoadConfig() (*Config, error) {
 
 	return &cfg, nil
 }
+
+var Module = fx.Module("config",
+	fx.Provide(LoadConfig),
+)

@@ -10,7 +10,12 @@ import (
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/config"
 )
 
-func newRunner(cfg *config.Config) (*migratepg.Runner, error) {
+func newRunner() (*migratepg.Runner, error) {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	return migratepg.New(cfg)
 }
 

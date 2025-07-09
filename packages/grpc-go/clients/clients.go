@@ -14,6 +14,7 @@ import (
 type Clients struct {
 	Identity *IdentityClient
 	Gift     *GiftClient
+	Payment  *PaymentClient
 }
 
 // CreateDialOptions возвращает базовый набор опций для dial
@@ -42,7 +43,11 @@ func NewClients(ctx context.Context, cfg configs.GRPCConfig, opts ...grpc.DialOp
 	}
 	if c.Gift, err = NewGiftClient(ctx, cfg.Gift.Address(), dialOpts...); err != nil {
 		c.Close()
-		return nil, fmt.Errorf("user client: %w", err)
+		return nil, fmt.Errorf("gift client: %w", err)
+	}
+	if c.Payment, err = NewPaymentClient(ctx, cfg.Payment.Address(), dialOpts...); err != nil {
+		c.Close()
+		return nil, fmt.Errorf("payment client: %w", err)
 	}
 
 	return c, nil
@@ -51,7 +56,7 @@ func NewClients(ctx context.Context, cfg configs.GRPCConfig, opts ...grpc.DialOp
 // Close аккуратно закроет все клиенты
 func (c *Clients) Close() {
 	for _, cl := range []io.Closer{
-		c.Identity, c.Gift,
+		c.Identity, c.Gift, c.Payment,
 	} {
 		if cl != nil {
 			_ = cl.Close()

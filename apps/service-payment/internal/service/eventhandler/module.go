@@ -9,9 +9,13 @@ import (
 	amqputil "github.com/peterparker2005/giftduels/apps/service-payment/internal/adapter/amqp"
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/config"
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/domain/payment"
+	paymentService "github.com/peterparker2005/giftduels/apps/service-payment/internal/service/payment"
+	giftEvents "github.com/peterparker2005/giftduels/packages/events/gift"
 	"github.com/peterparker2005/giftduels/packages/events/identity"
 	paymentEvents "github.com/peterparker2005/giftduels/packages/events/payment"
+	telegramEvents "github.com/peterparker2005/giftduels/packages/events/telegram"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
+
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
@@ -33,6 +37,13 @@ var Module = fx.Options(
 		return NewIdentityNewUserHandler(repo, l)
 	}),
 
+	fx.Provide(func(
+		service *paymentService.Service,
+		l *logger.Logger,
+	) *TelegramGiftWithdrawFailedHandler {
+		return NewTelegramGiftWithdrawFailedHandler(service, l)
+	}),
+
 	fx.Invoke(func(
 		cfg *config.Config,
 		lc fx.Lifecycle,
@@ -40,6 +51,7 @@ var Module = fx.Options(
 		subFac amqputil.SubFactory,
 		pub message.Publisher,
 		newUserHandler *IdentityNewUserHandler,
+		telegramGiftWithdrawFailHandler *TelegramGiftWithdrawFailedHandler,
 	) error {
 		router, err := ProvideRouter(log, pub, paymentEvents.Config(cfg.ServiceName).Exchange+".poison")
 		if err != nil {
@@ -51,7 +63,13 @@ var Module = fx.Options(
 			return err
 		}
 
+		telegramSub, err := subFac(telegramEvents.Config(cfg.ServiceName))
+		if err != nil {
+			return err
+		}
+
 		router.AddNoPublisherHandler("identity_new_user", identity.TopicUserCreated.String(), identitySub, newUserHandler.Handle)
+		router.AddNoPublisherHandler("telegram_gift_withdraw_fail", giftEvents.TopicGiftWithdrawFailed.String(), telegramSub, telegramGiftWithdrawFailHandler.Handle)
 		// router.AddNoPublisherHandler("tg_gift_poison", giftEvents.Config(cfg.ServiceName).Exchange+".poison", giftSub, func(m *message.Message) error {
 		// 	log.Warn("💀 poison", zap.String("body", string(m.Payload)))
 		// 	return nil

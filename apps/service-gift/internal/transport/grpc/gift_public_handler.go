@@ -73,11 +73,16 @@ func (h *giftPublicHandler) GetGifts(ctx context.Context, req *giftv1.GetGiftsRe
 }
 
 func (h *giftPublicHandler) ExecuteWithdraw(ctx context.Context, req *giftv1.ExecuteWithdrawRequest) (*giftv1.ExecuteWithdrawResponse, error) {
+	telegramUserID, err := authctx.TelegramUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	ids := make([]string, len(req.GetGiftIds()))
 	for i, id := range req.GetGiftIds() {
 		ids[i] = id.Value
 	}
-	_, err := h.giftService.ExecuteWithdraw(ctx, ids)
+	_, err = h.giftService.ExecuteWithdraw(ctx, telegramUserID, ids)
 	if err != nil {
 		return nil, err
 	}

@@ -2,6 +2,8 @@ package payment
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type CreateBalanceParams struct {
@@ -31,11 +33,16 @@ type SetDepositTransactionParams struct {
 }
 
 type Repository interface {
+	WithTx(tx pgx.Tx) Repository
 	Create(ctx context.Context, params *CreateBalanceParams) error
+
 	CreateTransaction(ctx context.Context, params *CreateTransactionParams) error
-	AddUserBalance(ctx context.Context, params *AddUserBalanceParams) error
+	DeleteTransaction(ctx context.Context, id int32) error
+
 	GetUserBalance(ctx context.Context, telegramUserID int64) (*Balance, error)
-	SpendUserBalance(ctx context.Context, params *SpendUserBalanceParams) error
+	AddUserBalance(ctx context.Context, params *AddUserBalanceParams) (*Balance, error)
+	SpendUserBalance(ctx context.Context, params *SpendUserBalanceParams) (*Balance, error)
+
 	CreateDeposit(ctx context.Context, params *CreateDepositParams) (*Deposit, error)
 	GetDepositByPayload(ctx context.Context, payload string) (*Deposit, error)
 	SetDepositTransaction(ctx context.Context, params *SetDepositTransactionParams) (*Deposit, error)

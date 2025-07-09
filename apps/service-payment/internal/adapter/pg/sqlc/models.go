@@ -101,6 +101,7 @@ type TransactionReason string
 
 const (
 	TransactionReasonWithdraw TransactionReason = "withdraw"
+	TransactionReasonRefund   TransactionReason = "refund"
 )
 
 func (e *TransactionReason) Scan(src interface{}) error {

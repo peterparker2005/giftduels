@@ -7,7 +7,7 @@ INSERT INTO user_balances (
 )
 RETURNING *;
 
--- name: CreateUserTransaction :one
+-- name: CreateTransaction :one
 INSERT INTO user_transactions (
     telegram_user_id,
     amount,
@@ -17,14 +17,23 @@ INSERT INTO user_transactions (
 )
 RETURNING *;
 
+-- name: DeleteTransaction :exec
+DELETE FROM user_transactions WHERE id = $1;
+
 -- name: GetUserBalance :one
 SELECT * FROM user_balances WHERE telegram_user_id = $1;
 
--- name: SpendUserBalance :exec
-UPDATE user_balances SET ton_amount = ton_amount - $1 WHERE telegram_user_id = $2;
+-- name: SpendUserBalance :one
+UPDATE user_balances 
+SET ton_amount = ton_amount - $2 
+WHERE telegram_user_id = $1 AND ton_amount >= $2
+RETURNING *;
 
--- name: AddUserBalance :exec
-UPDATE user_balances SET ton_amount = ton_amount + $1 WHERE telegram_user_id = $2;
+-- name: AddUserBalance :one
+UPDATE user_balances 
+SET ton_amount = ton_amount + $2 
+WHERE telegram_user_id = $1
+RETURNING *;
 
 -- name: CreateDeposit :one
 INSERT INTO deposits (telegram_user_id, amount_nano, payload, expires_at)

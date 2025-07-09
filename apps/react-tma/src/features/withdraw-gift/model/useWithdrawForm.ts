@@ -1,6 +1,7 @@
 import { GiftView } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
+import { toast } from "sonner";
 import { useExecuteWithdrawMutation } from "@/shared/api/queries/useExecuteWithdrawMutation";
 
 export interface WithdrawFormData {
@@ -47,6 +48,10 @@ export const useWithdrawForm = (gifts: GiftView[] = []) => {
 				console.log("Withdrawal successful", data);
 				clearSelection();
 				queryClient.invalidateQueries({ queryKey: ["gifts"] });
+			},
+			onError: (error) => {
+				toast.error(error.message, { position: "top-center" });
+				console.error("Withdrawal failed", error);
 			},
 		});
 	}, [mutate, selectedGifts, clearSelection, queryClient]);

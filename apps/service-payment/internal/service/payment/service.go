@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/peterparker2005/giftduels/apps/service-payment/internal/adapter/pg"
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/domain/payment"
-	"github.com/peterparker2005/giftduels/packages/grpc-go/clients"
-	giftv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1"
-	sharedv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/shared/v1"
+	"github.com/peterparker2005/giftduels/packages/logger-go"
+	"go.uber.org/zap"
 )
 
 const (
@@ -19,26 +19,25 @@ const (
 	// Максимальное кол-во звёзд
 	maxStarsCommission = 250.0
 
-	// Наша маржа 10%
-	profitMargin = 0.10
-
 	// Сколько TON стоит одна звезда
 	tonPerStar = 0.2678 / 50.0
 
 	// Какой процент от стоимости подарка мы берём в виде комиссии (в звёздах)
 	// Например, 5% от стоимости подарка
-	commissionRate = 0.05
+	commissionRate = 0.15
 )
 
 type Service struct {
-	repo              payment.Repository
-	giftPrivateClient giftv1.GiftPrivateServiceClient
+	log   *logger.Logger
+	repo  payment.Repository
+	txMgr pg.TxManager
 }
 
-func NewService(repo payment.Repository, clients *clients.Clients) *Service {
+func NewService(repo payment.Repository, log *logger.Logger, txMgr pg.TxManager) *Service {
 	return &Service{
-		repo:              repo,
-		giftPrivateClient: clients.Gift.Private,
+		log:   log,
+		repo:  repo,
+		txMgr: txMgr,
 	}
 }
 
@@ -90,53 +89,47 @@ func (s *Service) ProcessDepositTransaction(ctx context.Context, payload, txHash
 		Amount:         float64(amountNano) / 1e9,
 	}
 
-	return s.repo.AddUserBalance(ctx, addBalanceParams)
+	_, err = s.repo.AddUserBalance(ctx, addBalanceParams)
+	return err
 }
 
 func (s *Service) GetBalance(ctx context.Context, telegramUserID int64) (*payment.Balance, error) {
 	return s.repo.GetUserBalance(ctx, telegramUserID)
 }
 
-func (s *Service) PreviewWithdraw(ctx context.Context, giftIDs []string) (*payment.WithdrawOptions, error) {
-	giftIds := make([]*sharedv1.GiftId, len(giftIDs))
-	for i, giftID := range giftIDs {
-		giftIds[i] = &sharedv1.GiftId{
-			Value: giftID,
-		}
-	}
-	gifts, err := s.giftPrivateClient.PrivateGetGifts(ctx, &giftv1.PrivateGetGiftsRequest{
-		GiftIds: giftIds,
+func (s *Service) SpendUserBalance(ctx context.Context, telegramUserID int64, amount float64) (*payment.Balance, error) {
+	balance, err := s.repo.SpendUserBalance(ctx, &payment.SpendUserBalanceParams{
+		TelegramUserID: telegramUserID,
+		Amount:         amount,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	fees := make([]payment.GiftFee, len(gifts.Gifts))
-	for i, gift := range gifts.Gifts {
-		giftTonPrice := gift.GetPrice().GetValue()
-		starsCost := calculateStarsCommission(giftTonPrice)
-		tonFee := calculateTonCommission(starsCost)
+	return balance, nil
+}
 
-		fees[i] = payment.GiftFee{
-			GiftID:   gift.GetGiftId().GetValue(),
-			StarsFee: uint32(starsCost),
-			TonFee:   tonFee,
-		}
+func (s *Service) AddUserBalance(ctx context.Context, telegramUserID int64, amount float64) (*payment.Balance, error) {
+	balance, err := s.repo.AddUserBalance(ctx, &payment.AddUserBalanceParams{
+		TelegramUserID: telegramUserID,
+		Amount:         amount,
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	totalStarsFee := uint32(0)
-	totalTonFee := 0.0
-	for _, fee := range fees {
-		totalStarsFee += fee.StarsFee
-		totalTonFee += fee.TonFee
-	}
+	return balance, nil
+}
 
-	totalTonFee = math.Round(totalTonFee*100) / 100
+func (s *Service) PreviewWithdraw(ctx context.Context, tonAmount float64) (*payment.WithdrawOptions, error) {
+	starsCost := calculateStarsCommission(tonAmount)
+	tonFee := calculateTonCommission(starsCost)
+
+	totalStarsFee := uint32(starsCost)
 
 	return &payment.WithdrawOptions{
-		Fees:          fees,
 		TotalStarsFee: totalStarsFee,
-		TotalTonFee:   totalTonFee,
+		TotalTonFee:   tonFee,
 	}, nil
 }
 
@@ -155,14 +148,112 @@ func calculateStarsCommission(giftTonPrice float64) float64 {
 		raw = maxStarsCommission
 	}
 
-	// 4) добавляем маржу
-	raw = raw * (1 + profitMargin)
-
-	// 5) округляем вверх до целого
+	// 4) округляем вверх до целого
 	return math.Ceil(raw)
 }
 
 func calculateTonCommission(stars float64) float64 {
 	ton := stars * tonPerStar
 	return math.Round(ton*100) / 100
+}
+
+func (s *Service) SpendWithdrawalCommission(ctx context.Context, telegramUserID int64, tonAmount float64) (*payment.Balance, float64, error) {
+	log := s.log.With(zap.Float64("ton_amount", tonAmount))
+	preview, err := s.PreviewWithdraw(ctx, tonAmount)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	tx, err := s.txMgr.BeginTx(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	repo := s.repo.WithTx(tx)
+
+	var pErr error
+	defer func() {
+		if pErr != nil {
+			if rbErr := tx.Rollback(ctx); rbErr != nil {
+				log.Error("failed to rollback commission spend transaction", zap.Error(rbErr))
+			}
+		}
+	}()
+
+	amount := preview.TotalTonFee
+
+	log.Info("spending withdrawal commission", zap.Float64("amount", amount))
+
+	balance, err := repo.SpendUserBalance(ctx, &payment.SpendUserBalanceParams{
+		TelegramUserID: telegramUserID,
+		Amount:         amount,
+	})
+	if err != nil {
+		pErr = err
+		return nil, 0, err
+	}
+
+	err = repo.CreateTransaction(ctx, &payment.CreateTransactionParams{
+		TelegramUserID: telegramUserID,
+		Amount:         amount,
+		Reason:         payment.TransactionReasonWithdraw,
+	})
+	if err != nil {
+		pErr = err
+		return nil, 0, err
+	}
+
+	pErr = tx.Commit(ctx)
+	if pErr != nil {
+		return nil, 0, pErr
+	}
+
+	return balance, amount, nil
+}
+
+func (s *Service) RollbackWithdrawalCommission(ctx context.Context, telegramUserID int64, amount float64) error {
+	log := s.log.With(zap.Float64("amount", amount))
+	tx, err := s.txMgr.BeginTx(ctx)
+	if err != nil {
+		log.Error("failed to begin transaction", zap.Error(err))
+		return err
+	}
+
+	defer func() {
+		if err != nil {
+			err = tx.Rollback(ctx)
+			if err != nil {
+				log.Error("Failed to rollback transaction", zap.Error(err))
+			}
+		}
+	}()
+
+	repo := s.repo.WithTx(tx)
+
+	_, err = repo.AddUserBalance(ctx, &payment.AddUserBalanceParams{
+		TelegramUserID: telegramUserID,
+		Amount:         amount,
+	})
+	if err != nil {
+		log.Error("failed to create transaction", zap.Error(err))
+		return err
+	}
+
+	err = repo.CreateTransaction(ctx, &payment.CreateTransactionParams{
+		TelegramUserID: telegramUserID,
+		Amount:         amount,
+		Reason:         payment.TransactionReasonRefund,
+	})
+	if err != nil {
+		log.Error("failed to create transaction", zap.Error(err))
+		return err
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		log.Error("failed to commit transaction", zap.Error(err))
+		return err
+	}
+
+	return nil
 }

@@ -11,18 +11,29 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const addUserBalance = `-- name: AddUserBalance :exec
-UPDATE user_balances SET ton_amount = ton_amount + $1 WHERE telegram_user_id = $2
+const addUserBalance = `-- name: AddUserBalance :one
+UPDATE user_balances 
+SET ton_amount = ton_amount + $2 
+WHERE telegram_user_id = $1
+RETURNING id, telegram_user_id, ton_amount, created_at, updated_at
 `
 
 type AddUserBalanceParams struct {
-	TonAmount      float64
 	TelegramUserID int64
+	TonAmount      float64
 }
 
-func (q *Queries) AddUserBalance(ctx context.Context, arg AddUserBalanceParams) error {
-	_, err := q.db.Exec(ctx, addUserBalance, arg.TonAmount, arg.TelegramUserID)
-	return err
+func (q *Queries) AddUserBalance(ctx context.Context, arg AddUserBalanceParams) (UserBalance, error) {
+	row := q.db.QueryRow(ctx, addUserBalance, arg.TelegramUserID, arg.TonAmount)
+	var i UserBalance
+	err := row.Scan(
+		&i.ID,
+		&i.TelegramUserID,
+		&i.TonAmount,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const createDeposit = `-- name: CreateDeposit :one
@@ -61,6 +72,36 @@ func (q *Queries) CreateDeposit(ctx context.Context, arg CreateDepositParams) (D
 	return i, err
 }
 
+const createTransaction = `-- name: CreateTransaction :one
+INSERT INTO user_transactions (
+    telegram_user_id,
+    amount,
+    reason
+) VALUES (
+    $1, $2, $3
+)
+RETURNING id, telegram_user_id, amount, reason, created_at
+`
+
+type CreateTransactionParams struct {
+	TelegramUserID int64
+	Amount         float64
+	Reason         TransactionReason
+}
+
+func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) (UserTransaction, error) {
+	row := q.db.QueryRow(ctx, createTransaction, arg.TelegramUserID, arg.Amount, arg.Reason)
+	var i UserTransaction
+	err := row.Scan(
+		&i.ID,
+		&i.TelegramUserID,
+		&i.Amount,
+		&i.Reason,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createUserBalance = `-- name: CreateUserBalance :one
 INSERT INTO user_balances (
     telegram_user_id,
@@ -89,34 +130,13 @@ func (q *Queries) CreateUserBalance(ctx context.Context, arg CreateUserBalancePa
 	return i, err
 }
 
-const createUserTransaction = `-- name: CreateUserTransaction :one
-INSERT INTO user_transactions (
-    telegram_user_id,
-    amount,
-    reason
-) VALUES (
-    $1, $2, $3
-)
-RETURNING id, telegram_user_id, amount, reason, created_at
+const deleteTransaction = `-- name: DeleteTransaction :exec
+DELETE FROM user_transactions WHERE id = $1
 `
 
-type CreateUserTransactionParams struct {
-	TelegramUserID int64
-	Amount         float64
-	Reason         TransactionReason
-}
-
-func (q *Queries) CreateUserTransaction(ctx context.Context, arg CreateUserTransactionParams) (UserTransaction, error) {
-	row := q.db.QueryRow(ctx, createUserTransaction, arg.TelegramUserID, arg.Amount, arg.Reason)
-	var i UserTransaction
-	err := row.Scan(
-		&i.ID,
-		&i.TelegramUserID,
-		&i.Amount,
-		&i.Reason,
-		&i.CreatedAt,
-	)
-	return i, err
+func (q *Queries) DeleteTransaction(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, deleteTransaction, id)
+	return err
 }
 
 const getDepositByPayload = `-- name: GetDepositByPayload :one
@@ -213,18 +233,29 @@ func (q *Queries) SetDepositTransaction(ctx context.Context, arg SetDepositTrans
 	return i, err
 }
 
-const spendUserBalance = `-- name: SpendUserBalance :exec
-UPDATE user_balances SET ton_amount = ton_amount - $1 WHERE telegram_user_id = $2
+const spendUserBalance = `-- name: SpendUserBalance :one
+UPDATE user_balances 
+SET ton_amount = ton_amount - $2 
+WHERE telegram_user_id = $1 AND ton_amount >= $2
+RETURNING id, telegram_user_id, ton_amount, created_at, updated_at
 `
 
 type SpendUserBalanceParams struct {
-	TonAmount      float64
 	TelegramUserID int64
+	TonAmount      float64
 }
 
-func (q *Queries) SpendUserBalance(ctx context.Context, arg SpendUserBalanceParams) error {
-	_, err := q.db.Exec(ctx, spendUserBalance, arg.TonAmount, arg.TelegramUserID)
-	return err
+func (q *Queries) SpendUserBalance(ctx context.Context, arg SpendUserBalanceParams) (UserBalance, error) {
+	row := q.db.QueryRow(ctx, spendUserBalance, arg.TelegramUserID, arg.TonAmount)
+	var i UserBalance
+	err := row.Scan(
+		&i.ID,
+		&i.TelegramUserID,
+		&i.TonAmount,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const upsertTonCursor = `-- name: UpsertTonCursor :exec

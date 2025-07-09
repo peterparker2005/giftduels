@@ -17,6 +17,7 @@ var Module = fx.Module("pg",
 				ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
 			})
 		},
+		NewPgxTxManager,
 		NewPaymentRepository,
 	),
 )

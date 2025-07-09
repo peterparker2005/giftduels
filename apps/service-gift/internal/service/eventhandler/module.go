@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	amqputil "github.com/peterparker2005/giftduels/apps/service-gift/internal/adapter/amqp"
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/app"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/config"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
 	giftEvents "github.com/peterparker2005/giftduels/packages/events/gift"
@@ -21,6 +22,7 @@ import (
 )
 
 var Module = fx.Options(
+	app.CommonModule,
 	//-------------------------------- AMQP low-level -------------------------------
 	fx.Provide(
 		amqputil.ProvideConnection,

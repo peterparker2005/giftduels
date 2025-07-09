@@ -8,16 +8,37 @@ option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/g
 
 service PaymentPrivateService {
   rpc SpendUserBalance(SpendUserBalanceRequest) returns (SpendUserBalanceResponse) {}
+  rpc AddUserBalance(AddUserBalanceRequest) returns (AddUserBalanceResponse) {}
+  rpc SpendWithdrawalCommission(SpendWithdrawalCommissionRequest) returns (SpendWithdrawalCommissionResponse) {}
   rpc GetUserBalance(GetUserBalanceRequest) returns (GetUserBalanceResponse) {}
+}
+
+message SpendWithdrawalCommissionRequest {
+  shared.v1.TelegramUserId telegram_user_id = 1;
+  shared.v1.TonAmount ton_amount = 2;
+}
+
+message SpendWithdrawalCommissionResponse {
+  shared.v1.TonAmount commission_amount = 1;
+  shared.v1.TonAmount new_amount = 2;
 }
 
 message SpendUserBalanceRequest {
   shared.v1.TelegramUserId telegram_user_id = 1;
-  shared.v1.StarsAmount stars_amount = 2;
+  shared.v1.TonAmount ton_amount = 2;
 }
 
 message SpendUserBalanceResponse {
-  shared.v1.StarsAmount stars_amount = 1;
+  shared.v1.TonAmount new_amount = 1;
+}
+
+message AddUserBalanceRequest {
+  shared.v1.TelegramUserId telegram_user_id = 1;
+  shared.v1.TonAmount ton_amount = 2;
+}
+
+message AddUserBalanceResponse {
+  shared.v1.TonAmount new_amount = 1;
 }
 
 message GetUserBalanceRequest {
@@ -25,5 +46,5 @@ message GetUserBalanceRequest {
 }
 
 message GetUserBalanceResponse {
-  shared.v1.StarsAmount stars_amount = 1;
+  shared.v1.TonAmount amount = 1;
 }

@@ -19,7 +19,7 @@ service PaymentPublicService {
 }
 
 message PreviewWithdrawRequest {
-  repeated shared.v1.GiftId gift_ids = 1;
+  shared.v1.TonAmount ton_amount = 1;
 }
 
 message PreviewWithdrawResponse {

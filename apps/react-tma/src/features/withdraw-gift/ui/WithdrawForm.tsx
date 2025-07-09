@@ -1,5 +1,5 @@
 import { GiftView } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { usePreviewWithdraw } from "@/shared/api/queries/usePreviewWithdraw";
 import { Button } from "@/shared/ui/Button";
 import { useWithdrawForm } from "../model/useWithdrawForm";
@@ -33,11 +33,19 @@ export const WithdrawForm = ({ gifts }: WithdrawFormProps) => {
 		}
 	};
 
+	// Calculate total TON amount for selected gifts
+	const totalTonAmount = useMemo(() => {
+		return form.selectedGifts.reduce((total, giftId) => {
+			const gift = gifts.find((g) => g.giftId?.value === giftId);
+			return total + (gift?.price?.value || 0);
+		}, 0);
+	}, [form.selectedGifts, gifts]);
+
 	useEffect(() => {
 		if (form.hasSelection) {
-			previewWithdraw(form.selectedGifts);
+			previewWithdraw(totalTonAmount);
 		}
-	}, [form.selectedGifts, form.hasSelection, previewWithdraw]);
+	}, [form.hasSelection, previewWithdraw, totalTonAmount]);
 
 	return (
 		<form onSubmit={handleFormSubmit} className="flex flex-col h-full">

@@ -19,13 +19,11 @@ type Transaction struct {
 }
 
 type WithdrawOptions struct {
-	Fees          []GiftFee
 	TotalStarsFee uint32
 	TotalTonFee   float64
 }
 
 type GiftFee struct {
-	GiftID   string
 	StarsFee uint32
 	TonFee   float64
 }
@@ -33,5 +31,6 @@ type GiftFee struct {
 type TransactionReason string
 
 const (
-	TransactionReasonWithdrawal TransactionReason = "withdrawal"
+	TransactionReasonWithdraw TransactionReason = "withdraw"
+	TransactionReasonRefund   TransactionReason = "refund"
 )
