@@ -20,3 +20,11 @@ func mustPgUUID(id string) pgtype.UUID {
 	}
 	return v
 }
+
+func mustPgUUIDs(ids []string) []pgtype.UUID {
+	out := make([]pgtype.UUID, len(ids))
+	for i, id := range ids {
+		out[i] = mustPgUUID(id)
+	}
+	return out
+}

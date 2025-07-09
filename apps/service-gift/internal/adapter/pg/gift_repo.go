@@ -133,3 +133,16 @@ func (r *GiftRepository) CreateGiftWithDetails(
 
 	return GiftToDomain(dbGift), nil
 }
+
+func (r *GiftRepository) GetGiftsByIDs(ctx context.Context, ids []string) ([]*gift.Gift, error) {
+	dbGifts, err := r.q.GetGiftsByIDs(ctx, mustPgUUIDs(ids))
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]*gift.Gift, len(dbGifts))
+	for i, dbGift := range dbGifts {
+		out[i] = GiftToDomain(dbGift)
+	}
+	return out, nil
+}

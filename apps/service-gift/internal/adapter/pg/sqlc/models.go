@@ -115,10 +115,10 @@ type Gift struct {
 }
 
 type GiftAttribute struct {
-	TelegramGiftID int64
-	Type           GiftAttributeType
-	Name           string
-	Rarity         int32
+	GiftID pgtype.UUID
+	Type   GiftAttributeType
+	Name   string
+	Rarity int32
 }
 
 type GiftEvent struct {

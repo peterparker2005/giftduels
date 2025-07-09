@@ -105,33 +105,33 @@ func (q *Queries) CreateGift(ctx context.Context, arg CreateGiftParams) (Gift, e
 
 const createGiftAttribute = `-- name: CreateGiftAttribute :one
 INSERT INTO gift_attributes (
-    telegram_gift_id,
+    gift_id,
     type,
     name,
     rarity
 ) VALUES (
     $1, $2, $3, $4
 )
-RETURNING telegram_gift_id, type, name, rarity
+RETURNING gift_id, type, name, rarity
 `
 
 type CreateGiftAttributeParams struct {
-	TelegramGiftID int64
-	Type           GiftAttributeType
-	Name           string
-	Rarity         int32
+	GiftID pgtype.UUID
+	Type   GiftAttributeType
+	Name   string
+	Rarity int32
 }
 
 func (q *Queries) CreateGiftAttribute(ctx context.Context, arg CreateGiftAttributeParams) (GiftAttribute, error) {
 	row := q.db.QueryRow(ctx, createGiftAttribute,
-		arg.TelegramGiftID,
+		arg.GiftID,
 		arg.Type,
 		arg.Name,
 		arg.Rarity,
 	)
 	var i GiftAttribute
 	err := row.Scan(
-		&i.TelegramGiftID,
+		&i.GiftID,
 		&i.Type,
 		&i.Name,
 		&i.Rarity,
@@ -234,6 +234,45 @@ func (q *Queries) GetGiftEvents(ctx context.Context, arg GetGiftEventsParams) ([
 			&i.Description,
 			&i.Payload,
 			&i.OccurredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getGiftsByIDs = `-- name: GetGiftsByIDs :many
+SELECT id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, ton_price, status, created_at, updated_at, withdrawn_at
+  FROM gifts
+ WHERE id = ANY($1::uuid[])
+`
+
+func (q *Queries) GetGiftsByIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]Gift, error) {
+	rows, err := q.db.Query(ctx, getGiftsByIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Gift
+	for rows.Next() {
+		var i Gift
+		if err := rows.Scan(
+			&i.ID,
+			&i.TelegramGiftID,
+			&i.CollectibleID,
+			&i.OwnerTelegramID,
+			&i.UpgradeMessageID,
+			&i.Title,
+			&i.Slug,
+			&i.TonPrice,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.WithdrawnAt,
 		); err != nil {
 			return nil, err
 		}

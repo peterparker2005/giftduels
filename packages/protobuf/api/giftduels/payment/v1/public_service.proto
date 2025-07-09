@@ -15,24 +15,23 @@ service PaymentPublicService {
   // buf:lint:ignore RPC_REQUEST_STANDARD_NAME
   rpc GetBalance(google.protobuf.Empty) returns (GetBalanceResponse) {}
 
-  rpc GetWithdrawOptions(GetWithdrawOptionsRequest) returns (GetWithdrawOptionsResponse) {}
+  rpc PreviewWithdraw(PreviewWithdrawRequest) returns (PreviewWithdrawResponse);
 }
 
-message GetWithdrawOptionsRequest {
+message PreviewWithdrawRequest {
+  repeated shared.v1.GiftId gift_ids = 1;
+}
+
+message PreviewWithdrawResponse {
+  repeated GiftFee fees = 1;
+  shared.v1.StarsAmount total_stars_fee = 2;
+  shared.v1.TonAmount total_ton_fee = 3;
+}
+
+message GiftFee {
   shared.v1.GiftId gift_id = 1;
-}
-
-message GetWithdrawOptionsResponse {
-  message TonOption {
-    shared.v1.TonAmount ton_cost = 1;
-    bool is_available = 2;
-  }
-  message StarsOption {
-    shared.v1.StarsAmount stars_cost = 1;
-    bool is_available = 2;
-  }
-  TonOption ton = 1;
-  StarsOption stars = 2;
+  shared.v1.StarsAmount stars_fee = 2;
+  shared.v1.TonAmount ton_fee = 3;
 }
 
 message DepositTonRequest {

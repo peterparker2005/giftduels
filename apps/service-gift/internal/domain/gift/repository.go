@@ -6,7 +6,7 @@ import (
 )
 
 type CreateGiftAttributeParams struct {
-	TelegramGiftID  int64
+	GiftID          string
 	AttributeType   AttributeType
 	AttributeName   string
 	AttributeRarity int32
@@ -41,4 +41,5 @@ type GiftRepository interface {
 	CreateGiftWithDetails(ctx context.Context, gift *CreateGiftParams, attributes []CreateGiftAttributeParams) (*Gift, error)
 	CreateGiftEvent(ctx context.Context, giftID string, fromUserID, toUserID int64) (*GiftEvent, error)
 	GetGiftEvents(ctx context.Context, giftID string, limit int32, offset int32) ([]*GiftEvent, error)
+	GetGiftsByIDs(ctx context.Context, ids []string) ([]*Gift, error)
 }

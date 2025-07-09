@@ -12,6 +12,7 @@ require (
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/peterparker2005/giftduels/packages/cli-go v0.0.0-20250708064016-7a49ea4eb2fd
 	github.com/peterparker2005/giftduels/packages/configs v0.0.0-20250706093708-5d489ad138ec
+	github.com/peterparker2005/giftduels/packages/errors v0.0.0-20250706215627-2babd89ada5a
 	github.com/peterparker2005/giftduels/packages/events v0.0.0-20250708080159-bbee3c3e4f5e
 	github.com/peterparker2005/giftduels/packages/grpc-go v0.0.0-20250708064016-7a49ea4eb2fd
 	github.com/peterparker2005/giftduels/packages/logger-go v0.0.0-20250706093708-5d489ad138ec
@@ -40,7 +41,6 @@ require (
 	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
 	github.com/oasisprotocol/curve25519-voi v0.0.0-20220328075252-7dd334e3daae // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
-	github.com/peterparker2005/giftduels/packages/errors v0.0.0-20250706215627-2babd89ada5a // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rabbitmq/amqp091-go v1.10.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect

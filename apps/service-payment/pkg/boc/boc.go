@@ -40,3 +40,7 @@ func DecodeStringFromBOC(encoded string) (string, error) {
 
 	return decoded, nil
 }
+
+func EncodeBOCAsBase64(bocBytes []byte) string {
+	return base64.URLEncoding.EncodeToString(bocBytes)
+}

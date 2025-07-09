@@ -3,6 +3,11 @@ SELECT *
   FROM gifts
  WHERE id = $1;
 
+-- name: GetGiftsByIDs :many
+SELECT *
+  FROM gifts
+ WHERE id = ANY($1::uuid[]);
+
 -- name: GetUserGifts :many
 SELECT *
   FROM gifts
@@ -89,7 +94,7 @@ RETURNING *;
 
 -- name: CreateGiftAttribute :one
 INSERT INTO gift_attributes (
-    telegram_gift_id,
+    gift_id,
     type,
     name,
     rarity

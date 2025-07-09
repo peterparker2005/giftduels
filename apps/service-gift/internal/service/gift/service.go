@@ -78,3 +78,11 @@ func (s *Service) WithdrawGift(ctx context.Context, giftID string) (*gift.Gift, 
 	}
 	return gift, nil
 }
+
+func (s *Service) GetGiftsByIDs(ctx context.Context, giftIDs []string) ([]*gift.Gift, error) {
+	gifts, err := s.repo.GetGiftsByIDs(ctx, giftIDs)
+	if err != nil {
+		return nil, err
+	}
+	return gifts, nil
+}

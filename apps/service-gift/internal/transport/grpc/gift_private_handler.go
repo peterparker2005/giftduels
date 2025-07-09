@@ -22,6 +22,26 @@ func NewGiftPrivateHandler(giftService *gift.Service) giftv1.GiftPrivateServiceS
 	}
 }
 
+func (h *giftPrivateHandler) PrivateGetGifts(ctx context.Context, req *giftv1.PrivateGetGiftsRequest) (*giftv1.PrivateGetGiftsResponse, error) {
+	giftIDs := make([]string, len(req.GetGiftIds()))
+	for i, giftID := range req.GetGiftIds() {
+		giftIDs[i] = giftID.GetValue()
+	}
+	gifts, err := h.giftService.GetGiftsByIDs(ctx, giftIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	giftProtos := make([]*giftv1.Gift, len(gifts))
+	for i, g := range gifts {
+		giftProtos[i] = domainGift.ConvertDomainGiftToProto(g)
+	}
+
+	return &giftv1.PrivateGetGiftsResponse{
+		Gifts: giftProtos,
+	}, nil
+}
+
 func (h *giftPrivateHandler) GetUserGifts(ctx context.Context, req *giftv1.GetUserGiftsRequest) (*giftv1.GetUserGiftsResponse, error) {
 	pagination := shared.NewPageRequest(req.GetPagination().GetPage(), req.GetPagination().GetPageSize())
 

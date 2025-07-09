@@ -18,6 +18,18 @@ type Transaction struct {
 	CreatedAt      time.Time
 }
 
+type WithdrawOptions struct {
+	Fees          []GiftFee
+	TotalStarsFee uint32
+	TotalTonFee   float64
+}
+
+type GiftFee struct {
+	GiftID   string
+	StarsFee uint32
+	TonFee   float64
+}
+
 type TransactionReason string
 
 const (

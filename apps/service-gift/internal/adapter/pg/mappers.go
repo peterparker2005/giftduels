@@ -42,10 +42,10 @@ func CreateGiftParamsToDB(gift *gift.CreateGiftParams) sqlc.CreateGiftParams {
 
 func CreateGiftAttributeParamsToDB(attr *gift.CreateGiftAttributeParams) sqlc.CreateGiftAttributeParams {
 	return sqlc.CreateGiftAttributeParams{
-		TelegramGiftID: attr.TelegramGiftID,
-		Type:           sqlc.GiftAttributeType(attr.AttributeType),
-		Name:           attr.AttributeName,
-		Rarity:         attr.AttributeRarity,
+		GiftID: mustPgUUID(attr.GiftID),
+		Type:   sqlc.GiftAttributeType(attr.AttributeType),
+		Name:   attr.AttributeName,
+		Rarity: attr.AttributeRarity,
 	}
 }
 
@@ -57,11 +57,11 @@ func AttributeToDomain(attr sqlc.GiftAttribute) *gift.Attribute {
 	}
 }
 
-func AttributeToCreateParams(telegramGiftID int64, attr *gift.Attribute) sqlc.CreateGiftAttributeParams {
+func AttributeToCreateParams(giftID string, attr *gift.Attribute) sqlc.CreateGiftAttributeParams {
 	return sqlc.CreateGiftAttributeParams{
-		TelegramGiftID: telegramGiftID,
-		Type:           sqlc.GiftAttributeType(attr.Type),
-		Name:           attr.Name,
-		Rarity:         attr.Rarity,
+		GiftID: mustPgUUID(giftID),
+		Type:   sqlc.GiftAttributeType(attr.Type),
+		Name:   attr.Name,
+		Rarity: attr.Rarity,
 	}
 }

@@ -8,10 +8,19 @@ import "giftduels/shared/v1/common.proto";
 option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1;giftv1";
 
 service GiftPrivateService {
+  rpc PrivateGetGifts(PrivateGetGiftsRequest) returns (PrivateGetGiftsResponse);
   rpc PrivateGetGift(PrivateGetGiftRequest) returns (PrivateGetGiftResponse);
   rpc GetUserGifts(GetUserGiftsRequest) returns (GetUserGiftsResponse);
   rpc StakeGift(StakeGiftRequest) returns (StakeGiftResponse);
   rpc TransferGiftToUser(TransferGiftToUserRequest) returns (TransferGiftToUserResponse);
+}
+
+message PrivateGetGiftsRequest {
+  repeated shared.v1.GiftId gift_ids = 1;
+}
+
+message PrivateGetGiftsResponse {
+  repeated Gift gifts = 1;
 }
 
 message GetUserGiftsRequest {

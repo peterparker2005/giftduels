@@ -26,11 +26,11 @@ CREATE TABLE gifts (
 
 -- 3. атрибуты конкретного инстанса
 CREATE TABLE gift_attributes (
-  telegram_gift_id BIGINT          REFERENCES gifts(telegram_gift_id) ON DELETE CASCADE,
+  gift_id UUID          REFERENCES gifts(id) ON DELETE CASCADE,
   type    gift_attribute_type          NOT NULL,
   name    TEXT          NOT NULL,
   rarity  INT           NOT NULL,
-  PRIMARY KEY (telegram_gift_id, type)
+  PRIMARY KEY (gift_id, type)
 );
 
 -- 4. события (аудит)
