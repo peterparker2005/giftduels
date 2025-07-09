@@ -17,3 +17,17 @@ message UserBalance {
 message UserBalanceView {
   shared.v1.TonAmount ton_amount = 1;
 }
+
+message TransactionView {
+  shared.v1.TransactionId transaction_id = 1;
+  shared.v1.TonAmount ton_amount = 2;
+  google.protobuf.Timestamp created_at = 3;
+  string reason = 4;
+}
+
+enum TransactionReason {
+  TRANSACTION_REASON_UNSPECIFIED = 0;
+  TRANSACTION_REASON_DEPOSIT = 1;
+  TRANSACTION_REASON_WITHDRAW = 2;
+  TRANSACTION_REASON_REFUND = 3;
+}

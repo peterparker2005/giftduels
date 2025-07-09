@@ -5,7 +5,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func uuidToPg(id string) (pgtype.UUID, error) {
+func pgUUID(id string) (pgtype.UUID, error) {
+	var u uuid.UUID
 	u, err := uuid.Parse(id)
 	if err != nil {
 		return pgtype.UUID{}, err
@@ -14,9 +15,9 @@ func uuidToPg(id string) (pgtype.UUID, error) {
 }
 
 func mustPgUUID(id string) pgtype.UUID {
-	v, err := uuidToPg(id)
+	v, err := pgUUID(id)
 	if err != nil {
-		panic(err) // или пробросьте ошибку выше
+		panic(err)
 	}
 	return v
 }

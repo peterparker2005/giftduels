@@ -28,7 +28,7 @@ export const AddGiftInfoDrawer = ({ children }: AddGiftInfoDrawerProps) => {
 					src="/add-gift-info.png"
 					alt="Add gift info"
 					draggable={false}
-					className="w-full h-[240px] object-cover select-none"
+					className="w-full h-[200px] object-cover select-none"
 				/>
 				<VisuallyHidden>
 					<DrawerTitle>How to add gifts?</DrawerTitle>

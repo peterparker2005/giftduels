@@ -71,6 +71,8 @@ export async function init(options: {
 		});
 	}
 
+	const lp = retrieveLaunchParams();
+
 	// Mount all components used in the project.
 	mountBackButton.ifAvailable();
 	restoreInitData();
@@ -85,9 +87,11 @@ export async function init(options: {
 			if (expandViewport.isAvailable()) {
 				expandViewport();
 				if (requestFullscreen.isAvailable() && !isFullscreen()) {
-					requestFullscreen().then(() => {
-						logger.debug("fullscreen", isFullscreen());
-					});
+					if (["ios", "android"].includes(lp.tgWebAppPlatform)) {
+						requestFullscreen().then(() => {
+							logger.debug("fullscreen", isFullscreen());
+						});
+					}
 				}
 			}
 		});

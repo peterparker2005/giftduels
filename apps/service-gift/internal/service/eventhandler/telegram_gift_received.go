@@ -5,24 +5,29 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/google/uuid"
 	giftdomain "github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
+	giftEvents "github.com/peterparker2005/giftduels/packages/events/gift"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	giftv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1"
+	sharedv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/shared/v1"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
 
 type TelegramGiftReceivedHandler struct {
-	repo   giftdomain.GiftRepository
-	logger *logger.Logger
+	repo      giftdomain.GiftRepository
+	publisher message.Publisher
+	logger    *logger.Logger
 }
 
-func NewTelegramGiftReceivedHandler(repo giftdomain.GiftRepository, logger *logger.Logger) *TelegramGiftReceivedHandler {
+func NewTelegramGiftReceivedHandler(repo giftdomain.GiftRepository, publisher message.Publisher, logger *logger.Logger) *TelegramGiftReceivedHandler {
 	return &TelegramGiftReceivedHandler{
-		repo:   repo,
-		logger: logger,
+		repo:      repo,
+		publisher: publisher,
+		logger:    logger,
 	}
 }
 
@@ -48,7 +53,7 @@ func (h *TelegramGiftReceivedHandler) Handle(msg *message.Message) error {
 
 	createGift := &giftdomain.CreateGiftParams{
 		GiftID:           id,
-		CollectibleID:    int64(ev.CollectibleId),
+		CollectibleID:    ev.CollectibleId,
 		Price:            floorPriceTON,
 		TelegramGiftID:   ev.TelegramGiftId.Value,
 		Title:            ev.Title,
@@ -85,6 +90,28 @@ func (h *TelegramGiftReceivedHandler) Handle(msg *message.Message) error {
 		zap.String("message_id", msg.UUID),
 		zap.String("gift_id", id),
 		zap.Float64("price_ton", floorPriceTON))
+
+	importedEvent := &giftv1.GiftDepositedEvent{
+		GiftId:          &sharedv1.GiftId{Value: id},
+		OwnerTelegramId: ev.OwnerTelegramId,
+		TelegramGiftId:  ev.TelegramGiftId,
+		Title:           ev.Title,
+		Slug:            ev.Slug,
+		CollectibleId:   ev.CollectibleId,
+	}
+
+	payload, err := proto.Marshal(importedEvent)
+	if err != nil {
+		h.logger.Error("marshal event failed", zap.Error(err))
+		return err
+	}
+	importedMsg := message.NewMessage(watermill.NewUUID(), payload)
+
+	err = h.publisher.Publish(giftEvents.TopicGiftDeposited.String(), importedMsg)
+	if err != nil {
+		h.logger.Warn("publish event failed", zap.Error(err))
+		return nil
+	}
 
 	return nil
 }

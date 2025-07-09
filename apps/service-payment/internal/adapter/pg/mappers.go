@@ -9,9 +9,9 @@ import (
 
 func ToBalanceDomain(b sqlc.UserBalance) *payment.Balance {
 	return &payment.Balance{
+		ID:             b.ID.String(),
 		TelegramUserID: b.TelegramUserID,
 		TonAmount:      b.TonAmount,
-		ID:             b.ID,
 		CreatedAt:      b.CreatedAt.Time,
 		UpdatedAt:      b.UpdatedAt.Time,
 	}

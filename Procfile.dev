@@ -10,3 +10,5 @@ gift-worker: cd apps/service-gift && go run ./cmd/cli/main.go worker
 gifts-to-duels-bot: pnpm --filter=@giftduels/gifts-to-duels-bot dev
 
 frontend: pnpm --filter=@giftduels/react-tma dev
+
+giftduels-bot: pnpm --filter=@giftduels/bot dev

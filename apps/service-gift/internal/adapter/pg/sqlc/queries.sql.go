@@ -15,7 +15,7 @@ const cancelGiftWithdrawal = `-- name: CancelGiftWithdrawal :one
 UPDATE gifts 
 SET status = 'owned', updated_at = NOW()
 WHERE id = $1 AND status = 'withdraw_pending'
-RETURNING id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, emoji_id, status, created_at, updated_at, withdrawn_at
+RETURNING id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, status, created_at, updated_at, withdrawn_at
 `
 
 func (q *Queries) CancelGiftWithdrawal(ctx context.Context, id pgtype.UUID) (Gift, error) {
@@ -30,7 +30,6 @@ func (q *Queries) CancelGiftWithdrawal(ctx context.Context, id pgtype.UUID) (Gif
 		&i.Title,
 		&i.Slug,
 		&i.Price,
-		&i.EmojiID,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -43,7 +42,7 @@ const completeGiftWithdrawal = `-- name: CompleteGiftWithdrawal :one
 UPDATE gifts 
 SET status = 'withdrawn', withdrawn_at = NOW(), updated_at = NOW()
 WHERE id = $1 AND status = 'withdraw_pending'
-RETURNING id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, emoji_id, status, created_at, updated_at, withdrawn_at
+RETURNING id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, status, created_at, updated_at, withdrawn_at
 `
 
 func (q *Queries) CompleteGiftWithdrawal(ctx context.Context, id pgtype.UUID) (Gift, error) {
@@ -58,7 +57,6 @@ func (q *Queries) CompleteGiftWithdrawal(ctx context.Context, id pgtype.UUID) (G
 		&i.Title,
 		&i.Slug,
 		&i.Price,
-		&i.EmojiID,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -76,15 +74,14 @@ INSERT INTO gifts (
     owner_telegram_id,
     upgrade_message_id,
     price,
-    emoji_id,
     collectible_id,
     status,
     created_at,
     updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 )
-RETURNING id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, emoji_id, status, created_at, updated_at, withdrawn_at
+RETURNING id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, status, created_at, updated_at, withdrawn_at
 `
 
 type CreateGiftParams struct {
@@ -95,7 +92,6 @@ type CreateGiftParams struct {
 	OwnerTelegramID  int64
 	UpgradeMessageID int32
 	Price            float64
-	EmojiID          int64
 	CollectibleID    int32
 	Status           GiftStatus
 	CreatedAt        pgtype.Timestamptz
@@ -111,7 +107,6 @@ func (q *Queries) CreateGift(ctx context.Context, arg CreateGiftParams) (Gift, e
 		arg.OwnerTelegramID,
 		arg.UpgradeMessageID,
 		arg.Price,
-		arg.EmojiID,
 		arg.CollectibleID,
 		arg.Status,
 		arg.CreatedAt,
@@ -127,7 +122,6 @@ func (q *Queries) CreateGift(ctx context.Context, arg CreateGiftParams) (Gift, e
 		&i.Title,
 		&i.Slug,
 		&i.Price,
-		&i.EmojiID,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -238,7 +232,7 @@ func (q *Queries) GetGiftAttributes(ctx context.Context, giftID pgtype.UUID) ([]
 }
 
 const getGiftByID = `-- name: GetGiftByID :one
-SELECT id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, emoji_id, status, created_at, updated_at, withdrawn_at
+SELECT id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, status, created_at, updated_at, withdrawn_at
   FROM gifts
  WHERE id = $1
 `
@@ -255,7 +249,6 @@ func (q *Queries) GetGiftByID(ctx context.Context, id pgtype.UUID) (Gift, error)
 		&i.Title,
 		&i.Slug,
 		&i.Price,
-		&i.EmojiID,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -310,7 +303,7 @@ func (q *Queries) GetGiftEvents(ctx context.Context, arg GetGiftEventsParams) ([
 }
 
 const getGiftsByIDs = `-- name: GetGiftsByIDs :many
-SELECT id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, emoji_id, status, created_at, updated_at, withdrawn_at
+SELECT id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, status, created_at, updated_at, withdrawn_at
   FROM gifts
  WHERE id = ANY($1::uuid[])
 `
@@ -333,7 +326,6 @@ func (q *Queries) GetGiftsByIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]
 			&i.Title,
 			&i.Slug,
 			&i.Price,
-			&i.EmojiID,
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -350,7 +342,7 @@ func (q *Queries) GetGiftsByIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]
 }
 
 const getUserActiveGifts = `-- name: GetUserActiveGifts :many
-SELECT id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, emoji_id, status, created_at, updated_at, withdrawn_at
+SELECT id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, status, created_at, updated_at, withdrawn_at
   FROM gifts
  WHERE owner_telegram_id = $1
    AND status NOT IN ('withdrawn', 'withdraw_pending')
@@ -383,7 +375,6 @@ func (q *Queries) GetUserActiveGifts(ctx context.Context, arg GetUserActiveGifts
 			&i.Title,
 			&i.Slug,
 			&i.Price,
-			&i.EmojiID,
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -414,7 +405,7 @@ func (q *Queries) GetUserActiveGiftsCount(ctx context.Context, ownerTelegramID i
 }
 
 const getUserGifts = `-- name: GetUserGifts :many
-SELECT id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, emoji_id, status, created_at, updated_at, withdrawn_at
+SELECT id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, status, created_at, updated_at, withdrawn_at
   FROM gifts
  WHERE owner_telegram_id = $1
  ORDER BY created_at DESC
@@ -446,7 +437,6 @@ func (q *Queries) GetUserGifts(ctx context.Context, arg GetUserGiftsParams) ([]G
 			&i.Title,
 			&i.Slug,
 			&i.Price,
-			&i.EmojiID,
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -479,7 +469,7 @@ const markGiftForWithdrawal = `-- name: MarkGiftForWithdrawal :one
 UPDATE gifts 
 SET status = 'withdraw_pending', updated_at = NOW()
 WHERE id = $1 AND status = 'owned'
-RETURNING id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, emoji_id, status, created_at, updated_at, withdrawn_at
+RETURNING id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, status, created_at, updated_at, withdrawn_at
 `
 
 func (q *Queries) MarkGiftForWithdrawal(ctx context.Context, id pgtype.UUID) (Gift, error) {
@@ -494,7 +484,6 @@ func (q *Queries) MarkGiftForWithdrawal(ctx context.Context, id pgtype.UUID) (Gi
 		&i.Title,
 		&i.Slug,
 		&i.Price,
-		&i.EmojiID,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -507,7 +496,7 @@ const saveGiftWithPrice = `-- name: SaveGiftWithPrice :one
 UPDATE gifts 
 SET price = $2, updated_at = NOW()
 WHERE id = $1
-RETURNING id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, emoji_id, status, created_at, updated_at, withdrawn_at
+RETURNING id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, status, created_at, updated_at, withdrawn_at
 `
 
 type SaveGiftWithPriceParams struct {
@@ -527,7 +516,6 @@ func (q *Queries) SaveGiftWithPrice(ctx context.Context, arg SaveGiftWithPricePa
 		&i.Title,
 		&i.Slug,
 		&i.Price,
-		&i.EmojiID,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -540,7 +528,7 @@ const stakeGiftForGame = `-- name: StakeGiftForGame :one
 UPDATE gifts 
 SET status = 'in_game', updated_at = NOW()
 WHERE id = $1 AND status = 'owned'
-RETURNING id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, emoji_id, status, created_at, updated_at, withdrawn_at
+RETURNING id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, status, created_at, updated_at, withdrawn_at
 `
 
 func (q *Queries) StakeGiftForGame(ctx context.Context, id pgtype.UUID) (Gift, error) {
@@ -555,7 +543,6 @@ func (q *Queries) StakeGiftForGame(ctx context.Context, id pgtype.UUID) (Gift, e
 		&i.Title,
 		&i.Slug,
 		&i.Price,
-		&i.EmojiID,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -568,7 +555,7 @@ const updateGiftOwner = `-- name: UpdateGiftOwner :one
 UPDATE gifts 
 SET owner_telegram_id = $2, updated_at = NOW()
 WHERE id = $1
-RETURNING id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, emoji_id, status, created_at, updated_at, withdrawn_at
+RETURNING id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, status, created_at, updated_at, withdrawn_at
 `
 
 type UpdateGiftOwnerParams struct {
@@ -588,7 +575,6 @@ func (q *Queries) UpdateGiftOwner(ctx context.Context, arg UpdateGiftOwnerParams
 		&i.Title,
 		&i.Slug,
 		&i.Price,
-		&i.EmojiID,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -601,7 +587,7 @@ const updateGiftStatus = `-- name: UpdateGiftStatus :one
 UPDATE gifts 
 SET status = $2, updated_at = NOW()
 WHERE id = $1
-RETURNING id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, emoji_id, status, created_at, updated_at, withdrawn_at
+RETURNING id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, status, created_at, updated_at, withdrawn_at
 `
 
 type UpdateGiftStatusParams struct {
@@ -621,7 +607,6 @@ func (q *Queries) UpdateGiftStatus(ctx context.Context, arg UpdateGiftStatusPara
 		&i.Title,
 		&i.Slug,
 		&i.Price,
-		&i.EmojiID,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,

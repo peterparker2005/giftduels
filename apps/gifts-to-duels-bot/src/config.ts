@@ -23,13 +23,6 @@ const EnvSchema = z.object({
 	AMQP_PASSWORD: z.string(),
 	AMQP_VHOST: z.string().default("/"),
 
-	// S3
-	S3_ENDPOINT: z.string().url(),
-	S3_ACCESS_KEY: z.string(),
-	S3_SECRET_KEY: z.string(),
-	S3_BUCKET: z.string(),
-	S3_REGION: z.string(),
-
 	// Logging
 	LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 });
@@ -81,16 +74,6 @@ class Config {
 			vhost: this.env.AMQP_VHOST,
 			url: () =>
 				`amqp://${this.env.AMQP_USER}:${this.env.AMQP_PASSWORD}@${this.env.AMQP_HOST}:${this.env.AMQP_PORT}/${this.env.AMQP_VHOST}`,
-		};
-	}
-
-	get s3() {
-		return {
-			endpoint: this.env.S3_ENDPOINT,
-			accessKey: this.env.S3_ACCESS_KEY,
-			secretKey: this.env.S3_SECRET_KEY,
-			bucket: this.env.S3_BUCKET,
-			region: this.env.S3_REGION,
 		};
 	}
 

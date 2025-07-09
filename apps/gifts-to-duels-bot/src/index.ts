@@ -1,5 +1,5 @@
 import { closeAmqp, connectAmqp } from "@/amqp/connection";
-import { Userbot } from "@/telegram/userbot";
+import { Userbot } from "@/telegram/userbot/Userbot";
 import { Consumer } from "./amqp/consumer";
 import { handleGiftWithdrawRequested } from "./services/eventhandler/withdraw";
 import { setupShutdownHooks } from "./shutdown";

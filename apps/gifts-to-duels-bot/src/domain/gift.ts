@@ -209,7 +209,7 @@ export function parseMessageActionStarGift(
 			depositDate: createTimestamp(
 				message.date || Math.floor(Date.now() / 1000),
 			),
-			ownerTelegramId: createTelegramUserId(toUserId || fromUserId),
+			ownerTelegramId: createTelegramUserId(fromUserId),
 			title,
 			slug,
 			attributes,
@@ -270,7 +270,7 @@ export function parseMessageActionStarGiftUnique(
 			depositDate: createTimestamp(
 				message.date || Math.floor(Date.now() / 1000),
 			),
-			ownerTelegramId: createTelegramUserId(toUserId || fromUserId),
+			ownerTelegramId: createTelegramUserId(fromUserId),
 			title,
 			slug,
 			attributes,
@@ -324,13 +324,11 @@ export function parseNftGift(
 ): TelegramGiftReceivedEvent {
 	if (message.action instanceof Api.MessageActionStarGiftUnique) {
 		return parseMessageActionStarGiftUnique(message, fromUserId, toUserId);
-	} else if (message.action instanceof Api.MessageActionStarGift) {
-		return parseMessageActionStarGift(message, fromUserId, toUserId);
-	} else {
-		throw new Error(
-			`Unsupported message action type: ${message.action.className}`,
-		);
 	}
+
+	throw new Error(
+		`Unsupported message action type: ${message.action.className}`,
+	);
 }
 
 // ===== BATCH OPERATIONS =====

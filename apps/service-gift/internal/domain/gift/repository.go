@@ -17,7 +17,7 @@ type CreateGiftAttributeParams struct {
 type CreateGiftParams struct {
 	GiftID           string
 	OwnerTelegramID  int64
-	CollectibleID    int64
+	CollectibleID    int32
 	UpgradeMessageID int32
 	TelegramGiftID   int64
 	Status           Status

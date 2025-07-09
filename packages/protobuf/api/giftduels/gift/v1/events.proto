@@ -28,11 +28,13 @@ message TelegramGiftReceivedEvent {
 message GiftWithdrawRequestedEvent {
   shared.v1.GiftId gift_id = 1;
   shared.v1.TelegramUserId owner_telegram_id = 2;
-  shared.v1.GiftTelegramId telegram_gift_id = 5;
-  int32 collectible_id = 3;
-  int32 upgrade_message_id = 4;
-  shared.v1.TonAmount price = 6;
-  shared.v1.TonAmount commission_amount = 7;
+  shared.v1.GiftTelegramId telegram_gift_id = 3;
+  string title = 4;
+  string slug = 5;
+  int32 collectible_id = 6;
+  int32 upgrade_message_id = 7;
+  shared.v1.TonAmount price = 8;
+  shared.v1.TonAmount commission_amount = 9;
 }
 
 // Event emitted when gift withdrawal fails and needs to be rolled back
@@ -40,10 +42,39 @@ message GiftWithdrawFailedEvent {
   shared.v1.GiftId gift_id = 1;
   shared.v1.TelegramUserId owner_telegram_id = 2;
   shared.v1.GiftTelegramId telegram_gift_id = 3;
-  int32 collectible_id = 4;
-  int32 upgrade_message_id = 5;
-  shared.v1.TonAmount price = 6;
-  shared.v1.TonAmount commission_amount = 7;
-  string error_reason = 8; // Reason for withdrawal failure
-  int32 attempts_made = 9; // Number of attempts made before failure
+  string title = 4;
+  string slug = 5;
+  int32 collectible_id = 6;
+  int32 upgrade_message_id = 7;
+  shared.v1.TonAmount price = 8;
+  shared.v1.TonAmount commission_amount = 9;
+  string error_reason = 10; // Reason for withdrawal failure
+  int32 attempts_made = 11; // Number of attempts made before failure
+}
+
+message GiftDepositedEvent {
+  shared.v1.GiftId gift_id = 1;
+  shared.v1.TelegramUserId owner_telegram_id = 2;
+  shared.v1.GiftTelegramId telegram_gift_id = 3;
+  string title = 4;
+  string slug = 5;
+  int32 collectible_id = 6;
+}
+
+message GiftWithdrawnEvent {
+  shared.v1.GiftId gift_id = 1;
+  shared.v1.TelegramUserId owner_telegram_id = 2;
+  shared.v1.GiftTelegramId telegram_gift_id = 3;
+  string title = 4;
+  string slug = 5;
+  int32 collectible_id = 6;
+}
+
+message GiftWithdrawUserNotFoundEvent {
+  shared.v1.GiftId gift_id = 1;
+  shared.v1.TelegramUserId owner_telegram_id = 2;
+  shared.v1.GiftTelegramId telegram_gift_id = 3;
+  string title = 4;
+  string slug = 5;
+  int32 collectible_id = 6;
 }

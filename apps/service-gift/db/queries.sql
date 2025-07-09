@@ -98,13 +98,12 @@ INSERT INTO gifts (
     owner_telegram_id,
     upgrade_message_id,
     price,
-    emoji_id,
     collectible_id,
     status,
     created_at,
     updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 )
 RETURNING *;
 

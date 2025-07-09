@@ -37,9 +37,10 @@ var Module = fx.Options(
 	//-------------------------------- бизнес-логика --------------------------------
 	fx.Provide(func(
 		repo gift.GiftRepository,
+		publisher message.Publisher,
 		l *logger.Logger,
 	) *TelegramGiftReceivedHandler {
-		return NewTelegramGiftReceivedHandler(repo, l)
+		return NewTelegramGiftReceivedHandler(repo, publisher, l)
 	}),
 
 	fx.Provide(func(

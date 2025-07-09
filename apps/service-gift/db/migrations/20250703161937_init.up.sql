@@ -18,7 +18,6 @@ CREATE TABLE gifts (
   title            TEXT      NOT NULL,
   slug             TEXT      NOT NULL,
   price            FLOAT     NOT NULL,
-  emoji_id         BIGINT    NOT NULL,
   status           gift_status NOT NULL DEFAULT 'owned',
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),

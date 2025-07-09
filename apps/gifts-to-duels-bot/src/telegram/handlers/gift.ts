@@ -36,6 +36,16 @@ export async function nftGiftHandler(client: TelegramClient) {
 		logger.info({ action: message.action.className }, "Processing NFT Gift...");
 
 		const self = await client.getMe();
+		const selfId = self.id?.toJSNumber();
+
+		// Игнорируем сообщения от самого userbot'а
+		if (senderId === selfId) {
+			logger.info(
+				{ senderId, selfId },
+				"🤖 Ignoring gift message from userbot itself",
+			);
+			return;
+		}
 
 		logger.info({ senderId }, "🎁 Got NFT Gift");
 
@@ -62,12 +72,6 @@ export async function nftGiftHandler(client: TelegramClient) {
 				},
 				"📤 NFT Gift event published",
 			);
-
-			await client.sendMessage(senderId, {
-				message: `🎁 ${
-					gift.title || "Подарок"
-				} успешно добавлен в ваш профиль GiftDuels!\n\nИщите игру или создайте свою — @GiftDuels`,
-			});
 		} catch (err) {
 			logger.error(
 				{

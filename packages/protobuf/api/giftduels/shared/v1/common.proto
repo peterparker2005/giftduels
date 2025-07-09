@@ -40,6 +40,10 @@ message DuelId {
   string value = 1; // UUID
 }
 
+message TransactionId {
+  string value = 1; // UUID
+}
+
 // ===== MONETARY VALUES =====
 message StarsAmount {
   uint32 value = 1;

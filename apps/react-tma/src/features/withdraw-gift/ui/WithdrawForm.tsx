@@ -2,7 +2,7 @@ import { GiftView } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
 import { useEffect, useMemo } from "react";
 import { usePreviewWithdraw } from "@/shared/api/queries/usePreviewWithdraw";
 import { Button } from "@/shared/ui/Button";
-import { useWithdrawForm } from "../model/useWithdrawForm";
+import { useWithdrawForm } from "../hooks/useWithdrawForm";
 import { TonWithdrawalCost } from "./TonWithdrawalCost";
 import { WithdrawGiftCard } from "./WithdrawGiftCard";
 

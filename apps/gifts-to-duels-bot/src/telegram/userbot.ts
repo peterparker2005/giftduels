@@ -1,6 +1,14 @@
-import bigInt from "big-integer";
+import { create } from "@bufbuild/protobuf";
+import { GiftWithdrawUserNotFoundEventSchema } from "@giftduels/protobuf-js/giftduels/gift/v1/events_pb";
+import {
+	GiftIdSchema,
+	GiftTelegramIdSchema,
+	TelegramUserIdSchema,
+} from "@giftduels/protobuf-js/giftduels/shared/v1/common_pb";
 import { Api, TelegramClient } from "telegram";
 import { StringSession } from "telegram/sessions";
+import { v4 as uuidv4 } from "uuid";
+import { publisher } from "@/amqp/publisher";
 import { config } from "@/config";
 import { logger } from "@/logger";
 
@@ -92,37 +100,6 @@ export class Userbot {
 		);
 		logger.error({ userId }, error.message);
 		throw error;
-	}
-
-	async sendGift(params: {
-		userId: number;
-		giftId: string | number | bigint;
-		text?: string;
-		hideName?: boolean;
-		includeUpgrade?: boolean;
-	}) {
-		const peer = await this.getInputPeerForUser(params.userId);
-
-		const invoice = new Api.InputInvoiceStarGift({
-			peer,
-			giftId: bigInt(Number(params.giftId)),
-			hideName: params.hideName ?? false,
-			includeUpgrade: params.includeUpgrade ?? false,
-			message: new Api.TextWithEntities({
-				text: params.text ?? "",
-				entities: [],
-			}),
-		});
-
-		const form = await this.client.invoke(
-			new Api.payments.GetPaymentForm({ invoice }),
-		);
-
-		await this.client.invoke(
-			new Api.payments.SendStarsForm({ formId: form.formId, invoice }),
-		);
-
-		logger.info(`🎁 Sent gift to ${params.userId}`);
 	}
 
 	async getUserGifts(params?: {
@@ -246,9 +223,55 @@ export class Userbot {
 		return { total, gifts, users: [...usersMap.values()] };
 	}
 
-	async transferGift(params: { userId: number; messageId: number }) {
-		const { userId, messageId } = params;
+	async transferGift(params: {
+		userId: number;
+		messageId: number;
+		giftId: string;
+		telegramGiftId: number;
+		collectibleId: number;
+		title: string;
+		slug: string;
+	}) {
+		const {
+			userId,
+			messageId,
+			giftId,
+			telegramGiftId,
+			collectibleId,
+			title,
+			slug,
+		} = params;
 		const peer = await this.getInputPeerForUser(userId);
+		if (!peer) {
+			const event = create(GiftWithdrawUserNotFoundEventSchema, {
+				$typeName: GiftWithdrawUserNotFoundEventSchema.typeName,
+				giftId: create(GiftIdSchema, {
+					$typeName: GiftIdSchema.typeName,
+					value: giftId,
+				}),
+				ownerTelegramId: create(TelegramUserIdSchema, {
+					$typeName: TelegramUserIdSchema.typeName,
+					value: BigInt(userId),
+				}),
+				telegramGiftId: create(GiftTelegramIdSchema, {
+					$typeName: GiftTelegramIdSchema.typeName,
+					value: BigInt(telegramGiftId),
+				}),
+				collectibleId: collectibleId,
+				title: title,
+				slug: slug,
+			});
+			await publisher.publishProto({
+				routingKey: "telegram.gift.withdraw.user.not.found",
+				schema: GiftWithdrawUserNotFoundEventSchema,
+				msg: event,
+				opts: {
+					messageId: uuidv4(),
+				},
+			});
+			logger.error({ userId, messageId }, `❌ User ${userId} not found`);
+			throw new Error("User not found");
+		}
 		logger.info(`🎁 Transferring gift from msg ${messageId} to user ${userId}`);
 
 		try {

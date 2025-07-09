@@ -134,7 +134,7 @@ const deleteTransaction = `-- name: DeleteTransaction :exec
 DELETE FROM user_transactions WHERE id = $1
 `
 
-func (q *Queries) DeleteTransaction(ctx context.Context, id int32) error {
+func (q *Queries) DeleteTransaction(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, deleteTransaction, id)
 	return err
 }

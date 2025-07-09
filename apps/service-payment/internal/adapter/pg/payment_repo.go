@@ -3,7 +3,6 @@ package pg
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -54,7 +53,7 @@ func (r *repo) GetUserBalance(ctx context.Context, telegramUserID int64) (*payme
 	}
 
 	return &payment.Balance{
-		ID:             balance.ID,
+		ID:             balance.ID.String(),
 		TelegramUserID: balance.TelegramUserID,
 		TonAmount:      balance.TonAmount,
 		CreatedAt:      balance.CreatedAt.Time,
@@ -133,7 +132,7 @@ func (r *repo) GetDepositByPayload(ctx context.Context, payload string) (*paymen
 
 func (r *repo) SetDepositTransaction(ctx context.Context, params *payment.SetDepositTransactionParams) (*payment.Deposit, error) {
 	deposit, err := r.q.SetDepositTransaction(ctx, sqlc.SetDepositTransactionParams{
-		ID:     pgtype.UUID{Bytes: uuid.MustParse(params.ID), Valid: true},
+		ID:     mustPgUUID(params.ID),
 		TxHash: pgtype.Text{String: params.TxHash, Valid: true},
 		TxLt:   pgtype.Int8{Int64: params.TxLt, Valid: true},
 	})
@@ -143,8 +142,8 @@ func (r *repo) SetDepositTransaction(ctx context.Context, params *payment.SetDep
 	return ToDepositDomain(deposit), nil
 }
 
-func (r *repo) DeleteTransaction(ctx context.Context, id int32) error {
-	err := r.q.DeleteTransaction(ctx, id)
+func (r *repo) DeleteTransaction(ctx context.Context, id string) error {
+	err := r.q.DeleteTransaction(ctx, mustPgUUID(id))
 	if err != nil {
 		return err
 	}

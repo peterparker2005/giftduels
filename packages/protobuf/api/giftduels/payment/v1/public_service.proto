@@ -16,6 +16,8 @@ service PaymentPublicService {
   rpc GetBalance(google.protobuf.Empty) returns (GetBalanceResponse) {}
 
   rpc PreviewWithdraw(PreviewWithdrawRequest) returns (PreviewWithdrawResponse);
+
+  rpc GetTransactionHistory(GetTransactionHistoryRequest) returns (GetTransactionHistoryResponse);
 }
 
 message PreviewWithdrawRequest {
@@ -47,4 +49,12 @@ message DepositTonResponse {
 
 message GetBalanceResponse {
   UserBalanceView balance = 1;
+}
+
+message GetTransactionHistoryRequest {
+  shared.v1.PageRequest pagination = 1;
+}
+
+message GetTransactionHistoryResponse {
+  repeated TransactionView transactions = 1;
 }

@@ -15,6 +15,55 @@ importers:
         specifier: ^9.1.7
         version: 9.1.7
 
+  apps/giftduels-bot:
+    dependencies:
+      '@bufbuild/protobuf':
+        specifier: ^2.6.0
+        version: 2.6.0
+      '@giftduels/logger-ts':
+        specifier: workspace:*
+        version: link:../../packages/logger-ts
+      '@giftduels/protobuf-js':
+        specifier: workspace:*
+        version: link:../../packages/protobuf-js
+      amqp-connection-manager:
+        specifier: ^4.1.14
+        version: 4.1.14(amqplib@0.10.8)
+      amqplib:
+        specifier: ^0.10.8
+        version: 0.10.8
+      grammy:
+        specifier: ^1.37.0
+        version: 1.37.0
+      pino:
+        specifier: ^9.7.0
+        version: 9.7.0
+      pino-pretty:
+        specifier: ^13.0.0
+        version: 13.0.0
+      zod:
+        specifier: ^4.0.0
+        version: 4.0.0
+    devDependencies:
+      '@types/amqplib':
+        specifier: 0.10.6
+        version: 0.10.6
+      '@types/jest':
+        specifier: ^29.5.14
+        version: 29.5.14
+      '@types/node':
+        specifier: ^22.16.0
+        version: 22.16.0
+      dotenv:
+        specifier: ^17.2.0
+        version: 17.2.0
+      esbuild:
+        specifier: ^0.25.5
+        version: 0.25.5
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
+
   apps/gifts-to-duels-bot:
     dependencies:
       '@aws-sdk/client-s3':
@@ -938,6 +987,9 @@ packages:
   '@eslint/plugin-kit@0.3.3':
     resolution: {integrity: sha512-1+WqvgNMhmlAambTvT3KPtCl/Ibr68VldY2XY40SL1CE0ZXiakFR/cbTspaF5HsnpDMvcYYoJHfl4980NBjGag==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@grammyjs/types@3.21.0':
+    resolution: {integrity: sha512-IMj0EpmglPCICuyfGRx4ENKPSuzS2xMSoPgSPzHC6FtnWKDEmJLBP/GbPv/h3TAeb27txqxm/BUld+gbJk6ccQ==}
 
   '@grpc/grpc-js@1.13.4':
     resolution: {integrity: sha512-GsFaMXCkMqkKIvwCQjCrwH+GHbPKBjhwo/8ZuUkWHqbI73Kky9I+pQltrlT0+MWpedCoosda53lgjYfyEPgxBg==}
@@ -2164,6 +2216,10 @@ packages:
     peerDependencies:
       vite: ^4 || ^5 || ^6 || ^7.0.0-beta.0
 
+  abort-controller@3.0.0:
+    resolution: {integrity: sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg==}
+    engines: {node: '>=6.5'}
+
   acorn-jsx@5.3.2:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
     peerDependencies:
@@ -2557,6 +2613,10 @@ packages:
     resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
     engines: {node: '>=12'}
 
+  dotenv@17.2.0:
+    resolution: {integrity: sha512-Q4sgBT60gzd0BB0lSyYD3xM4YxrXA9y4uBDof1JNYGzOXrQdQ6yX+7XIAqoFOGQFOTK1D3Hts5OllpxMDZFONQ==}
+    engines: {node: '>=12'}
+
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
     engines: {node: '>= 0.4'}
@@ -2745,6 +2805,10 @@ packages:
 
   event-emitter@0.3.5:
     resolution: {integrity: sha512-D9rRn9y7kLPnJ+hMq7S/nhvoKwwvVJahBi2BPmx3bvbsEdK3W9ii8cBSGjP+72/LnM4n6fo3+dkCX5FeTQruXA==}
+
+  event-target-shim@5.0.1:
+    resolution: {integrity: sha512-i/2XbnSz/uxRCU6+NdVJgKWDTM427+MqYbkQzD321DuCQJUqOuJKIA0IM2+W2xtYHdKOmZ4dR6fExsd4SXL+WQ==}
+    engines: {node: '>=6'}
 
   eventsource@2.0.2:
     resolution: {integrity: sha512-IzUmBGPR3+oUG9dUeXynyNmf91/3zUSJg1lCktzKw47OXuhco54U3r9B7O4XX+Rb1Itm9OZ2b0RkTs10bICOxA==}
@@ -2945,6 +3009,10 @@ packages:
 
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
+
+  grammy@1.37.0:
+    resolution: {integrity: sha512-UBGqGKux+49t1vm7n/m1BaeXIYbWESXjhaFxG+9z33VTLSHdQJwIOmpNKmZSaoBlSWbAJE+IJZ30X7RfWvEolA==}
+    engines: {node: ^12.20.0 || >=14.13.1}
 
   graphemer@1.4.0:
     resolution: {integrity: sha512-EtKwoO6kxCL9WO5xipiHTZlSzBm7WLT627TqC/uVRd0HKmq8NXyebnNYxDoBi7wt8eTWrUrKXCOVaFq9x1kgag==}
@@ -4413,6 +4481,9 @@ packages:
   zod@3.25.71:
     resolution: {integrity: sha512-BsBc/NPk7h8WsUWYWYL+BajcJPY8YhjelaWu2NMLuzgraKAz4Lb4/6K11g9jpuDetjMiqhZ6YaexFLOC0Ogi3Q==}
 
+  zod@4.0.0:
+    resolution: {integrity: sha512-9diLdTPc/L7w/5jI4C3gHYNiGHDV9IZYxo1e5LSD8cabi65WVTWWb+g2BGPEpUUCOxR4D+6O5B0AzyMdUAXwrw==}
+
   zustand@5.0.6:
     resolution: {integrity: sha512-ihAqNeUVhe0MAD+X8M5UzqyZ9k3FFZLBTtqo6JLPwV53cbRB/mJwBI0PxcIgqhBBHlEs8G45OTDTMq3gNcLq3A==}
     engines: {node: '>=12.20.0'}
@@ -5290,6 +5361,8 @@ snapshots:
     dependencies:
       '@eslint/core': 0.15.1
       levn: 0.4.1
+
+  '@grammyjs/types@3.21.0': {}
 
   '@grpc/grpc-js@1.13.4':
     dependencies:
@@ -6710,6 +6783,10 @@ snapshots:
     transitivePeerDependencies:
       - '@swc/helpers'
 
+  abort-controller@3.0.0:
+    dependencies:
+      event-target-shim: 5.0.1
+
   acorn-jsx@5.3.2(acorn@8.15.0):
     dependencies:
       acorn: 8.15.0
@@ -7095,6 +7172,8 @@ snapshots:
 
   dotenv@16.6.1: {}
 
+  dotenv@17.2.0: {}
+
   dunder-proto@1.0.1:
     dependencies:
       call-bind-apply-helpers: 1.0.2
@@ -7331,6 +7410,8 @@ snapshots:
       d: 1.0.2
       es5-ext: 0.10.64
 
+  event-target-shim@5.0.1: {}
+
   eventsource@2.0.2: {}
 
   execa@5.1.1:
@@ -7521,6 +7602,16 @@ snapshots:
   gopd@1.2.0: {}
 
   graceful-fs@4.2.11: {}
+
+  grammy@1.37.0:
+    dependencies:
+      '@grammyjs/types': 3.21.0
+      abort-controller: 3.0.0
+      debug: 4.4.1
+      node-fetch: 2.7.0
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
 
   graphemer@1.4.0: {}
 
@@ -9032,6 +9123,8 @@ snapshots:
   yocto-queue@0.1.0: {}
 
   zod@3.25.71: {}
+
+  zod@4.0.0: {}
 
   zustand@5.0.6(@types/react@19.1.8)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0)):
     optionalDependencies:

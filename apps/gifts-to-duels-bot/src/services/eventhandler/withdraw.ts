@@ -1,6 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import {
 	GiftWithdrawFailedEventSchema,
+	GiftWithdrawnEventSchema,
 	GiftWithdrawRequestedEvent,
 	GiftWithdrawRequestedEventSchema,
 } from "@giftduels/protobuf-js/giftduels/gift/v1/events_pb";
@@ -9,7 +10,7 @@ import { v4 as uuidv4 } from "uuid";
 import type { AckControl } from "@/amqp/consumer";
 import { publisher } from "@/amqp/publisher";
 import { logger } from "@/logger";
-import { Userbot } from "@/telegram/userbot";
+import { Userbot } from "@/telegram/userbot/Userbot";
 import { decodeProtobufMessage } from "@/utils/decodeProtobufMessage";
 
 const MAX_RETRIES = 3;
@@ -61,7 +62,32 @@ export async function handleGiftWithdrawRequested(
 		await userbot.transferGift({
 			userId: Number(ownerTelegramId),
 			messageId: upgradeMessageId,
+			giftId: giftId,
+			telegramGiftId: Number(event.telegramGiftId?.value),
+			collectibleId: event.collectibleId,
+			title: event.title,
+			slug: event.slug,
 		});
+
+		const withdrawnEvent = create(GiftWithdrawnEventSchema, {
+			$typeName: GiftWithdrawnEventSchema.typeName,
+			slug: event.slug,
+			title: event.title,
+			giftId: event.giftId,
+			ownerTelegramId: event.ownerTelegramId,
+			telegramGiftId: event.telegramGiftId,
+			collectibleId: event.collectibleId,
+		});
+
+		await publisher.publishProto({
+			routingKey: "telegram.gift.withdrawn",
+			schema: GiftWithdrawnEventSchema,
+			msg: withdrawnEvent,
+			opts: {
+				messageId: uuidv4(),
+			},
+		});
+
 		log.info("✅ Подарок успешно выведен");
 
 		return ctrl.ack();
@@ -85,6 +111,8 @@ export async function handleGiftWithdrawRequested(
 					ownerTelegramId: event.ownerTelegramId,
 					telegramGiftId: event.telegramGiftId,
 					collectibleId: event.collectibleId,
+					title: event.title,
+					slug: event.slug,
 					upgradeMessageId: event.upgradeMessageId,
 					price: event.price,
 					commissionAmount: event.commissionAmount,

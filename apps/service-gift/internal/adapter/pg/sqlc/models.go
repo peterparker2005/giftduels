@@ -107,7 +107,6 @@ type Gift struct {
 	Title            string
 	Slug             string
 	Price            float64
-	EmojiID          int64
 	Status           GiftStatus
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz

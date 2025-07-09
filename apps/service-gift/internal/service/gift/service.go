@@ -172,6 +172,8 @@ func (s *Service) ExecuteWithdraw(ctx context.Context, telegramUserID int64, gif
 			UpgradeMessageId: g.UpgradeMessageID,
 			Price:            &sharedv1.TonAmount{Value: g.Price},
 			CommissionAmount: &sharedv1.TonAmount{Value: commissionAmt},
+			Title:            g.Title,
+			Slug:             g.Slug,
 		}
 		payload, err := proto.Marshal(ev)
 		if err != nil {

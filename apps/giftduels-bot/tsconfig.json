@@ -1,0 +1,24 @@
+{
+	"compilerOptions": {
+    "outDir": "dist",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"declaration": true,
+		"emitDeclarationOnly": false,
+		"removeComments": true,
+		"target": "ES2020",
+		"allowJs": true,
+		"traceResolution": false,
+		"lib": ["esnext"],
+		"strict": true,
+		"esModuleInterop": true,
+		"resolveJsonModule": true,
+		"skipLibCheck": true,
+		"baseUrl": ".",
+		"paths": {
+			"@/*": ["src/*"]
+		},
+		"types": ["jest", "node"]
+	},
+	"include": ["src", "scripts/**/*.ts", "**/*.test.ts"]
+}

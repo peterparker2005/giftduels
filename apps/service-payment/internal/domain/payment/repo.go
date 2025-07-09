@@ -37,7 +37,7 @@ type Repository interface {
 	Create(ctx context.Context, params *CreateBalanceParams) error
 
 	CreateTransaction(ctx context.Context, params *CreateTransactionParams) error
-	DeleteTransaction(ctx context.Context, id int32) error
+	DeleteTransaction(ctx context.Context, id string) error
 
 	GetUserBalance(ctx context.Context, telegramUserID int64) (*Balance, error)
 	AddUserBalance(ctx context.Context, params *AddUserBalanceParams) (*Balance, error)

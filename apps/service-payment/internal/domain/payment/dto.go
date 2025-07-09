@@ -3,7 +3,7 @@ package payment
 import "time"
 
 type Balance struct {
-	ID             int32
+	ID             string
 	TelegramUserID int64
 	TonAmount      float64
 	CreatedAt      time.Time
@@ -11,7 +11,7 @@ type Balance struct {
 }
 
 type Transaction struct {
-	ID             int32
+	ID             string
 	TelegramUserID int64
 	Amount         float64
 	Reason         TransactionReason

@@ -9,14 +9,17 @@ import { WithdrawForm } from "./WithdrawForm";
 
 interface WithdrawDrawerProps {
 	children: React.ReactNode;
+	disabled?: boolean;
 }
 
-export const WithdrawDrawer = ({ children }: WithdrawDrawerProps) => {
+export const WithdrawDrawer = ({ children, disabled }: WithdrawDrawerProps) => {
 	const { data, isLoading } = useGiftsQuery();
 
 	return (
 		<Drawer>
-			<DrawerTrigger asChild>{children}</DrawerTrigger>
+			<DrawerTrigger asChild disabled={disabled}>
+				{children}
+			</DrawerTrigger>
 			<DrawerContent className="h-[90vh] px-4 pt-4">
 				<DrawerTitle>Select gifts for withdrawal</DrawerTitle>
 
