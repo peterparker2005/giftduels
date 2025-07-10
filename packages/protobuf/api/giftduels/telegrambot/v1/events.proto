@@ -3,6 +3,7 @@ syntax = "proto3";
 package giftduels.telegrambot.v1;
 
 import "giftduels/shared/v1/common.proto";
+import "giftduels/telegrambot/v1/invoice_payload.proto";
 
 option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/telegrambot/v1;telegrambotv1";
 
@@ -11,5 +12,5 @@ message InvoicePaymentEvent {
   shared.v1.TelegramUserId telegram_user_id = 2;
   shared.v1.StarsAmount stars_amount = 3;
   // base64 encoded payload
-  string payload = 4;
+  StarInvoicePayload payload = 4;
 }

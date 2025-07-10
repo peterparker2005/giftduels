@@ -23,6 +23,10 @@ const EnvSchema = z.object({
 
 	// Logging
 	LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+
+	// gRPC
+	GRPC_TELEGRAM_BOT_SERVICE_HOST: z.string().default("0.0.0.0"),
+	GRPC_TELEGRAM_BOT_SERVICE_PORT: z.coerce.number().default(50060),
 });
 
 const _env = EnvSchema.safeParse(process.env);
@@ -76,6 +80,13 @@ class Config {
 
 	get logLevel() {
 		return this.env.LOG_LEVEL;
+	}
+
+	get grpc() {
+		return {
+			host: this.env.GRPC_TELEGRAM_BOT_SERVICE_HOST,
+			port: this.env.GRPC_TELEGRAM_BOT_SERVICE_PORT,
+		};
 	}
 }
 

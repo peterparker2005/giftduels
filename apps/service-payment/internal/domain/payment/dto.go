@@ -31,6 +31,7 @@ type GiftFee struct {
 type TransactionReason string
 
 const (
+	TransactionReasonDeposit  TransactionReason = "deposit"
 	TransactionReasonWithdraw TransactionReason = "withdraw"
 	TransactionReasonRefund   TransactionReason = "refund"
 )

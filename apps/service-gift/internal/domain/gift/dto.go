@@ -27,10 +27,10 @@ type GiftEvent struct {
 type Status string
 
 const (
-	StatusInGame    Status = "in_game"
-	StatusWithdrawn Status = "withdrawn"
-	StatusPending   Status = "pending"
-	StatusOwned     Status = "owned"
+	StatusInGame          Status = "in_game"
+	StatusWithdrawn       Status = "withdrawn"
+	StatusWithdrawPending Status = "withdraw_pending"
+	StatusOwned           Status = "owned"
 )
 
 type AttributeType string

@@ -30,12 +30,6 @@ message PreviewWithdrawResponse {
   shared.v1.TonAmount total_ton_fee = 3;
 }
 
-message GiftFee {
-  shared.v1.GiftId gift_id = 1;
-  shared.v1.StarsAmount stars_fee = 2;
-  shared.v1.TonAmount ton_fee = 3;
-}
-
 message DepositTonRequest {
   shared.v1.TonAmount ton_amount = 1;
 }

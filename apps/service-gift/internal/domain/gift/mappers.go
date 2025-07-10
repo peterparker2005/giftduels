@@ -94,7 +94,7 @@ func DomainGiftToProtoView(domainGift *Gift) *giftv1.GiftView {
 // DomainStatusToProto s domain Status to protobuf GiftStatus
 func DomainStatusToProto(domainStatus Status) giftv1.GiftStatus {
 	switch domainStatus {
-	case StatusPending:
+	case StatusOwned:
 		return giftv1.GiftStatus_GIFT_STATUS_OWNED
 	case StatusWithdrawn:
 		return giftv1.GiftStatus_GIFT_STATUS_WITHDRAWN

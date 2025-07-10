@@ -13,9 +13,10 @@ service TelegramBotPrivateService {
 message CreateStarInvoiceRequest {
   shared.v1.TelegramUserId telegram_user_id = 1;
   shared.v1.StarsAmount stars_amount = 2;
-  string description = 3;
+  string title = 3;
+  string description = 4;
   // base64 encoded payload
-  string payload = 4;
+  string payload = 5;
 }
 
 message CreateStarInvoiceResponse {

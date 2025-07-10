@@ -1,60 +1,74 @@
 import { GiftView } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
-import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
-import { toast } from "sonner";
-import { useExecuteWithdrawMutation } from "@/shared/api/queries/useExecuteWithdrawMutation";
+import { useCallback, useEffect, useState } from "react";
 
 export interface WithdrawFormData {
 	selectedGifts: string[]; // giftIds
 }
 
-export const useWithdrawForm = (gifts: GiftView[] = []) => {
-	const [selectedGifts, setSelectedGifts] = useState<string[]>([]);
-	const { mutate } = useExecuteWithdrawMutation();
-	const queryClient = useQueryClient();
+export const useWithdrawForm = (
+	gifts: GiftView[] = [],
+	externalSelectedGifts?: string[],
+) => {
+	const [internalSelectedGifts, setInternalSelectedGifts] = useState<string[]>(
+		[],
+	);
+
+	// Use external state if provided, otherwise use internal state
+	const selectedGifts = externalSelectedGifts ?? internalSelectedGifts;
+	// Sync internal state with external state when external state changes
+	useEffect(() => {
+		if (externalSelectedGifts !== undefined) {
+			setInternalSelectedGifts(externalSelectedGifts);
+		}
+	}, [externalSelectedGifts]);
+
 	const isGiftSelected = useCallback(
 		(giftId: string) => selectedGifts.includes(giftId),
 		[selectedGifts],
 	);
 
-	const toggleGift = useCallback((giftId: string) => {
-		setSelectedGifts((prev) => {
-			if (prev.includes(giftId)) {
-				return prev.filter((id) => id !== giftId);
+	const toggleGift = useCallback(
+		(giftId: string) => {
+			if (externalSelectedGifts) {
+				// Don't modify external state directly - this should be handled by parent
+				return;
 			}
-			return [...prev, giftId];
-		});
-	}, []);
+
+			setInternalSelectedGifts((prev) => {
+				if (prev.includes(giftId)) {
+					return prev.filter((id) => id !== giftId);
+				}
+				return [...prev, giftId];
+			});
+		},
+		[externalSelectedGifts],
+	);
 
 	const selectAll = useCallback(() => {
+		if (externalSelectedGifts) {
+			// Don't modify external state directly
+			return;
+		}
+
 		const allGiftIds = gifts
 			.map((gift) => gift.giftId?.value || "")
 			.filter(Boolean);
-		setSelectedGifts(allGiftIds);
-	}, [gifts]);
+		setInternalSelectedGifts(allGiftIds);
+	}, [gifts, externalSelectedGifts]);
 
 	const clearSelection = useCallback(() => {
-		setSelectedGifts([]);
-	}, []);
+		if (externalSelectedGifts) {
+			// Don't modify external state directly
+			return;
+		}
+
+		setInternalSelectedGifts([]);
+	}, [externalSelectedGifts]);
 
 	const isAllSelected =
 		gifts.length > 0 && selectedGifts.length === gifts.length;
 	const hasSelection = selectedGifts.length > 0;
 	const selectedCount = selectedGifts.length;
-
-	const handleSubmit = useCallback(() => {
-		mutate(selectedGifts, {
-			onSuccess: (data) => {
-				console.log("Withdrawal successful", data);
-				clearSelection();
-				queryClient.invalidateQueries({ queryKey: ["gifts"] });
-			},
-			onError: (error) => {
-				toast.error(error.message, { position: "top-center" });
-				console.error("Withdrawal failed", error);
-			},
-		});
-	}, [mutate, selectedGifts, clearSelection, queryClient]);
 
 	return {
 		selectedGifts,
@@ -65,6 +79,5 @@ export const useWithdrawForm = (gifts: GiftView[] = []) => {
 		isAllSelected,
 		hasSelection,
 		selectedCount,
-		handleSubmit,
 	};
 };

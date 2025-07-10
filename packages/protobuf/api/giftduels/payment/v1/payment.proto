@@ -31,3 +31,9 @@ enum TransactionReason {
   TRANSACTION_REASON_WITHDRAW = 2;
   TRANSACTION_REASON_REFUND = 3;
 }
+
+message GiftFee {
+  shared.v1.GiftId gift_id = 1;
+  shared.v1.StarsAmount stars_fee = 2;
+  shared.v1.TonAmount ton_fee = 3;
+}

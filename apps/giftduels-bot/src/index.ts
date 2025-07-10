@@ -1,82 +1,86 @@
+import fastify from "fastify";
 import { connectAmqp } from "./amqp/connection";
 import { Consumer } from "./amqp/consumer";
 import { GiftDepositedHandler } from "./amqp/handlers/GiftDepositedHandler";
 import { GiftWithdrawFailedHandler } from "./amqp/handlers/GiftWithdrawFailedHandler";
 import { GiftWithdrawnHandler } from "./amqp/handlers/GiftWithdrawnHandler";
-import { createBot } from "./bot";
+import { getContainer } from "./container";
+import { grpcServerPlugin } from "./grpc/plugin";
 import { logger } from "./logger";
-import { NotificationService } from "./services/notification";
 
 async function main() {
+	const app = fastify({ logger: true });
+
 	await connectAmqp();
 
-	// 1) Сначала создаём бота (пока без notificationService)
-	const bot = createBot();
+	// Получаем сервисы из DI контейнера
+	const container = getContainer();
+	const bot = container.resolve("bot");
+	const notificationService = container.resolve("notificationService");
 
-	// 2) Теперь, когда bot уже есть, можно инициализировать NotificationService
-	const notificationService = new NotificationService(bot);
+	await app.register(grpcServerPlugin);
+	app.grpcServer.start();
 
-	const giftDepositedConsumer = new Consumer(
-		{
-			exchange: {
-				name: "gift.events",
-				type: "topic",
+	const consumers = [
+		new Consumer(
+			{
+				exchange: {
+					name: "gift.events",
+					type: "topic",
+				},
+				routingKey: "gift.deposited",
+				maxRetries: 3,
 			},
-			routingKey: "gift.deposited",
-			maxRetries: 1,
-		},
-		async (message, properties, ctrl) => {
-			new GiftDepositedHandler(notificationService).handle(
-				message,
-				properties,
-				ctrl,
-			);
-		},
-	);
-
-	const giftWithdrawFailedConsumer = new Consumer(
-		{
-			exchange: {
-				name: "telegram.events",
-				type: "topic",
+			async (message, properties, ctrl) => {
+				new GiftDepositedHandler(notificationService).handle(
+					message,
+					properties,
+					ctrl,
+				);
 			},
-			routingKey: "telegram.gift.withdraw.failed",
-			maxRetries: 1,
-		},
-		async (message, properties, ctrl) => {
-			new GiftWithdrawFailedHandler(notificationService).handle(
-				message,
-				properties,
-				ctrl,
-			);
-		},
-	);
-
-	const giftWithdrawnConsumer = new Consumer(
-		{
-			exchange: {
-				name: "telegram.events",
-				type: "topic",
+		),
+		new Consumer(
+			{
+				exchange: {
+					name: "telegram.events",
+					type: "topic",
+				},
+				routingKey: "telegram.gift.withdraw.failed",
+				maxRetries: 3,
 			},
-			routingKey: "telegram.gift.withdrawn",
-		},
-		async (message, properties, ctrl) => {
-			new GiftWithdrawnHandler(notificationService).handle(
-				message,
-				properties,
-				ctrl,
-			);
-		},
-	);
+			async (message, properties, ctrl) => {
+				new GiftWithdrawFailedHandler(notificationService).handle(
+					message,
+					properties,
+					ctrl,
+				);
+			},
+		),
+		new Consumer(
+			{
+				exchange: {
+					name: "telegram.events",
+					type: "topic",
+				},
+				routingKey: "telegram.gift.withdrawn",
+				maxRetries: 3,
+			},
+			async (message, properties, ctrl) => {
+				new GiftWithdrawnHandler(notificationService).handle(
+					message,
+					properties,
+					ctrl,
+				);
+			},
+		),
+	];
 
-	await giftDepositedConsumer.start();
-	await giftWithdrawFailedConsumer.start();
-	await giftWithdrawnConsumer.start();
+	await Promise.all(consumers.map((consumer) => consumer.start()));
 
-	// 4) Запускаем polling / webhook’и
 	await bot.start();
+	await app.listen({ port: 50061 });
 }
 
 main()
 	.then(() => logger.info("Bot started"))
-	.catch((err) => logger.error("Bot failed to start", { err }));
+	.catch((err) => logger.error({ err }, "Bot failed to start"));

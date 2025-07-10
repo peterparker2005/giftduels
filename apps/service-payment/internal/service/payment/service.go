@@ -97,8 +97,27 @@ func (s *Service) GetBalance(ctx context.Context, telegramUserID int64) (*paymen
 	return s.repo.GetUserBalance(ctx, telegramUserID)
 }
 
-func (s *Service) SpendUserBalance(ctx context.Context, telegramUserID int64, amount float64) (*payment.Balance, error) {
-	balance, err := s.repo.SpendUserBalance(ctx, &payment.SpendUserBalanceParams{
+func (s *Service) SpendUserBalance(ctx context.Context, telegramUserID int64, amount float64, reason payment.TransactionReason) (*payment.Balance, error) {
+	log := s.log.With(zap.Int64("telegram_user_id", telegramUserID), zap.Float64("amount", amount), zap.String("reason", string(reason)))
+
+	tx, err := s.txMgr.BeginTx(ctx)
+	if err != nil {
+		log.Error("failed to begin transaction", zap.Error(err))
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			err = tx.Rollback(ctx)
+			if err != nil {
+				log.Error("failed to rollback transaction", zap.Error(err))
+			}
+		}
+	}()
+
+	repo := s.repo.WithTx(tx)
+
+	balance, err := repo.SpendUserBalance(ctx, &payment.SpendUserBalanceParams{
 		TelegramUserID: telegramUserID,
 		Amount:         amount,
 	})
@@ -106,15 +125,64 @@ func (s *Service) SpendUserBalance(ctx context.Context, telegramUserID int64, am
 		return nil, err
 	}
 
+	err = repo.CreateTransaction(ctx, &payment.CreateTransactionParams{
+		TelegramUserID: telegramUserID,
+		Amount:         amount,
+		Reason:         reason,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		log.Error("failed to commit transaction", zap.Error(err))
+		return nil, err
+	}
+
 	return balance, nil
 }
 
-func (s *Service) AddUserBalance(ctx context.Context, telegramUserID int64, amount float64) (*payment.Balance, error) {
-	balance, err := s.repo.AddUserBalance(ctx, &payment.AddUserBalanceParams{
+func (s *Service) AddUserBalance(ctx context.Context, telegramUserID int64, amount float64, reason payment.TransactionReason) (*payment.Balance, error) {
+	log := s.log.With(zap.Int64("telegram_user_id", telegramUserID), zap.Float64("amount", amount))
+
+	tx, err := s.txMgr.BeginTx(ctx)
+	if err != nil {
+		log.Error("failed to begin transaction", zap.Error(err))
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			err = tx.Rollback(ctx)
+			if err != nil {
+				log.Error("failed to rollback transaction", zap.Error(err))
+			}
+		}
+	}()
+
+	repo := s.repo.WithTx(tx)
+
+	balance, err := repo.AddUserBalance(ctx, &payment.AddUserBalanceParams{
 		TelegramUserID: telegramUserID,
 		Amount:         amount,
 	})
 	if err != nil {
+		return nil, err
+	}
+
+	err = repo.CreateTransaction(ctx, &payment.CreateTransactionParams{
+		TelegramUserID: telegramUserID,
+		Amount:         amount,
+		Reason:         reason,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		log.Error("failed to commit transaction", zap.Error(err))
 		return nil, err
 	}
 
@@ -155,60 +223,6 @@ func calculateStarsCommission(giftTonPrice float64) float64 {
 func calculateTonCommission(stars float64) float64 {
 	ton := stars * tonPerStar
 	return math.Round(ton*100) / 100
-}
-
-func (s *Service) SpendWithdrawalCommission(ctx context.Context, telegramUserID int64, tonAmount float64) (*payment.Balance, float64, error) {
-	log := s.log.With(zap.Float64("ton_amount", tonAmount))
-	preview, err := s.PreviewWithdraw(ctx, tonAmount)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	tx, err := s.txMgr.BeginTx(ctx)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	repo := s.repo.WithTx(tx)
-
-	var pErr error
-	defer func() {
-		if pErr != nil {
-			if rbErr := tx.Rollback(ctx); rbErr != nil {
-				log.Error("failed to rollback commission spend transaction", zap.Error(rbErr))
-			}
-		}
-	}()
-
-	amount := preview.TotalTonFee
-
-	log.Info("spending withdrawal commission", zap.Float64("amount", amount))
-
-	balance, err := repo.SpendUserBalance(ctx, &payment.SpendUserBalanceParams{
-		TelegramUserID: telegramUserID,
-		Amount:         amount,
-	})
-	if err != nil {
-		pErr = err
-		return nil, 0, err
-	}
-
-	err = repo.CreateTransaction(ctx, &payment.CreateTransactionParams{
-		TelegramUserID: telegramUserID,
-		Amount:         amount,
-		Reason:         payment.TransactionReasonWithdraw,
-	})
-	if err != nil {
-		pErr = err
-		return nil, 0, err
-	}
-
-	pErr = tx.Commit(ctx)
-	if pErr != nil {
-		return nil, 0, pErr
-	}
-
-	return balance, amount, nil
 }
 
 func (s *Service) RollbackWithdrawalCommission(ctx context.Context, telegramUserID int64, amount float64) error {

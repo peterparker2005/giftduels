@@ -10,7 +10,8 @@ function lazy<T extends FC<SVGProps<SVGSVGElement>>>(
 
 export const icons = {
 	TON: lazy(() => import("@/assets/ton.svg?react")),
-	plus: lazy(() => import("@/assets/plus.svg?react")),
+	Star: lazy(() => import("@/assets/star.svg?react")),
+	Plus: lazy(() => import("@/assets/plus.svg?react")),
 };
 
 export type IconName = keyof typeof icons;

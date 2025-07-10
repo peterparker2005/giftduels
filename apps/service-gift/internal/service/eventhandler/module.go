@@ -14,8 +14,10 @@ import (
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/app"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/config"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
+	giftService "github.com/peterparker2005/giftduels/apps/service-gift/internal/service/gift"
 	giftEvents "github.com/peterparker2005/giftduels/packages/events/gift"
 	"github.com/peterparker2005/giftduels/packages/events/telegram"
+	"github.com/peterparker2005/giftduels/packages/events/telegrambot"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -50,6 +52,13 @@ var Module = fx.Options(
 		return NewGiftWithdrawFailedHandler(repo, l)
 	}),
 
+	fx.Provide(func(
+		giftSvc *giftService.Service,
+		l *logger.Logger,
+	) *InvoicePaymentHandler {
+		return NewInvoicePaymentHandler(giftSvc, l)
+	}),
+
 	//-------------------------------- router & lifecycle ---------------------------
 	fx.Invoke(func(
 		cfg *config.Config,
@@ -59,6 +68,7 @@ var Module = fx.Options(
 		pub message.Publisher,
 		giftReceivedHandler *TelegramGiftReceivedHandler,
 		withdrawFailedHandler *GiftWithdrawFailedHandler,
+		invoicePaymentHandler *InvoicePaymentHandler,
 		pool *pgxpool.Pool,
 	) error {
 		router, err := ProvideRouter(log, pub, giftEvents.Config(cfg.ServiceName).Exchange+".poison")
@@ -88,9 +98,15 @@ var Module = fx.Options(
 			return err
 		}
 
+		telegramBotSub, err := subFac(telegrambot.Config(cfg.ServiceName))
+		if err != nil {
+			return err
+		}
+
 		// ── хендлеры ──────────────────────────────────────────────────────────
 		router.AddNoPublisherHandler("telegram_gift_received", telegram.TopicTelegramGiftReceived.String(), telegramSub, giftReceivedHandler.Handle)
 		router.AddNoPublisherHandler("gift_withdraw_failed", giftEvents.TopicGiftWithdrawFailed.String(), telegramSub, withdrawFailedHandler.Handle)
+		router.AddNoPublisherHandler("invoice_payment_completed", telegrambot.TopicInvoicePaymentCompleted.String(), telegramBotSub, invoicePaymentHandler.Handle)
 		// router.AddNoPublisherHandler("tg_gift_poison", giftEvents.Config(cfg.ServiceName).Exchange+".poison", giftSub, func(m *message.Message) error {
 		// 	log.Warn("💀 poison", zap.String("body", string(m.Payload)))
 		// 	return nil

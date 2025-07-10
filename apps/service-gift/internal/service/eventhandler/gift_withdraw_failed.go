@@ -58,6 +58,15 @@ func (h *GiftWithdrawFailedHandler) Handle(msg *message.Message) error {
 	gift, err := h.repo.CancelGiftWithdrawal(ctx, ev.GiftId.Value)
 	if err != nil {
 		log.Error("Failed to cancel gift withdrawal", zap.Error(err))
+
+		// TODO: Опубликовать событие о неудачном rollback для дальнейшей компенсации
+		// Это критическая ошибка - подарок остается в withdraw_pending, но комиссия может быть возвращена
+		log.Error("CRITICAL: Gift status rollback failed - requires manual intervention",
+			zap.String("gift_id", ev.GiftId.Value),
+			zap.Int64("owner_telegram_id", ev.OwnerTelegramId.Value),
+			zap.String("original_error", ev.ErrorReason),
+		)
+
 		return fmt.Errorf("cancel gift withdrawal: %w", err)
 	}
 

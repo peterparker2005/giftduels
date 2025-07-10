@@ -18,7 +18,7 @@ func NewPaymentPrivateHandler(paymentService *payment.Service) paymentv1.Payment
 }
 
 func (h *PaymentPrivateHandler) SpendUserBalance(ctx context.Context, req *paymentv1.SpendUserBalanceRequest) (*paymentv1.SpendUserBalanceResponse, error) {
-	balance, err := h.paymentService.SpendUserBalance(ctx, req.TelegramUserId.Value, req.TonAmount.Value)
+	balance, err := h.paymentService.SpendUserBalance(ctx, req.TelegramUserId.Value, req.TonAmount.Value, mapTransactionReason(req.GetReason()))
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +30,7 @@ func (h *PaymentPrivateHandler) SpendUserBalance(ctx context.Context, req *payme
 }
 
 func (h *PaymentPrivateHandler) AddUserBalance(ctx context.Context, req *paymentv1.AddUserBalanceRequest) (*paymentv1.AddUserBalanceResponse, error) {
-	balance, err := h.paymentService.AddUserBalance(ctx, req.TelegramUserId.Value, req.TonAmount.Value)
+	balance, err := h.paymentService.AddUserBalance(ctx, req.TelegramUserId.Value, req.TonAmount.Value, mapTransactionReason(req.GetReason()))
 	if err != nil {
 		return nil, err
 	}
@@ -53,17 +53,19 @@ func (h *PaymentPrivateHandler) GetUserBalance(ctx context.Context, req *payment
 	}, nil
 }
 
-func (h *PaymentPrivateHandler) SpendWithdrawalCommission(ctx context.Context, req *paymentv1.SpendWithdrawalCommissionRequest) (*paymentv1.SpendWithdrawalCommissionResponse, error) {
-	balance, commissionAmount, err := h.paymentService.SpendWithdrawalCommission(ctx, req.TelegramUserId.Value, req.TonAmount.Value)
+func (h *PaymentPrivateHandler) PreviewWithdraw(ctx context.Context, req *paymentv1.PrivatePreviewWithdrawRequest) (*paymentv1.PrivatePreviewWithdrawResponse, error) {
+	tonAmount := req.GetTonAmount().GetValue()
+	resp, err := h.paymentService.PreviewWithdraw(ctx, tonAmount)
 	if err != nil {
 		return nil, err
 	}
-	return &paymentv1.SpendWithdrawalCommissionResponse{
-		CommissionAmount: &sharedv1.TonAmount{
-			Value: commissionAmount,
+
+	return &paymentv1.PrivatePreviewWithdrawResponse{
+		TotalStarsFee: &sharedv1.StarsAmount{
+			Value: resp.TotalStarsFee,
 		},
-		NewAmount: &sharedv1.TonAmount{
-			Value: balance.TonAmount,
+		TotalTonFee: &sharedv1.TonAmount{
+			Value: resp.TotalTonFee,
 		},
 	}, nil
 }

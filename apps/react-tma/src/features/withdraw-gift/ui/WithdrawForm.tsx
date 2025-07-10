@@ -1,6 +1,5 @@
 import { GiftView } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
-import { useEffect, useMemo } from "react";
-import { usePreviewWithdraw } from "@/shared/api/queries/usePreviewWithdraw";
+import { PreviewWithdrawResponse } from "@giftduels/protobuf-js/giftduels/payment/v1/public_service_pb";
 import { Button } from "@/shared/ui/Button";
 import { useWithdrawForm } from "../hooks/useWithdrawForm";
 import { TonWithdrawalCost } from "./TonWithdrawalCost";
@@ -8,53 +7,55 @@ import { WithdrawGiftCard } from "./WithdrawGiftCard";
 
 interface WithdrawFormProps {
 	gifts: GiftView[];
+	selectedGifts?: string[];
+	onProceedToConfirm: (selectedGifts: string[]) => void;
+	onGiftToggle?: (giftId: string) => void;
+	onSelectAll?: () => void;
+	onClearSelection?: () => void;
+	previewData?: PreviewWithdrawResponse;
+	isPreviewPending?: boolean;
 }
 
-export const WithdrawForm = ({ gifts }: WithdrawFormProps) => {
-	const form = useWithdrawForm(gifts);
-	const {
-		mutate: previewWithdraw,
-		data: previewWithdrawData,
-		isPending,
-	} = usePreviewWithdraw();
+export const WithdrawForm = ({
+	gifts,
+	selectedGifts: externalSelectedGifts,
+	onProceedToConfirm,
+	onGiftToggle,
+	onSelectAll,
+	onClearSelection,
+	previewData,
+	isPreviewPending = false,
+}: WithdrawFormProps) => {
+	const form = useWithdrawForm(gifts, externalSelectedGifts);
+
+	// Use external handlers if provided, otherwise use internal form methods
+	const handleToggleGift = onGiftToggle || form.toggleGift;
+	const handleSelectAll = onSelectAll || form.selectAll;
+	const handleClearSelection = onClearSelection || form.clearSelection;
 
 	const handleFormSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (form.hasSelection) {
-			form.handleSubmit();
+			onProceedToConfirm(form.selectedGifts);
 		}
 	};
 
 	const handleSelectAllToggle = () => {
 		if (form.isAllSelected) {
-			form.clearSelection();
+			handleClearSelection();
 		} else {
-			form.selectAll();
+			handleSelectAll();
 		}
 	};
 
-	// Calculate total TON amount for selected gifts
-	const totalTonAmount = useMemo(() => {
-		return form.selectedGifts.reduce((total, giftId) => {
-			const gift = gifts.find((g) => g.giftId?.value === giftId);
-			return total + (gift?.price?.value || 0);
-		}, 0);
-	}, [form.selectedGifts, gifts]);
-
-	useEffect(() => {
-		if (form.hasSelection) {
-			previewWithdraw(totalTonAmount);
-		}
-	}, [form.hasSelection, previewWithdraw, totalTonAmount]);
-
 	return (
 		<form onSubmit={handleFormSubmit} className="flex flex-col h-full">
-			<div className="flex items-center justify-between gap-2 mt-4 mb-4">
+			<div className="flex items-center justify-between gap-2 mt-0 mb-4">
 				<div className="text-muted-foreground flex items-center gap-1">
 					<p>Withdrawal cost</p>
 					<TonWithdrawalCost
-						isPending={isPending}
-						fee={previewWithdrawData?.totalTonFee?.value}
+						isPending={isPreviewPending}
+						fee={previewData?.totalTonFee?.value}
 					/>
 					<p>TON</p>
 				</div>
@@ -75,7 +76,7 @@ export const WithdrawForm = ({ gifts }: WithdrawFormProps) => {
 							key={giftId}
 							gift={gift}
 							selected={form.isGiftSelected(giftId)}
-							onSelectionChange={() => form.toggleGift(giftId)}
+							onSelectionChange={() => handleToggleGift(giftId)}
 						/>
 					);
 				})}
@@ -87,7 +88,7 @@ export const WithdrawForm = ({ gifts }: WithdrawFormProps) => {
 					disabled={!form.hasSelection}
 					className="w-full py-3"
 				>
-					Withdraw {form.hasSelection ? `${form.selectedCount} ` : ""}gifts
+					Select {form.hasSelection ? `${form.selectedCount} ` : ""}gifts
 				</Button>
 			</div>
 		</form>

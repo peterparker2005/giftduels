@@ -49,6 +49,16 @@ func (h *TelegramGiftWithdrawFailedHandler) Handle(msg *message.Message) error {
 			zap.Int64("telegram_user_id", telegramUserID),
 			zap.Float64("commission_amount", commissionAmount),
 		)
+
+		// TODO: Опубликовать событие о неудачном rollback комиссии для компенсации
+		// Это критическая ошибка - комиссия не возвращена, но статус подарка может быть сброшен
+		h.log.Error("CRITICAL: Commission rollback failed - requires manual intervention",
+			zap.Int64("telegram_user_id", telegramUserID),
+			zap.Float64("commission_amount", commissionAmount),
+			zap.String("gift_id", event.GiftId.GetValue()),
+			zap.String("original_error", event.ErrorReason),
+		)
+
 		return err
 	}
 

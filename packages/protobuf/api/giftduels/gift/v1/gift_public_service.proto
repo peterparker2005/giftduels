@@ -32,10 +32,21 @@ message GetGiftResponse {
 
 message ExecuteWithdrawRequest {
   repeated shared.v1.GiftId gift_ids = 1;
+
+  enum CommissionCurrency {
+    COMMISSION_CURRENCY_UNSPECIFIED = 0;
+    COMMISSION_CURRENCY_TON = 1;
+    COMMISSION_CURRENCY_STARS = 2;
+  }
+
+  CommissionCurrency commission_currency = 2;
 }
 
 message ExecuteWithdrawResponse {
-  shared.v1.SuccessResponse success = 2;
+  oneof response {
+    shared.v1.SuccessResponse ton_success = 1;
+    string stars_invoice_url = 2;
+  }
 }
 
 message GetGiftsRequest {

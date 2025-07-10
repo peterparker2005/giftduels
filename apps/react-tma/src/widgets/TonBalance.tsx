@@ -23,7 +23,7 @@ export const TonBalance = () => {
 				{formatTonAmount(data?.balance?.tonAmount?.value)} TON
 			</span>
 			<div className="w-4 h-4 flex items-center justify-center bg-white rounded-full">
-				<Icon icon="plus" className="w-3.5 h-3.5 text-background" />
+				<Icon icon="Plus" className="w-3.5 h-3.5 text-background" />
 			</div>
 		</button>
 	);

@@ -12,9 +12,10 @@ import (
 
 // Clients хранит все ваши grpc-клиенты
 type Clients struct {
-	Identity *IdentityClient
-	Gift     *GiftClient
-	Payment  *PaymentClient
+	Identity    *IdentityClient
+	Gift        *GiftClient
+	Payment     *PaymentClient
+	TelegramBot *TelegramBotClient
 }
 
 // CreateDialOptions возвращает базовый набор опций для dial
@@ -49,6 +50,10 @@ func NewClients(ctx context.Context, cfg configs.GRPCConfig, opts ...grpc.DialOp
 		c.Close()
 		return nil, fmt.Errorf("payment client: %w", err)
 	}
+	if c.TelegramBot, err = NewTelegramBotClient(ctx, cfg.TelegramBot.Address(), dialOpts...); err != nil {
+		c.Close()
+		return nil, fmt.Errorf("telegram bot client: %w", err)
+	}
 
 	return c, nil
 }
@@ -56,7 +61,7 @@ func NewClients(ctx context.Context, cfg configs.GRPCConfig, opts ...grpc.DialOp
 // Close аккуратно закроет все клиенты
 func (c *Clients) Close() {
 	for _, cl := range []io.Closer{
-		c.Identity, c.Gift, c.Payment,
+		c.Identity, c.Gift, c.Payment, c.TelegramBot,
 	} {
 		if cl != nil {
 			_ = cl.Close()

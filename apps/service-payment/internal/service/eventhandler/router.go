@@ -19,7 +19,8 @@ func ProvideRouter(
 		return nil, err
 	}
 
-	retry := middleware.Retry{MaxRetries: 3, InitialInterval: time.Second, Multiplier: 2}
+	// Увеличиваем retry для критических rollback операций
+	retry := middleware.Retry{MaxRetries: 5, InitialInterval: time.Second, Multiplier: 2}
 	poison, err := middleware.PoisonQueue(pub, poisonKey)
 	if err != nil {
 		return nil, err

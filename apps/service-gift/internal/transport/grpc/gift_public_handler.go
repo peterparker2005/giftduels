@@ -82,17 +82,28 @@ func (h *giftPublicHandler) ExecuteWithdraw(ctx context.Context, req *giftv1.Exe
 	for i, id := range req.GetGiftIds() {
 		ids[i] = id.Value
 	}
-	_, err = h.giftService.ExecuteWithdraw(ctx, telegramUserID, ids)
+
+	result, err := h.giftService.ExecuteWithdraw(ctx, telegramUserID, ids, req.GetCommissionCurrency())
 	if err != nil {
 		return nil, err
 	}
 
-	// For now, return success response
-	// TODO: implement actual withdrawal logic based on method
-	return &giftv1.ExecuteWithdrawResponse{
-		Success: &sharedv1.SuccessResponse{
-			Success: true,
-			Message: "Withdrawal request received",
-		},
-	}, nil
+	if result.IsStarsCommission {
+		// Возвращаем Stars invoice URL
+		return &giftv1.ExecuteWithdrawResponse{
+			Response: &giftv1.ExecuteWithdrawResponse_StarsInvoiceUrl{
+				StarsInvoiceUrl: result.StarsInvoiceURL,
+			},
+		}, nil
+	} else {
+		// Возвращаем успешный ответ для TON
+		return &giftv1.ExecuteWithdrawResponse{
+			Response: &giftv1.ExecuteWithdrawResponse_TonSuccess{
+				TonSuccess: &sharedv1.SuccessResponse{
+					Success: true,
+					Message: "Withdrawal request received",
+				},
+			},
+		}, nil
+	}
 }
