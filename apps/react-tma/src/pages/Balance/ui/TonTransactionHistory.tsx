@@ -6,8 +6,7 @@ import { cn } from "@/shared/utils/cn";
 import { getFragmentUrl } from "@/shared/utils/getFragmentUrl";
 
 export function TonTransactionHistory() {
-	const { data, isLoading, fetchNextPage, hasNextPage } =
-		useTransactionHistory();
+	const { data, fetchNextPage } = useTransactionHistory();
 
 	return (
 		<section>
