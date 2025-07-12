@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/peterparker2005/giftduels/packages/shared"
 )
 
 type CreateBalanceParams struct {
@@ -14,6 +15,7 @@ type CreateTransactionParams struct {
 	TelegramUserID int64
 	Amount         float64
 	Reason         TransactionReason
+	Metadata       []byte
 }
 
 type AddUserBalanceParams struct {
@@ -24,12 +26,6 @@ type AddUserBalanceParams struct {
 type SpendUserBalanceParams struct {
 	TelegramUserID int64
 	Amount         float64
-}
-
-type SetDepositTransactionParams struct {
-	ID     string
-	TxHash string
-	TxLt   int64
 }
 
 type Repository interface {
@@ -43,7 +39,6 @@ type Repository interface {
 	AddUserBalance(ctx context.Context, params *AddUserBalanceParams) (*Balance, error)
 	SpendUserBalance(ctx context.Context, params *SpendUserBalanceParams) (*Balance, error)
 
-	CreateDeposit(ctx context.Context, params *CreateDepositParams) (*Deposit, error)
-	GetDepositByPayload(ctx context.Context, payload string) (*Deposit, error)
-	SetDepositTransaction(ctx context.Context, params *SetDepositTransactionParams) (*Deposit, error)
+	GetUserTransactions(ctx context.Context, telegramUserID int64, pagination *shared.PageRequest) ([]*Transaction, error)
+	GetUserTransactionsCount(ctx context.Context, telegramUserID int64) (int64, error)
 }

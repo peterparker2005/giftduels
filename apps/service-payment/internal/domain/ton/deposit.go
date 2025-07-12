@@ -1,4 +1,4 @@
-package payment
+package ton
 
 import (
 	"time"

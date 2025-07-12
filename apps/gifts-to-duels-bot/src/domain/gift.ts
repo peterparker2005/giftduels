@@ -331,6 +331,70 @@ export function parseNftGift(
 	);
 }
 
+/**
+ * Parse SavedStarGift to TelegramGiftReceivedEvent for event processing
+ */
+export function parseSavedStarGiftToEvent(
+	savedGift: Api.SavedStarGift,
+	ownerTelegramId: number,
+): TelegramGiftReceivedEvent {
+	const gift = savedGift.gift;
+
+	if (!gift) {
+		throw new Error("SavedStarGift does not contain gift object");
+	}
+
+	// Handle different gift types
+	let telegramGiftId: string;
+	let title: string;
+	let slug: string;
+	let attributes: GiftAttribute[] = [];
+	let collectibleId = 0;
+
+	if (gift.className === "StarGiftUnique") {
+		const uniqueGift = gift as Api.StarGiftUnique;
+		telegramGiftId = uniqueGift.id?.toString() || "0";
+		title = uniqueGift.title || "Unique Gift";
+		slug = uniqueGift.slug || slugify(title);
+		attributes = parseAttributes(uniqueGift.attributes);
+		collectibleId = uniqueGift.num;
+	} else {
+		logger.warn(`Unknown gift type: ${(gift as any).className as string}`);
+		telegramGiftId = "0";
+		title = "Unknown Gift";
+		slug = "unknown";
+		collectibleId = 0;
+	}
+
+	const result: TelegramGiftReceivedEvent = create(
+		TelegramGiftReceivedEventSchema,
+		{
+			telegramGiftId: createGiftTelegramId(telegramGiftId),
+			depositDate: createTimestamp(
+				savedGift.date || Math.floor(Date.now() / 1000),
+			),
+			ownerTelegramId: createTelegramUserId(ownerTelegramId),
+			title,
+			slug,
+			attributes,
+			collectibleId,
+			upgradeMessageId: savedGift.msgId || 0,
+		},
+	);
+
+	logger.debug(
+		{
+			giftId: telegramGiftId,
+			title,
+			collectibleId,
+			ownerTelegramId,
+		},
+		"🎁 Parsed SavedStarGift to TelegramGiftReceivedEvent",
+	);
+
+	return result;
+}
+
 // ===== BATCH OPERATIONS =====
 
 /**
@@ -353,5 +417,17 @@ export function parseSavedStarGiftsToViews(
 ): GiftView[] {
 	return savedGifts.map((savedGift) =>
 		parseSavedStarGiftToView(savedGift, ownerTelegramId),
+	);
+}
+
+/**
+ * Parse multiple SavedStarGifts to TelegramGiftReceivedEvent objects
+ */
+export function parseSavedStarGiftsToEvents(
+	savedGifts: Api.SavedStarGift[],
+	ownerTelegramId: number,
+): TelegramGiftReceivedEvent[] {
+	return savedGifts.map((savedGift) =>
+		parseSavedStarGiftToEvent(savedGift, ownerTelegramId),
 	);
 }

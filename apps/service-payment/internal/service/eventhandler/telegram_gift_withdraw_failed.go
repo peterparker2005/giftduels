@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/ThreeDotsLabs/watermill/message"
+	paymentDomain "github.com/peterparker2005/giftduels/apps/service-payment/internal/domain/payment"
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/service/payment"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	giftv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1"
@@ -42,7 +43,15 @@ func (h *TelegramGiftWithdrawFailedHandler) Handle(msg *message.Message) error {
 		zap.String("error_reason", event.ErrorReason),
 	)
 
-	err := h.paymentService.RollbackWithdrawalCommission(ctx, telegramUserID, commissionAmount)
+	metadata := paymentDomain.TransactionMetadata{
+		Gift: &paymentDomain.TransactionMetadata_GiftDetails{
+			GiftID: event.GiftId.GetValue(),
+			Title:  event.Title,
+			Slug:   event.Slug,
+		},
+	}
+
+	err := h.paymentService.RollbackWithdrawalCommission(ctx, telegramUserID, commissionAmount, metadata)
 	if err != nil {
 		h.log.Error("failed to rollback withdrawal commission",
 			zap.Error(err),

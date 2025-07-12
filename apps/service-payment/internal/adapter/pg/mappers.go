@@ -1,10 +1,12 @@
 package pg
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/adapter/pg/sqlc"
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/domain/payment"
+	"github.com/peterparker2005/giftduels/apps/service-payment/internal/domain/ton"
 )
 
 func ToBalanceDomain(b sqlc.UserBalance) *payment.Balance {
@@ -17,7 +19,7 @@ func ToBalanceDomain(b sqlc.UserBalance) *payment.Balance {
 	}
 }
 
-func ToDepositDomain(d sqlc.Deposit) *payment.Deposit {
+func ToDepositDomain(d sqlc.Deposit) *ton.Deposit {
 	var txHash *string
 	if d.TxHash.Valid {
 		txHash = &d.TxHash.String
@@ -29,10 +31,10 @@ func ToDepositDomain(d sqlc.Deposit) *payment.Deposit {
 		txLt = &val
 	}
 
-	return &payment.Deposit{
+	return &ton.Deposit{
 		ID:             d.ID.Bytes,
 		TelegramUserID: d.TelegramUserID,
-		Status:         payment.DepositStatus(d.Status),
+		Status:         ton.DepositStatus(d.Status),
 		AmountNano:     d.AmountNano,
 		Payload:        d.Payload,
 		ExpiresAt:      d.ExpiresAt.Time,
@@ -51,4 +53,25 @@ func ToDBTonNetwork(n string) (sqlc.TonNetwork, error) {
 		return sqlc.TonNetworkTestnet, nil
 	}
 	return sqlc.TonNetwork(""), fmt.Errorf("unknown ton network: %s", n)
+}
+
+func ToTransactionDomain(t sqlc.UserTransaction) *payment.Transaction {
+	var metadata *payment.TransactionMetadata
+	if t.Metadata != nil {
+		// Создаём экземпляр, чтобы в него можно было прочитать данные
+		m := &payment.TransactionMetadata{}
+		// Безопасно парсим JSON
+		if err := json.Unmarshal(t.Metadata, m); err == nil {
+			metadata = m
+		}
+	}
+
+	return &payment.Transaction{
+		ID:             t.ID.String(),
+		TelegramUserID: t.TelegramUserID,
+		Amount:         t.Amount,
+		Reason:         payment.TransactionReason(t.Reason),
+		CreatedAt:      t.CreatedAt.Time,
+		Metadata:       metadata,
+	}
 }

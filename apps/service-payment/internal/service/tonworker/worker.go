@@ -15,7 +15,7 @@ import (
 
 type Processor struct {
 	api             ton.TonAPI
-	cursorRepo      ton.CursorRepository
+	depositRepo     ton.DepositRepository
 	paymentService  *payment.Service
 	treasuryAddress string
 	cancel          context.CancelFunc
@@ -24,14 +24,14 @@ type Processor struct {
 
 func NewProcessor(
 	api ton.TonAPI,
-	cursorRepo ton.CursorRepository,
+	depositRepo ton.DepositRepository,
 	paymentService *payment.Service,
 	cfg *config.Config,
 	logger *logger.Logger,
 ) *Processor {
 	return &Processor{
 		api:             api,
-		cursorRepo:      cursorRepo,
+		depositRepo:     depositRepo,
 		paymentService:  paymentService,
 		treasuryAddress: cfg.Ton.WalletAddress,
 		logger:          logger,
@@ -67,7 +67,7 @@ func (p *Processor) run(ctx context.Context) {
 		}
 
 		// 2) Читаем курсор из БД
-		lastLT, err := p.cursorRepo.Get(ctx, "testnet", p.treasuryAddress)
+		lastLT, err := p.depositRepo.GetCursor(ctx, "testnet", p.treasuryAddress)
 		if err != nil {
 			p.logger.Error("failed to get cursor", zap.Error(err))
 			time.Sleep(retryDelay)
@@ -126,7 +126,7 @@ func (p *Processor) run(ctx context.Context) {
 					}
 				}
 
-				if err := p.cursorRepo.Upsert(ctx, "testnet", p.treasuryAddress, tx.LastLT); err != nil {
+				if err := p.depositRepo.UpsertCursor(ctx, "testnet", p.treasuryAddress, tx.LastLT); err != nil {
 					p.logger.Warn("failed to save cursor", zap.Error(err))
 				}
 			}

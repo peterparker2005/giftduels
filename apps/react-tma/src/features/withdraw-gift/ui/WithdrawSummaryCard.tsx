@@ -2,6 +2,7 @@ import { GiftView } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
 import { BiX } from "react-icons/bi";
 import { Icon } from "@/shared/ui/Icon/Icon";
 import { formatThousands } from "@/shared/utils/formatThousands";
+import { getFragmentUrl } from "@/shared/utils/getFragmentUrl";
 
 interface WithdrawSummaryCardProps {
 	gift: GiftView;
@@ -16,7 +17,8 @@ export const WithdrawSummaryCard = ({
 		<div className="bg-card-muted-accent rounded-3xl p-2 flex items-center gap-2 relative">
 			<div className="relative w-18 h-18 overflow-hidden rounded-2xl cursor-default">
 				<img
-					src={`https://nft.fragment.com/gift/${gift.slug.toLowerCase()}.large.jpg`}
+					// src={`https://nft.fragment.com/gift/${gift.slug.toLowerCase()}.large.jpg`}
+					src={getFragmentUrl(gift.slug, "large")}
 					alt={gift.title}
 				/>
 			</div>

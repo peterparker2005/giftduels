@@ -19,5 +19,6 @@ var Module = fx.Module("pg",
 		},
 		NewPgxTxManager,
 		NewPaymentRepository,
+		NewDepositRepository,
 	),
 )

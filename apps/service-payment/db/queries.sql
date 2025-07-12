@@ -11,9 +11,10 @@ RETURNING *;
 INSERT INTO user_transactions (
     telegram_user_id,
     amount,
-    reason
+    reason,
+    metadata
 ) VALUES (
-    $1, $2, $3
+    $1, $2, $3, $4
 )
 RETURNING *;
 
@@ -66,3 +67,13 @@ VALUES ($1, $2, $3)
 ON CONFLICT (network, wallet_address) DO UPDATE
   SET last_lt    = EXCLUDED.last_lt,
       updated_at = now();
+
+-- name: GetUserTransactions :many
+SELECT * FROM user_transactions
+WHERE telegram_user_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: GetUserTransactionsCount :one
+SELECT COUNT(*) FROM user_transactions
+WHERE telegram_user_id = $1;

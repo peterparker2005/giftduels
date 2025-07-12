@@ -30,6 +30,7 @@ message SpendUserBalanceRequest {
   shared.v1.TelegramUserId telegram_user_id = 1;
   shared.v1.TonAmount ton_amount = 2;
   TransactionReason reason = 3;
+  optional TransactionMetadata metadata = 4;
 }
 
 message SpendUserBalanceResponse {
@@ -40,6 +41,7 @@ message AddUserBalanceRequest {
   shared.v1.TelegramUserId telegram_user_id = 1;
   shared.v1.TonAmount ton_amount = 2;
   TransactionReason reason = 3;
+  optional TransactionMetadata metadata = 4;
 }
 
 message AddUserBalanceResponse {

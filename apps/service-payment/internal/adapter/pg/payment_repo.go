@@ -4,13 +4,13 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/adapter/pg/sqlc"
 	payment "github.com/peterparker2005/giftduels/apps/service-payment/internal/domain/payment"
 	"github.com/peterparker2005/giftduels/packages/errors/pkg/errors"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
+	"github.com/peterparker2005/giftduels/packages/shared"
 )
 
 type repo struct {
@@ -66,6 +66,7 @@ func (r *repo) CreateTransaction(ctx context.Context, params *payment.CreateTran
 		TelegramUserID: params.TelegramUserID,
 		Amount:         params.Amount,
 		Reason:         sqlc.TransactionReason(params.Reason),
+		Metadata:       params.Metadata,
 	})
 	if err != nil {
 		return err
@@ -109,43 +110,35 @@ func (r *repo) SpendUserBalance(ctx context.Context, params *payment.SpendUserBa
 	return ToBalanceDomain(balance), nil
 }
 
-func (r *repo) CreateDeposit(ctx context.Context, params *payment.CreateDepositParams) (*payment.Deposit, error) {
-	deposit, err := r.q.CreateDeposit(ctx, sqlc.CreateDepositParams{
-		TelegramUserID: params.TelegramUserID,
-		AmountNano:     params.AmountNano,
-		Payload:        params.Payload,
-		ExpiresAt:      pgtype.Timestamptz{Time: params.ExpiresAt, Valid: true},
-	})
-	if err != nil {
-		return nil, err
-	}
-	return ToDepositDomain(deposit), nil
-}
-
-func (r *repo) GetDepositByPayload(ctx context.Context, payload string) (*payment.Deposit, error) {
-	deposit, err := r.q.GetDepositByPayload(ctx, payload)
-	if err != nil {
-		return nil, err
-	}
-	return ToDepositDomain(deposit), nil
-}
-
-func (r *repo) SetDepositTransaction(ctx context.Context, params *payment.SetDepositTransactionParams) (*payment.Deposit, error) {
-	deposit, err := r.q.SetDepositTransaction(ctx, sqlc.SetDepositTransactionParams{
-		ID:     mustPgUUID(params.ID),
-		TxHash: pgtype.Text{String: params.TxHash, Valid: true},
-		TxLt:   pgtype.Int8{Int64: params.TxLt, Valid: true},
-	})
-	if err != nil {
-		return nil, err
-	}
-	return ToDepositDomain(deposit), nil
-}
-
 func (r *repo) DeleteTransaction(ctx context.Context, id string) error {
 	err := r.q.DeleteTransaction(ctx, mustPgUUID(id))
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func (r *repo) GetUserTransactions(ctx context.Context, telegramUserID int64, pagination *shared.PageRequest) ([]*payment.Transaction, error) {
+	transactions, err := r.q.GetUserTransactions(ctx, sqlc.GetUserTransactionsParams{
+		TelegramUserID: telegramUserID,
+		Limit:          int32(pagination.PageSize()),
+		Offset:         int32(pagination.Offset()),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	transactionsDomain := make([]*payment.Transaction, 0, len(transactions))
+	for _, transaction := range transactions {
+		transactionsDomain = append(transactionsDomain, ToTransactionDomain(transaction))
+	}
+	return transactionsDomain, nil
+}
+
+func (r *repo) GetUserTransactionsCount(ctx context.Context, telegramUserID int64) (int64, error) {
+	count, err := r.q.GetUserTransactionsCount(ctx, telegramUserID)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }

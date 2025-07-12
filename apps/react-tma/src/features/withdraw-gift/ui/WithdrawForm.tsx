@@ -1,9 +1,11 @@
 import { GiftView } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
 import { PreviewWithdrawResponse } from "@giftduels/protobuf-js/giftduels/payment/v1/public_service_pb";
+import { useIntersectionObserver } from "@/shared/hooks/useIntersectionObserver";
 import { Button } from "@/shared/ui/Button";
 import { useWithdrawForm } from "../hooks/useWithdrawForm";
 import { TonWithdrawalCost } from "./TonWithdrawalCost";
 import { WithdrawGiftCard } from "./WithdrawGiftCard";
+import { WithdrawGiftCardSkeleton } from "./WithdrawGiftCardSkeleton";
 
 interface WithdrawFormProps {
 	gifts: GiftView[];
@@ -14,6 +16,9 @@ interface WithdrawFormProps {
 	onClearSelection?: () => void;
 	previewData?: PreviewWithdrawResponse;
 	isPreviewPending?: boolean;
+	isLoadingMore?: boolean;
+	onLoadMore?: () => void;
+	hasNextPage?: boolean;
 }
 
 export const WithdrawForm = ({
@@ -25,6 +30,9 @@ export const WithdrawForm = ({
 	onClearSelection,
 	previewData,
 	isPreviewPending = false,
+	isLoadingMore = false,
+	onLoadMore,
+	hasNextPage = false,
 }: WithdrawFormProps) => {
 	const form = useWithdrawForm(gifts, externalSelectedGifts);
 
@@ -32,6 +40,17 @@ export const WithdrawForm = ({
 	const handleToggleGift = onGiftToggle || form.toggleGift;
 	const handleSelectAll = onSelectAll || form.selectAll;
 	const handleClearSelection = onClearSelection || form.clearSelection;
+
+	// Intersection observer for infinite scrolling
+	const observerRef = useIntersectionObserver({
+		onIntersect: () => {
+			if (hasNextPage && !isLoadingMore && onLoadMore) {
+				onLoadMore();
+			}
+		},
+		enabled: hasNextPage && !isLoadingMore && !!onLoadMore,
+		threshold: 0.1,
+	});
 
 	const handleFormSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -68,7 +87,7 @@ export const WithdrawForm = ({
 				</button>
 			</div>
 
-			<div className="flex flex-col gap-2 flex-1 overflow-y-auto mb-4">
+			<div className="flex flex-col gap-2 flex-1 overflow-y-auto min-h-0 mb-4">
 				{gifts.map((gift) => {
 					const giftId = gift.giftId?.value || "";
 					return (
@@ -80,9 +99,22 @@ export const WithdrawForm = ({
 						/>
 					);
 				})}
+
+				{/* Loading skeletons for next page */}
+				{isLoadingMore && (
+					<>
+						<WithdrawGiftCardSkeleton />
+						<WithdrawGiftCardSkeleton />
+						<WithdrawGiftCardSkeleton />
+						<WithdrawGiftCardSkeleton />
+					</>
+				)}
+
+				{/* Intersection observer trigger */}
+				{hasNextPage && <div ref={observerRef} className="h-4" />}
 			</div>
 
-			<div className="mb-[calc(var(--tg-viewport-safe-area-inset-bottom)+16px)]">
+			<div className="flex-shrink-0 pb-[calc(var(--tg-viewport-safe-area-inset-bottom)+16px)]">
 				<Button
 					type="submit"
 					disabled={!form.hasSelection}

@@ -2,6 +2,7 @@ import { GiftView } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
 import { Checkbox } from "@/shared/ui/Checkbox";
 import { Icon } from "@/shared/ui/Icon/Icon";
 import { formatThousands } from "@/shared/utils/formatThousands";
+import { getFragmentUrl } from "@/shared/utils/getFragmentUrl";
 
 interface WithdrawGiftCardProps {
 	gift: GiftView;
@@ -26,7 +27,8 @@ export const WithdrawGiftCard = ({
 		<>
 			<div className="relative w-18 h-18 overflow-hidden rounded-2xl cursor-default">
 				<img
-					src={`https://nft.fragment.com/gift/${gift.slug.toLowerCase()}.large.jpg`}
+					// src={`https://nft.fragment.com/gift/${gift.slug.toLowerCase()}.large.jpg`}
+					src={getFragmentUrl(gift.slug, "large")}
 					alt={gift.title}
 				/>
 			</div>

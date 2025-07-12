@@ -76,21 +76,28 @@ const createTransaction = `-- name: CreateTransaction :one
 INSERT INTO user_transactions (
     telegram_user_id,
     amount,
-    reason
+    reason,
+    metadata
 ) VALUES (
-    $1, $2, $3
+    $1, $2, $3, $4
 )
-RETURNING id, telegram_user_id, amount, reason, created_at
+RETURNING id, telegram_user_id, amount, reason, created_at, metadata
 `
 
 type CreateTransactionParams struct {
 	TelegramUserID int64
 	Amount         float64
 	Reason         TransactionReason
+	Metadata       []byte
 }
 
 func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) (UserTransaction, error) {
-	row := q.db.QueryRow(ctx, createTransaction, arg.TelegramUserID, arg.Amount, arg.Reason)
+	row := q.db.QueryRow(ctx, createTransaction,
+		arg.TelegramUserID,
+		arg.Amount,
+		arg.Reason,
+		arg.Metadata,
+	)
 	var i UserTransaction
 	err := row.Scan(
 		&i.ID,
@@ -98,6 +105,7 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 		&i.Amount,
 		&i.Reason,
 		&i.CreatedAt,
+		&i.Metadata,
 	)
 	return i, err
 }
@@ -196,6 +204,58 @@ func (q *Queries) GetUserBalance(ctx context.Context, telegramUserID int64) (Use
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getUserTransactions = `-- name: GetUserTransactions :many
+SELECT id, telegram_user_id, amount, reason, created_at, metadata FROM user_transactions
+WHERE telegram_user_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type GetUserTransactionsParams struct {
+	TelegramUserID int64
+	Limit          int32
+	Offset         int32
+}
+
+func (q *Queries) GetUserTransactions(ctx context.Context, arg GetUserTransactionsParams) ([]UserTransaction, error) {
+	rows, err := q.db.Query(ctx, getUserTransactions, arg.TelegramUserID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UserTransaction
+	for rows.Next() {
+		var i UserTransaction
+		if err := rows.Scan(
+			&i.ID,
+			&i.TelegramUserID,
+			&i.Amount,
+			&i.Reason,
+			&i.CreatedAt,
+			&i.Metadata,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUserTransactionsCount = `-- name: GetUserTransactionsCount :one
+SELECT COUNT(*) FROM user_transactions
+WHERE telegram_user_id = $1
+`
+
+func (q *Queries) GetUserTransactionsCount(ctx context.Context, telegramUserID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, getUserTransactionsCount, telegramUserID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const setDepositTransaction = `-- name: SetDepositTransaction :one

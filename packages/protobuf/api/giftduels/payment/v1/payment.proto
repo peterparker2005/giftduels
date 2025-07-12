@@ -21,8 +21,9 @@ message UserBalanceView {
 message TransactionView {
   shared.v1.TransactionId transaction_id = 1;
   shared.v1.TonAmount ton_amount = 2;
-  google.protobuf.Timestamp created_at = 3;
-  string reason = 4;
+  TransactionReason reason = 3;
+  TransactionMetadata metadata = 4;
+  google.protobuf.Timestamp created_at = 100;
 }
 
 enum TransactionReason {
@@ -36,4 +37,15 @@ message GiftFee {
   shared.v1.GiftId gift_id = 1;
   shared.v1.StarsAmount stars_fee = 2;
   shared.v1.TonAmount ton_fee = 3;
+}
+
+message TransactionMetadata {
+  message GiftDetails {
+    string gift_id = 1;
+    string title = 2;
+    string slug = 3;
+  }
+  oneof data {
+    GiftDetails gift = 1;
+  }
 }

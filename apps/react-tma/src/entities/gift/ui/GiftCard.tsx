@@ -3,6 +3,7 @@ import { BiLogoTelegram } from "react-icons/bi";
 import { Button } from "@/shared/ui/Button";
 import { Icon } from "@/shared/ui/Icon/Icon";
 import { formatThousands } from "@/shared/utils/formatThousands";
+import { getFragmentUrl } from "@/shared/utils/getFragmentUrl";
 import { GiftDetailsDrawer } from "./GiftDetailsDrawer";
 
 interface GiftCardProps {
@@ -18,7 +19,8 @@ export const GiftCard = ({ gift }: GiftCardProps) => {
 			>
 				<div className="relative w-full h-40 rounded-2xl">
 					<img
-						src={`https://nft.fragment.com/gift/${gift.slug.toLowerCase()}.large.jpg`}
+						// src={`https://nft.fragment.com/gift/${gift.slug.toLowerCase()}.large.jpg`}
+						src={getFragmentUrl(gift.slug, "large")}
 						alt={gift.title}
 						draggable={false}
 						className="w-full h-full object-cover rounded-2xl absolute top-0 left-0"

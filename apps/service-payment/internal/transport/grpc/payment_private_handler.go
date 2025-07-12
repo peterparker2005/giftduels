@@ -18,7 +18,13 @@ func NewPaymentPrivateHandler(paymentService *payment.Service) paymentv1.Payment
 }
 
 func (h *PaymentPrivateHandler) SpendUserBalance(ctx context.Context, req *paymentv1.SpendUserBalanceRequest) (*paymentv1.SpendUserBalanceResponse, error) {
-	balance, err := h.paymentService.SpendUserBalance(ctx, req.TelegramUserId.Value, req.TonAmount.Value, mapTransactionReason(req.GetReason()))
+	balance, err := h.paymentService.SpendUserBalance(
+		ctx,
+		req.TelegramUserId.Value,
+		req.TonAmount.Value,
+		TransactionReasonToDomain(req.GetReason()),
+		TransactionMetadataToDomain(req.Metadata),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +36,13 @@ func (h *PaymentPrivateHandler) SpendUserBalance(ctx context.Context, req *payme
 }
 
 func (h *PaymentPrivateHandler) AddUserBalance(ctx context.Context, req *paymentv1.AddUserBalanceRequest) (*paymentv1.AddUserBalanceResponse, error) {
-	balance, err := h.paymentService.AddUserBalance(ctx, req.TelegramUserId.Value, req.TonAmount.Value, mapTransactionReason(req.GetReason()))
+	balance, err := h.paymentService.AddUserBalance(
+		ctx,
+		req.TelegramUserId.Value,
+		req.TonAmount.Value,
+		TransactionReasonToDomain(req.GetReason()),
+		TransactionMetadataToDomain(req.Metadata),
+	)
 	if err != nil {
 		return nil, err
 	}

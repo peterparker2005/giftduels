@@ -2,13 +2,16 @@ package payment
 
 import (
 	"context"
+	"encoding/json"
 	"math"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/adapter/pg"
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/domain/payment"
+	"github.com/peterparker2005/giftduels/apps/service-payment/internal/domain/ton"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
+	"github.com/peterparker2005/giftduels/packages/shared"
 	"go.uber.org/zap"
 )
 
@@ -28,16 +31,18 @@ const (
 )
 
 type Service struct {
-	log   *logger.Logger
-	repo  payment.Repository
-	txMgr pg.TxManager
+	log     *logger.Logger
+	repo    payment.Repository
+	tonRepo ton.DepositRepository
+	txMgr   pg.TxManager
 }
 
-func NewService(repo payment.Repository, log *logger.Logger, txMgr pg.TxManager) *Service {
+func NewService(repo payment.Repository, tonRepo ton.DepositRepository, log *logger.Logger, txMgr pg.TxManager) *Service {
 	return &Service{
-		log:   log,
-		repo:  repo,
-		txMgr: txMgr,
+		log:     log,
+		repo:    repo,
+		tonRepo: tonRepo,
+		txMgr:   txMgr,
 	}
 }
 
@@ -45,27 +50,27 @@ func (s *Service) CreateDeposit(
 	ctx context.Context,
 	telegramUserID int64,
 	tonAmount float64,
-) (*payment.Deposit, error) {
+) (*ton.Deposit, error) {
 	rawPayload := uuid.New().String()
 	nanoAmount := int64(tonAmount * 1e9)
 	expiresAt := time.Now().Add(time.Hour)
 
-	params := &payment.CreateDepositParams{
+	params := &ton.CreateDepositParams{
 		TelegramUserID: telegramUserID,
 		AmountNano:     nanoAmount,
 		Payload:        rawPayload, // просто UUID
 		ExpiresAt:      expiresAt,
 	}
-	return s.repo.CreateDeposit(ctx, params)
+	return s.tonRepo.CreateDeposit(ctx, params)
 }
 
 func (s *Service) ProcessDepositTransaction(ctx context.Context, payload, txHash string, txLt, amountNano int64) error {
-	deposit, err := s.repo.GetDepositByPayload(ctx, payload)
+	deposit, err := s.tonRepo.GetDepositByPayload(ctx, payload)
 	if err != nil {
 		return err
 	}
 
-	if deposit.Status != payment.DepositStatusPending {
+	if deposit.Status != ton.DepositStatusPending {
 		// Or log and ignore
 		return nil
 	}
@@ -75,10 +80,36 @@ func (s *Service) ProcessDepositTransaction(ctx context.Context, payload, txHash
 		return nil
 	}
 
-	_, err = s.repo.SetDepositTransaction(ctx, &payment.SetDepositTransactionParams{
+	tx, err := s.txMgr.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err != nil {
+			err = tx.Rollback(ctx)
+			if err != nil {
+				s.log.Error("failed to rollback transaction", zap.Error(err))
+			}
+		}
+	}()
+
+	repo := s.repo.WithTx(tx)
+	tonRepo := s.tonRepo.WithTx(tx)
+
+	_, err = tonRepo.SetDepositTransaction(ctx, &ton.SetDepositTransactionParams{
 		ID:     deposit.ID.String(),
 		TxHash: txHash,
 		TxLt:   txLt,
+	})
+	if err != nil {
+		return err
+	}
+
+	err = repo.CreateTransaction(ctx, &payment.CreateTransactionParams{
+		TelegramUserID: deposit.TelegramUserID,
+		Amount:         float64(amountNano) / 1e9,
+		Reason:         payment.TransactionReasonDeposit,
 	})
 	if err != nil {
 		return err
@@ -89,15 +120,24 @@ func (s *Service) ProcessDepositTransaction(ctx context.Context, payload, txHash
 		Amount:         float64(amountNano) / 1e9,
 	}
 
-	_, err = s.repo.AddUserBalance(ctx, addBalanceParams)
-	return err
+	_, err = repo.AddUserBalance(ctx, addBalanceParams)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *Service) GetBalance(ctx context.Context, telegramUserID int64) (*payment.Balance, error) {
 	return s.repo.GetUserBalance(ctx, telegramUserID)
 }
 
-func (s *Service) SpendUserBalance(ctx context.Context, telegramUserID int64, amount float64, reason payment.TransactionReason) (*payment.Balance, error) {
+func (s *Service) SpendUserBalance(ctx context.Context, telegramUserID int64, amount float64, reason payment.TransactionReason, metadata *payment.TransactionMetadata) (*payment.Balance, error) {
 	log := s.log.With(zap.Int64("telegram_user_id", telegramUserID), zap.Float64("amount", amount), zap.String("reason", string(reason)))
 
 	tx, err := s.txMgr.BeginTx(ctx)
@@ -125,10 +165,20 @@ func (s *Service) SpendUserBalance(ctx context.Context, telegramUserID int64, am
 		return nil, err
 	}
 
+	var metadataBytes []byte
+	if metadata != nil {
+		metadataBytes, err = json.Marshal(metadata)
+		if err != nil {
+			log.Error("failed to marshal metadata", zap.Error(err))
+			// не возвращаем ошибку, просто логируем
+		}
+	}
+
 	err = repo.CreateTransaction(ctx, &payment.CreateTransactionParams{
 		TelegramUserID: telegramUserID,
-		Amount:         amount,
+		Amount:         -amount,
 		Reason:         reason,
+		Metadata:       metadataBytes,
 	})
 	if err != nil {
 		return nil, err
@@ -143,7 +193,7 @@ func (s *Service) SpendUserBalance(ctx context.Context, telegramUserID int64, am
 	return balance, nil
 }
 
-func (s *Service) AddUserBalance(ctx context.Context, telegramUserID int64, amount float64, reason payment.TransactionReason) (*payment.Balance, error) {
+func (s *Service) AddUserBalance(ctx context.Context, telegramUserID int64, amount float64, reason payment.TransactionReason, metadata *payment.TransactionMetadata) (*payment.Balance, error) {
 	log := s.log.With(zap.Int64("telegram_user_id", telegramUserID), zap.Float64("amount", amount))
 
 	tx, err := s.txMgr.BeginTx(ctx)
@@ -171,10 +221,20 @@ func (s *Service) AddUserBalance(ctx context.Context, telegramUserID int64, amou
 		return nil, err
 	}
 
+	var metadataBytes []byte
+	if metadata != nil {
+		metadataBytes, err = json.Marshal(metadata)
+		if err != nil {
+			log.Error("failed to marshal metadata", zap.Error(err))
+			// не возвращаем ошибку, просто логируем
+		}
+	}
+
 	err = repo.CreateTransaction(ctx, &payment.CreateTransactionParams{
 		TelegramUserID: telegramUserID,
 		Amount:         amount,
 		Reason:         reason,
+		Metadata:       metadataBytes,
 	})
 	if err != nil {
 		return nil, err
@@ -225,49 +285,30 @@ func calculateTonCommission(stars float64) float64 {
 	return math.Round(ton*100) / 100
 }
 
-func (s *Service) RollbackWithdrawalCommission(ctx context.Context, telegramUserID int64, amount float64) error {
-	log := s.log.With(zap.Float64("amount", amount))
-	tx, err := s.txMgr.BeginTx(ctx)
-	if err != nil {
-		log.Error("failed to begin transaction", zap.Error(err))
-		return err
-	}
+func (s *Service) RollbackWithdrawalCommission(ctx context.Context, telegramUserID int64, amount float64, metadata payment.TransactionMetadata) error {
+	log := s.log.With(zap.Float64("amount", amount), zap.Any("metadata", metadata))
 
-	defer func() {
-		if err != nil {
-			err = tx.Rollback(ctx)
-			if err != nil {
-				log.Error("Failed to rollback transaction", zap.Error(err))
-			}
-		}
-	}()
-
-	repo := s.repo.WithTx(tx)
-
-	_, err = repo.AddUserBalance(ctx, &payment.AddUserBalanceParams{
-		TelegramUserID: telegramUserID,
-		Amount:         amount,
-	})
+	_, err := s.AddUserBalance(ctx, telegramUserID, amount, payment.TransactionReasonRefund, &metadata)
 	if err != nil {
 		log.Error("failed to create transaction", zap.Error(err))
-		return err
-	}
-
-	err = repo.CreateTransaction(ctx, &payment.CreateTransactionParams{
-		TelegramUserID: telegramUserID,
-		Amount:         amount,
-		Reason:         payment.TransactionReasonRefund,
-	})
-	if err != nil {
-		log.Error("failed to create transaction", zap.Error(err))
-		return err
-	}
-
-	err = tx.Commit(ctx)
-	if err != nil {
-		log.Error("failed to commit transaction", zap.Error(err))
 		return err
 	}
 
 	return nil
+}
+
+func (s *Service) GetTransactionHistory(ctx context.Context, telegramUserID int64, pagination *shared.PageRequest) ([]*payment.Transaction, int64, error) {
+	count, err := s.repo.GetUserTransactionsCount(ctx, telegramUserID)
+	if err != nil {
+		s.log.Error("failed to get user transactions count", zap.Error(err))
+		return nil, 0, err
+	}
+
+	transactions, err := s.repo.GetUserTransactions(ctx, telegramUserID, pagination)
+	if err != nil {
+		s.log.Error("failed to get user transactions", zap.Error(err))
+		return nil, 0, err
+	}
+
+	return transactions, count, nil
 }

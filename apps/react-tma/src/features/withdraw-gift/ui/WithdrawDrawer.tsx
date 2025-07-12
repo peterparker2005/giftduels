@@ -19,7 +19,8 @@ interface WithdrawDrawerProps {
 type WithdrawStep = "select" | "confirm";
 
 export const WithdrawDrawer = ({ children, disabled }: WithdrawDrawerProps) => {
-	const { data, isLoading } = useGiftsQuery();
+	const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } =
+		useGiftsQuery();
 	const [step, setStep] = useState<WithdrawStep>("select");
 	const [selectedGifts, setSelectedGifts] = useState<string[]>([]);
 	const [selectedCommissionCurrency, setSelectedCommissionCurrency] =
@@ -27,6 +28,9 @@ export const WithdrawDrawer = ({ children, disabled }: WithdrawDrawerProps) => {
 			ExecuteWithdrawRequest_CommissionCurrency.TON,
 		);
 	const [isOpen, setIsOpen] = useState(false);
+
+	// Flatten all pages into a single array of gifts
+	const allGifts = data?.pages.flatMap((page) => page.gifts) || [];
 
 	// Preview withdraw logic moved here for caching
 	const {
@@ -37,13 +41,13 @@ export const WithdrawDrawer = ({ children, disabled }: WithdrawDrawerProps) => {
 
 	// Calculate total TON amount for selected gifts
 	const totalTonAmount = useMemo(() => {
-		if (!data?.gifts || selectedGifts.length === 0) return 0;
+		if (!allGifts || selectedGifts.length === 0) return 0;
 
 		return selectedGifts.reduce((total, giftId) => {
-			const gift = data.gifts.find((g) => g.giftId?.value === giftId);
+			const gift = allGifts.find((g) => g.giftId?.value === giftId);
 			return total + (gift?.price?.value || 0);
 		}, 0);
-	}, [selectedGifts, data?.gifts]);
+	}, [selectedGifts, allGifts]);
 
 	// Preview withdraw when selected gifts change
 	useEffect(() => {
@@ -71,8 +75,8 @@ export const WithdrawDrawer = ({ children, disabled }: WithdrawDrawerProps) => {
 	};
 
 	const handleSelectAll = () => {
-		if (!data?.gifts) return;
-		const allGiftIds = data.gifts
+		if (!allGifts) return;
+		const allGiftIds = allGifts
 			.map((gift) => gift.giftId?.value || "")
 			.filter(Boolean);
 		setSelectedGifts(allGiftIds);
@@ -136,7 +140,7 @@ export const WithdrawDrawer = ({ children, disabled }: WithdrawDrawerProps) => {
 			);
 		}
 
-		if (!data?.gifts || data.gifts.length === 0) {
+		if (!allGifts || allGifts.length === 0) {
 			return (
 				<div className="flex items-center justify-center flex-1">
 					<p className="text-muted-foreground">
@@ -150,7 +154,7 @@ export const WithdrawDrawer = ({ children, disabled }: WithdrawDrawerProps) => {
 			case "select":
 				return (
 					<WithdrawForm
-						gifts={data.gifts}
+						gifts={allGifts}
 						selectedGifts={selectedGifts}
 						onProceedToConfirm={handleProceedToConfirm}
 						onGiftToggle={handleToggleGift}
@@ -158,12 +162,15 @@ export const WithdrawDrawer = ({ children, disabled }: WithdrawDrawerProps) => {
 						onClearSelection={handleClearSelection}
 						previewData={previewWithdrawData}
 						isPreviewPending={isPreviewPending}
+						isLoadingMore={isFetchingNextPage}
+						onLoadMore={fetchNextPage}
+						hasNextPage={hasNextPage}
 					/>
 				);
 			case "confirm":
 				return (
 					<WithdrawSummary
-						gifts={data.gifts}
+						gifts={allGifts}
 						selectedGiftIds={selectedGifts}
 						selectedCommissionCurrency={selectedCommissionCurrency}
 						previewData={previewWithdrawData}
@@ -183,12 +190,12 @@ export const WithdrawDrawer = ({ children, disabled }: WithdrawDrawerProps) => {
 			<DrawerTrigger asChild disabled={disabled}>
 				{children}
 			</DrawerTrigger>
-			<DrawerContent className="h-[90vh] px-4 pt-4">
-				<div className="px-0 mb-4">
+			<DrawerContent className="h-[90vh] px-4 pt-4 flex flex-col">
+				<div className="px-0 mb-4 flex-shrink-0">
 					<DrawerTitle className="text-lg">{getTitle()}</DrawerTitle>
 				</div>
 
-				{renderContent()}
+				<div className="flex-1 min-h-0">{renderContent()}</div>
 			</DrawerContent>
 		</Drawer>
 	);

@@ -215,6 +215,15 @@ func (s *Service) executeWithdrawTON(ctx context.Context, telegramUserID int64, 
 			TelegramUserId: &sharedv1.TelegramUserId{Value: telegramUserID},
 			TonAmount:      &sharedv1.TonAmount{Value: previewResp.TotalTonFee.Value},
 			Reason:         paymentv1.TransactionReason_TRANSACTION_REASON_WITHDRAW,
+			Metadata: &paymentv1.TransactionMetadata{
+				Data: &paymentv1.TransactionMetadata_Gift{
+					Gift: &paymentv1.TransactionMetadata_GiftDetails{
+						GiftId: gift.ID,
+						Title:  gift.Title,
+						Slug:   gift.Slug,
+					},
+				},
+			},
 		})
 		if err != nil {
 			commitErr = err

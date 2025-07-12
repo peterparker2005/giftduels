@@ -102,6 +102,7 @@ type TransactionReason string
 const (
 	TransactionReasonWithdraw TransactionReason = "withdraw"
 	TransactionReasonRefund   TransactionReason = "refund"
+	TransactionReasonDeposit  TransactionReason = "deposit"
 )
 
 func (e *TransactionReason) Scan(src interface{}) error {
@@ -173,4 +174,5 @@ type UserTransaction struct {
 	Amount         float64
 	Reason         TransactionReason
 	CreatedAt      pgtype.Timestamp
+	Metadata       []byte
 }

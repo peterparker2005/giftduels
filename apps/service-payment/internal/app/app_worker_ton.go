@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 
-	"github.com/peterparker2005/giftduels/apps/service-payment/internal/adapter/pg"
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/adapter/ton"
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/service"
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/service/tonworker"
@@ -16,7 +15,6 @@ func NewWorkerTonApp() *fx.App {
 		service.Module,
 		fx.Provide(
 			ton.NewTonAPI,
-			pg.NewTonCursorRepo,
 			tonworker.NewProcessor,
 		),
 		fx.Invoke(func(

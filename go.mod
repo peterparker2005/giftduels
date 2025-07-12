@@ -1,25 +1,20 @@
-module github.com/peterparker2005/giftduels/apps/service-payment
+module github.com/peterparker2005/giftduels
 
 go 1.23.5
 
 require (
+	connectrpc.com/connect v1.18.1
 	github.com/ThreeDotsLabs/watermill v1.4.7
 	github.com/ThreeDotsLabs/watermill-amqp/v3 v3.0.1
+	github.com/ThreeDotsLabs/watermill-sql/v3 v3.1.0
 	github.com/golang-migrate/migrate/v4 v4.18.3
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/jackc/pgx/v5 v5.7.5
-	github.com/peterparker2005/giftduels/packages/cli-go v0.0.0-20250708064016-7a49ea4eb2fd
-	github.com/peterparker2005/giftduels/packages/configs v0.0.0-20250706093708-5d489ad138ec
-	github.com/peterparker2005/giftduels/packages/errors v0.0.0-20250706215627-2babd89ada5a
-	github.com/peterparker2005/giftduels/packages/events v0.0.0-20250708080159-bbee3c3e4f5e
-	github.com/peterparker2005/giftduels/packages/grpc-go v0.0.0-20250708064016-7a49ea4eb2fd
-	github.com/peterparker2005/giftduels/packages/logger-go v0.0.0-20250706093708-5d489ad138ec
-	github.com/peterparker2005/giftduels/packages/protobuf-go v0.0.0-20250706093708-5d489ad138ec
-	github.com/peterparker2005/giftduels/packages/version-go v0.0.0-20250706093708-5d489ad138ec
+	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/spf13/cobra v1.9.1
-	github.com/xssnick/tonutils-go v1.13.0
+	github.com/xssnick/tonutils-go v1.13.1
 	go.uber.org/fx v1.24.0
 	go.uber.org/zap v1.27.0
 	google.golang.org/grpc v1.73.0
@@ -29,7 +24,6 @@ require (
 require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -42,21 +36,18 @@ require (
 	github.com/oasisprotocol/curve25519-voi v0.0.0-20220328075252-7dd334e3daae // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/rabbitmq/amqp091-go v1.10.0 // indirect
-	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/sigurn/crc16 v0.0.0-20211026045750-20ab5afb07e3 // indirect
 	github.com/sony/gobreaker v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
-	golang.org/x/crypto v0.39.0 // indirect
-	golang.org/x/net v0.41.0 // indirect
-	golang.org/x/sync v0.15.0 // indirect
+	golang.org/x/crypto v0.38.0 // indirect
+	golang.org/x/net v0.38.0 // indirect
+	golang.org/x/sync v0.14.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/text v0.26.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250603155806-513f23925822 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
+	golang.org/x/text v0.25.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250324211829-b45e905df463 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	olympos.io/encoding/edn v0.0.0-20201019073823-d3554ca0b0a3 // indirect
 )

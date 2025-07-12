@@ -15,6 +15,7 @@ type Transaction struct {
 	TelegramUserID int64
 	Amount         float64
 	Reason         TransactionReason
+	Metadata       *TransactionMetadata
 	CreatedAt      time.Time
 }
 

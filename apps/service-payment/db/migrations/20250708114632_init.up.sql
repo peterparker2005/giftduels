@@ -3,7 +3,7 @@
 -- Description: Add your migration description here
 
 CREATE TYPE transaction_reason AS ENUM (
-	'withdraw', 'refund'
+	'withdraw', 'refund', 'deposit'
 );
 
 -- Create user_balances table

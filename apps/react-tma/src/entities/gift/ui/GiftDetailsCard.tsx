@@ -7,6 +7,7 @@ import { WithdrawActions } from "@/features/withdraw-gift";
 import { usePreviewWithdraw } from "@/shared/api/queries/usePreviewWithdraw";
 import { LottiePlayer } from "@/shared/ui/LottiePlayer";
 import { formatFloat } from "@/shared/utils/formatFloat";
+import { getFragmentUrl } from "@/shared/utils/getFragmentUrl";
 
 interface GiftDetailsCardProps {
 	gift: GiftView;
@@ -47,7 +48,8 @@ export const GiftDetailsCard = ({
 			{/* Gift Image */}
 			<div className="relative w-40 mx-auto h-40 rounded-3xl overflow-hidden">
 				<LottiePlayer
-					src={`https://nft.fragment.com/gift/${gift.slug.toLowerCase()}.lottie.json`}
+					// src={`https://nft.fragment.com/gift/${gift.slug.toLowerCase()}.lottie.json`}
+					src={getFragmentUrl(gift.slug, "lottie")}
 					autoplay
 					loop
 					className="w-full h-full object-cover"
@@ -77,7 +79,7 @@ export const GiftDetailsCard = ({
 									{attribute.type === GiftAttributeType.SYMBOL && "Symbol"}
 									{attribute.type === GiftAttributeType.BACKDROP && "Backdrop"}
 								</div>
-								<div className="col-span-8 text-sm bg-card-muted text-foreground w-full flex items-center gap-2 ml-4 h-full">
+								<div className="col-span-8 bg-card-muted-accent/50 text-sm bg-card-muted text-foreground w-full flex items-center gap-2 pl-4 h-full">
 									<p className="text-sm">{attribute.name}</p>
 									<div className="bg-primary/10 px-3 text-xs py-0.5 rounded-full text-primary">
 										<span>{formatFloat(rarity)}%</span>

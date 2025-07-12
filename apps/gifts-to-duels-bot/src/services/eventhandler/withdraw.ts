@@ -15,6 +15,49 @@ import { decodeProtobufMessage } from "@/utils/decodeProtobufMessage";
 
 const MAX_RETRIES = 3;
 
+// Хелпер для создания failedEvent - используется во всех случаях ошибок
+async function createAndPublishFailedEvent(
+	event: GiftWithdrawRequestedEvent,
+	errorReason: string,
+	attemptsMade: number,
+	log: typeof logger,
+): Promise<void> {
+	try {
+		const failedEvent = create(GiftWithdrawFailedEventSchema, {
+			$typeName: GiftWithdrawFailedEventSchema.typeName,
+			giftId: event.giftId,
+			ownerTelegramId: event.ownerTelegramId,
+			telegramGiftId: event.telegramGiftId,
+			collectibleId: event.collectibleId,
+			title: event.title,
+			slug: event.slug,
+			upgradeMessageId: event.upgradeMessageId,
+			price: event.price,
+			commissionAmount: event.commissionAmount,
+			errorReason,
+			attemptsMade,
+		});
+
+		const messageId = uuidv4();
+
+		await publisher.publishProto({
+			routingKey: "gift.withdraw.failed",
+			schema: GiftWithdrawFailedEventSchema,
+			msg: failedEvent,
+			opts: {
+				messageId,
+			},
+		});
+
+		log.info("📤 Событие об ошибке опубликовано в poison queue");
+	} catch (publishErr) {
+		log.error(
+			{ publishErr },
+			"❌ Критическая ошибка при публикации failedEvent",
+		);
+	}
+}
+
 export async function handleGiftWithdrawRequested(
 	msg: Buffer,
 	properties: ConsumeMessage["properties"],
@@ -41,6 +84,7 @@ export async function handleGiftWithdrawRequested(
 	const giftId = event.giftId?.value;
 	const ownerTelegramId = event.ownerTelegramId?.value;
 	const upgradeMessageId = event.upgradeMessageId;
+
 	if (!giftId || !ownerTelegramId || !upgradeMessageId) {
 		logger.error(
 			{
@@ -50,8 +94,16 @@ export async function handleGiftWithdrawRequested(
 				ownerTelegramId,
 				upgradeMessageId,
 			},
-			"❌ В теле события нет необходимых полей — дропаем",
+			"❌ В теле события нет необходимых полей — создаем failedEvent",
 		);
+
+		await createAndPublishFailedEvent(
+			event,
+			`Missing required fields: giftId=${giftId}, ownerTelegramId=${ownerTelegramId}, upgradeMessageId=${upgradeMessageId}`,
+			prevAttempts + 1,
+			logger,
+		);
+
 		return ctrl.fail();
 	}
 
@@ -101,40 +153,15 @@ export async function handleGiftWithdrawRequested(
 		} else {
 			log.error(
 				{ attempts: prevAttempts },
-				`⚠️ Превышено ${MAX_RETRIES} повторов — публикуем событие об ошибке`,
+				`⚠️ Превышено ${MAX_RETRIES} повторов — отправляем в poison queue`,
 			);
 
-			try {
-				const failedEvent = create(GiftWithdrawFailedEventSchema, {
-					$typeName: GiftWithdrawFailedEventSchema.typeName,
-					giftId: event.giftId,
-					ownerTelegramId: event.ownerTelegramId,
-					telegramGiftId: event.telegramGiftId,
-					collectibleId: event.collectibleId,
-					title: event.title,
-					slug: event.slug,
-					upgradeMessageId: event.upgradeMessageId,
-					price: event.price,
-					commissionAmount: event.commissionAmount,
-					errorReason: `Failed after ${MAX_RETRIES} attempts: ${err instanceof Error ? err.message : String(err)}`,
-					attemptsMade: prevAttempts + 1,
-				});
-
-				const messageId = uuidv4();
-
-				await publisher.publishProto({
-					routingKey: "gift.withdraw.failed",
-					schema: GiftWithdrawFailedEventSchema,
-					msg: failedEvent,
-					opts: {
-						messageId,
-					},
-				});
-
-				log.info("📤 Событие об ошибке вывода опубликовано");
-			} catch (publishErr) {
-				log.error({ publishErr }, "❌ Ошибка при публикации события об ошибке");
-			}
+			await createAndPublishFailedEvent(
+				event,
+				`Failed after ${MAX_RETRIES} attempts: ${err instanceof Error ? err.message : String(err)}`,
+				prevAttempts + 1,
+				log,
+			);
 
 			return ctrl.fail();
 		}

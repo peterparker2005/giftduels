@@ -10,6 +10,7 @@ import (
 	"github.com/peterparker2005/giftduels/packages/grpc-go/authctx"
 	paymentv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/payment/v1"
 	sharedv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/shared/v1"
+	"github.com/peterparker2005/giftduels/packages/shared"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -90,5 +91,32 @@ func (h *PaymentPublicHandler) DepositTon(
 		NanoTonAmount:   uint64(deposit.AmountNano),
 		Payload:         bocPayload,
 		TreasuryAddress: h.cfg.Ton.WalletAddress,
+	}, nil
+}
+
+func (h *PaymentPublicHandler) GetTransactionHistory(ctx context.Context, req *paymentv1.GetTransactionHistoryRequest) (*paymentv1.GetTransactionHistoryResponse, error) {
+	userID, err := authctx.TelegramUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	pagination := shared.NewPageRequest(req.GetPagination().GetPage(), req.GetPagination().GetPageSize())
+	transactions, count, err := h.service.GetTransactionHistory(ctx, userID, pagination)
+	if err != nil {
+		return nil, err
+	}
+
+	transactionsProto := make([]*paymentv1.TransactionView, 0, len(transactions))
+	for _, transaction := range transactions {
+		transactionsProto = append(transactionsProto, TransactionToProto(transaction))
+	}
+	return &paymentv1.GetTransactionHistoryResponse{
+		Transactions: transactionsProto,
+		Pagination: &sharedv1.PageResponse{
+			Total:      int32(count),
+			Page:       int32(pagination.Page()),
+			PageSize:   int32(pagination.PageSize()),
+			TotalPages: pagination.TotalPages(int32(count)),
+		},
 	}, nil
 }

@@ -19,7 +19,7 @@ export const Page = () => {
 				<Avatar className="w-20 h-20" />
 				<h1 className="text-2xl font-medium">{data?.profile?.displayName}</h1>
 			</div>
-			{!gifts?.gifts && (
+			{gifts?.pages[0]?.gifts && (
 				<div className="mt-4">
 					<InventoryStats />
 				</div>

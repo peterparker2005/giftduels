@@ -51,4 +51,5 @@ message GetTransactionHistoryRequest {
 
 message GetTransactionHistoryResponse {
   repeated TransactionView transactions = 1;
+  shared.v1.PageResponse pagination = 2;
 }
