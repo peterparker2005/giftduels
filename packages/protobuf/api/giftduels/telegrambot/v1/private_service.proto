@@ -3,11 +3,13 @@ syntax = "proto3";
 package giftduels.telegrambot.v1;
 
 import "giftduels/shared/v1/common.proto";
+import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/telegrambot/v1;telegrambotv1";
 
 service TelegramBotPrivateService {
   rpc CreateStarInvoice(CreateStarInvoiceRequest) returns (CreateStarInvoiceResponse);
+  rpc RollDice(RollDiceRequest) returns (RollDiceResponse);
 }
 
 message CreateStarInvoiceRequest {
@@ -21,4 +23,16 @@ message CreateStarInvoiceRequest {
 
 message CreateStarInvoiceResponse {
   string invoice_url = 1;
+}
+
+message RollDiceRequest {
+  // who rolls (used for logging or signature)
+  shared.v1.TelegramUserId roller_telegram_user_id = 1;
+}
+
+message RollDiceResponse {
+  int32 value = 1; // from 1 to 6
+  int32 telegram_message_id = 2; // for logging
+  string telegram_chat_id = 3; // for logging
+  google.protobuf.Timestamp rolled_at = 4;
 }

@@ -1,0 +1,4 @@
+/certs/
+config.yaml
+.env
+/bin

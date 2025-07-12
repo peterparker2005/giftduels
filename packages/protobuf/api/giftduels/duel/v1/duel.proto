@@ -3,155 +3,65 @@ package giftduels.duel.v1;
 
 import "giftduels/gift/v1/gift.proto";
 import "giftduels/shared/v1/common.proto";
-import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/duel/v1;duelv1";
 
-// ===== DUEL CONFIGURATION =====
-
-message DuelParams {
-  bool invite_only = 1;
-  google.protobuf.Duration auto_roll_timeout = 2;
-  uint32 max_rounds = 3; // Maximum rounds before draw
-}
-
-message DuelInviteParams {
-  bool invite_only = 1;
-  google.protobuf.Duration auto_roll_timeout = 2;
-}
-
-// ===== DICE ROLL TYPES =====
-
-message DiceRoll {
-  int64 telegram_user_id = 1;
-  int32 round_number = 2;
-  int32 value = 3; // 1-6
-  bool is_manual = 4; // true if manually rolled, false if auto-rolled
-  google.protobuf.Timestamp rolled_at = 5;
-}
-
-message RoundInfo {
-  int32 round_number = 1;
-  map<string, DiceRoll> rolls = 2; // key: user_id, value: roll
-  RoundStatus status = 3;
-  int64 winner_user_id = 4; // Set if round has winner
-}
-
-enum RoundStatus {
-  ROUND_STATUS_UNSPECIFIED = 0;
-  ROUND_STATUS_WAITING_FOR_ROLLS = 1;
-  ROUND_STATUS_COMPLETED = 2;
-  ROUND_STATUS_TIED = 3;
-}
-
-// ===== PARTICIPANT TYPES =====
-
-message DuelParticipant {
-  int64 telegram_user_id = 1;
-  shared.v1.UserDisplayInfo user_info = 2;
-  bool is_creator = 3;
-  repeated DuelStakeItem stakes = 4;
-  shared.v1.TonAmount total_stake_value = 5;
-  ParticipantStatus status = 6;
-}
-
-enum ParticipantStatus {
-  PARTICIPANT_STATUS_UNSPECIFIED = 0;
-  PARTICIPANT_STATUS_JOINED = 1;
-  PARTICIPANT_STATUS_READY = 2;
-  PARTICIPANT_STATUS_ACTIVE = 3;
-  PARTICIPANT_STATUS_DISCONNECTED = 4;
-}
-
-message DuelParticipants {
-  DuelParticipant creator = 1;
-  DuelParticipant opponent = 2;
-}
-
-message DuelStakeItem {
-  shared.v1.GiftId gift_id = 1;
-  gift.v1.GiftView gift_info = 2;
-}
-
-// ===== DUEL CORE TYPES =====
-
 message Duel {
   shared.v1.DuelId duel_id = 1;
   DuelParams params = 2;
-  DuelParticipants participants = 3;
+  repeated DuelParticipant participants = 3;
 
-  // Game state
-  int32 current_round = 4; // Starts from 1
-  repeated RoundInfo rounds_history = 5;
-  int64 winner_user_id = 6;
+  repeated DuelRound rounds_history = 5;
+  optional shared.v1.TelegramUserId winner_telegram_user_id = 6;
 
   // Timing
   google.protobuf.Timestamp next_roll_deadline = 7;
 
   // Total stakes
-  shared.v1.TonAmount total_stake_value = 8;
+  repeated DuelStake stakes = 8;
+  shared.v1.TonAmount total_stake_value = 9;
 
   // Status and timestamps
-  GameStatus status = 9;
-  google.protobuf.Timestamp created_at = 10;
-  google.protobuf.Timestamp updated_at = 11;
-  google.protobuf.Timestamp completed_at = 12;
+  DuelStatus status = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+  google.protobuf.Timestamp completed_at = 13;
 }
 
-message DuelSummary {
-  shared.v1.DuelId duel_id = 1;
-  int32 current_round = 2;
-  map<string, DiceRoll> current_round_rolls = 3; // Quick access to current round rolls
-  int64 winner_user_id = 4;
-  shared.v1.TonAmount total_stake_value = 5;
-  DuelParticipants participants = 6;
-  google.protobuf.Timestamp next_roll_deadline = 7;
-  google.protobuf.Duration roll_timeout = 8;
-  GameStatus status = 9;
+message DuelParams {
+  bool is_private = 1;
+  uint32 max_players = 2; // up to 4
+  uint32 max_gifts = 3; // up to 10
 }
 
-message DuelListItem {
-  shared.v1.DuelId duel_id = 1;
-  GameStatus status = 2;
-  DuelParticipants participants = 3;
-  shared.v1.TonAmount total_stake_value = 4;
-  google.protobuf.Timestamp created_at = 5;
-  google.protobuf.Timestamp updated_at = 6;
-  google.protobuf.Timestamp completed_at = 7;
-  bool invite_only = 8;
+message DuelParticipant {
+  shared.v1.TelegramUserId telegram_user_id = 1;
+  bool is_creator = 2;
 }
 
-// ===== DUEL FILTERS AND QUERIES =====
-
-message DuelFilters {
-  // Статус комнаты (open/in-progress/finished/history)
-  GameStatus status = 1;
-
-  // Только invite-only комнаты
-  bool invite_only = 3;
-
-  // Фильтр по создателю или участнику
-  bool is_creator = 4;
-  bool is_participant = 5;
+message DuelRound {
+  int32 round_number = 1;
+  repeated DuelRoll rolls = 2;
 }
 
-message DuelSortOptions {
-  DuelSortField field = 1;
-  shared.v1.SortOrder order = 2;
+message DuelRoll {
+  shared.v1.TelegramUserId participant_telegram_user_id = 1;
+  int32 dice_value = 2; // 1–6
+  google.protobuf.Timestamp rolled_at = 3;
+  bool is_auto_rolled = 4;
 }
 
-enum DuelSortField {
-  DUEL_SORT_FIELD_UNSPECIFIED = 0;
-  DUEL_SORT_FIELD_CREATED_AT = 1;
-  DUEL_SORT_FIELD_TOTAL_VALUE = 2;
-  DUEL_SORT_FIELD_COMPLETED_AT = 3;
+enum DuelStatus {
+  DUEL_STATUS_UNSPECIFIED = 0;
+  DUEL_STATUS_WAITING_FOR_OPPONENT = 1;
+  DUEL_STATUS_IN_PROGRESS = 2;
+  DUEL_STATUS_COMPLETED = 3;
+  DUEL_STATUS_CANCELLED = 4;
 }
 
-enum GameStatus {
-  GAME_STATUS_UNSPECIFIED = 0;
-  GAME_STATUS_OPEN = 1;
-  GAME_STATUS_IN_PROGRESS = 2;
-  GAME_STATUS_FINISHED = 3;
-  GAME_STATUS_CANCELLED = 4;
+message DuelStake {
+  shared.v1.TelegramUserId participant_telegram_user_id = 1;
+  gift.v1.GiftView gift = 2;
+  shared.v1.TonAmount stake_value = 3;
 }

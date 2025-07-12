@@ -5,9 +5,9 @@ export const paymentsRouter = new Composer<ExtendedContext>();
 
 // 1) Pre-checkout: telegram присылает запрос, надо ответить за 10s
 paymentsRouter.on("pre_checkout_query", async (ctx, next) => {
-	const q = ctx.update.pre_checkout_query;
-	const payload = q.invoice_payload; // base64 из CreateInvoiceRequest
-	const ok = await ctx.services.invoice.handlePreCheckout(ctx.from.id, payload);
+	// const q = ctx.update.pre_checkout_query;
+	// const payload = q.invoice_payload; // base64 из CreateInvoiceRequest
+	const ok = await ctx.services.invoice.handlePreCheckout();
 	if (ok) {
 		await ctx.answerPreCheckoutQuery(true);
 		return next(); // дальше telegram пошлёт successful_payment

@@ -18,11 +18,13 @@ message TelegramGiftReceivedEvent {
   // Gift information
   string title = 5;
   string slug = 6;
-  repeated GiftAttribute attributes = 7;
+  GiftAttributeBackdrop backdrop = 7;
+  GiftAttributeModel model = 8;
+  GiftAttributeSymbol symbol = 9;
 
   // Collectible information (if applicable)
-  int32 collectible_id = 8;
-  int32 upgrade_message_id = 9; // Used to transfer gift
+  int32 collectible_id = 10;
+  int32 upgrade_message_id = 11; // Used to transfer gift
 }
 
 message GiftWithdrawRequestedEvent {

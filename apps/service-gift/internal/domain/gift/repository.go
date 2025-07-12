@@ -2,17 +2,11 @@ package gift
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 )
-
-type CreateGiftAttributeParams struct {
-	GiftID                  string
-	AttributeType           AttributeType
-	AttributeName           string
-	AttributeRarityPerMille int32
-}
 
 type CreateGiftParams struct {
 	GiftID           string
@@ -28,9 +22,48 @@ type CreateGiftParams struct {
 	UpdatedAt        time.Time
 }
 
+type CreateCollectionParams struct {
+	Name      string
+	ShortName string
+}
+
+type CreateModelParams struct {
+	CollectionID   int32
+	Name           string
+	ShortName      string
+	RarityPerMille int32
+}
+
+type CreateBackdropParams struct {
+	Name           string
+	ShortName      string
+	RarityPerMille int32
+	CenterColor    *string
+	EdgeColor      *string
+	PatternColor   *string
+	TextColor      *string
+}
+
+type CreateSymbolParams struct {
+	Name           string
+	ShortName      string
+	RarityPerMille int32
+}
+
 type GetUserGiftsResult struct {
 	Gifts []*Gift
 	Total int64
+}
+
+type CreateGiftEventParams struct {
+	GiftID        string
+	FromUserID    *int64
+	ToUserID      *int64
+	Action        string
+	GameMode      *string
+	RelatedGameID *string
+	Description   *string
+	Payload       json.RawMessage
 }
 
 type GiftRepository interface {
@@ -43,8 +76,26 @@ type GiftRepository interface {
 	MarkGiftForWithdrawal(ctx context.Context, id string) (*Gift, error)
 	CancelGiftWithdrawal(ctx context.Context, id string) (*Gift, error)
 	CompleteGiftWithdrawal(ctx context.Context, id string) (*Gift, error)
-	CreateGiftWithDetails(ctx context.Context, gift *CreateGiftParams, attributes []CreateGiftAttributeParams) (*Gift, error)
-	CreateGiftEvent(ctx context.Context, giftID string, fromUserID, toUserID int64) (*GiftEvent, error)
+	CreateGift(ctx context.Context, params *CreateGiftParams, collectionID, modelID, backdropID, symbolID int32) (*Gift, error)
+	CreateGiftEvent(ctx context.Context, params CreateGiftEventParams) (*GiftEvent, error)
 	GetGiftEvents(ctx context.Context, giftID string, limit int32, offset int32) ([]*GiftEvent, error)
 	GetGiftsByIDs(ctx context.Context, ids []string) ([]*Gift, error)
+	SaveGiftWithPrice(ctx context.Context, id string, price float64) (*Gift, error)
+
+	// Lookup table methods
+	GetGiftModel(ctx context.Context, id int32) (*Model, error)
+	GetGiftBackdrop(ctx context.Context, id int32) (*Backdrop, error)
+	GetGiftSymbol(ctx context.Context, id int32) (*Symbol, error)
+
+	// Create lookup table methods
+	CreateCollection(ctx context.Context, params *CreateCollectionParams) (*Collection, error)
+	CreateModel(ctx context.Context, params *CreateModelParams) (*Model, error)
+	CreateBackdrop(ctx context.Context, params *CreateBackdropParams) (*Backdrop, error)
+	CreateSymbol(ctx context.Context, params *CreateSymbolParams) (*Symbol, error)
+
+	// Find lookup table methods
+	FindCollectionByName(ctx context.Context, name string) (*Collection, error)
+	FindModelByName(ctx context.Context, name string) (*Model, error)
+	FindBackdropByName(ctx context.Context, name string) (*Backdrop, error)
+	FindSymbolByName(ctx context.Context, name string) (*Symbol, error)
 }

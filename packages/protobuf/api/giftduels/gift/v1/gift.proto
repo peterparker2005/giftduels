@@ -28,14 +28,16 @@ message Gift {
   string slug = 8;
 
   // Gift attributes
-  repeated GiftAttribute attributes = 9;
+  GiftAttributeBackdrop backdrop = 9;
+  GiftAttributeModel model = 10;
+  GiftAttributeSymbol symbol = 11;
 
   // Pricing information
-  shared.v1.TonAmount price = 10;
+  shared.v1.TonAmount price = 12;
 
   // Gift status tracking
-  GiftStatus status = 11;
-  google.protobuf.Timestamp withdrawn_at = 12;
+  GiftStatus status = 13;
+  google.protobuf.Timestamp withdrawn_at = 14;
 }
 
 message GiftView {
@@ -58,9 +60,28 @@ message GiftAttribute {
 
 enum GiftAttributeType {
   GIFT_ATTRIBUTE_TYPE_UNSPECIFIED = 0;
-  GIFT_ATTRIBUTE_TYPE_MODEL = 1;
-  GIFT_ATTRIBUTE_TYPE_BACKDROP = 2;
+  GIFT_ATTRIBUTE_TYPE_BACKDROP = 1;
+  GIFT_ATTRIBUTE_TYPE_MODEL = 2;
   GIFT_ATTRIBUTE_TYPE_SYMBOL = 3;
+}
+
+message GiftAttributeBackdrop {
+  string name = 1;
+  int32 rarity_per_mille = 2;
+  string center_color = 3;
+  string edge_color = 4;
+  string pattern_color = 5;
+  string text_color = 6;
+}
+
+message GiftAttributeModel {
+  string name = 1;
+  int32 rarity_per_mille = 2;
+}
+
+message GiftAttributeSymbol {
+  string name = 1;
+  int32 rarity_per_mille = 2;
 }
 
 enum GiftStatus {

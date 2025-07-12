@@ -3,7 +3,6 @@ package grpc
 import (
 	"context"
 
-	domainGift "github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/service/gift"
 	giftv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1"
 	sharedv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/shared/v1"
@@ -34,7 +33,7 @@ func (h *giftPrivateHandler) PrivateGetGifts(ctx context.Context, req *giftv1.Pr
 
 	giftProtos := make([]*giftv1.Gift, len(gifts))
 	for i, g := range gifts {
-		giftProtos[i] = domainGift.DomainGiftToProto(g)
+		giftProtos[i] = DomainGiftToProto(g)
 	}
 
 	return &giftv1.PrivateGetGiftsResponse{
@@ -53,7 +52,7 @@ func (h *giftPrivateHandler) GetUserGifts(ctx context.Context, req *giftv1.GetUs
 	// Convert domain gifts to protobuf
 	giftViews := make([]*giftv1.Gift, len(domainGifts.Gifts))
 	for i, g := range domainGifts.Gifts {
-		giftViews[i] = domainGift.DomainGiftToProto(g)
+		giftViews[i] = DomainGiftToProto(g)
 	}
 
 	return &giftv1.GetUserGiftsResponse{
@@ -68,26 +67,29 @@ func (h *giftPrivateHandler) GetUserGifts(ctx context.Context, req *giftv1.GetUs
 }
 
 func (h *giftPrivateHandler) StakeGift(ctx context.Context, req *giftv1.StakeGiftRequest) (*giftv1.StakeGiftResponse, error) {
-	g, err := h.giftService.StakeGift(ctx, req.GetGiftId().Value)
+	g, err := h.giftService.StakeGift(ctx, gift.StakeGiftParams{
+		GiftID:       req.GetGiftId().Value,
+		GameMetadata: req.GetGameMetadata(),
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &giftv1.StakeGiftResponse{
-		Gift: domainGift.DomainGiftToProto(g),
+		Gift: DomainGiftToProto(g),
 	}, nil
 }
 
-func (h *giftPrivateHandler) TransferGiftToUser(ctx context.Context, req *giftv1.TransferGiftToUserRequest) (*giftv1.TransferGiftToUserResponse, error) {
-	g, err := h.giftService.TransferGiftToUser(ctx, req.GetGiftId().Value, req.GetTelegramUserId().Value)
-	if err != nil {
-		return nil, err
-	}
+// func (h *giftPrivateHandler) TransferGiftToUser(ctx context.Context, req *giftv1.TransferGiftToUserRequest) (*giftv1.TransferGiftToUserResponse, error) {
+// 	g, err := h.giftService.TransferGiftToUser(ctx, req.GetGiftId().Value, req.GetTelegramUserId().Value)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	return &giftv1.TransferGiftToUserResponse{
-		Gift: domainGift.DomainGiftToProto(g),
-	}, nil
-}
+// 	return &giftv1.TransferGiftToUserResponse{
+// 		Gift: DomainGiftToProto(g),
+// 	}, nil
+// }
 
 func (h *giftPrivateHandler) PrivateGetGift(ctx context.Context, req *giftv1.PrivateGetGiftRequest) (*giftv1.PrivateGetGiftResponse, error) {
 	g, err := h.giftService.GetGiftByID(ctx, req.GetGiftId().Value)
@@ -96,6 +98,6 @@ func (h *giftPrivateHandler) PrivateGetGift(ctx context.Context, req *giftv1.Pri
 	}
 
 	return &giftv1.PrivateGetGiftResponse{
-		Gift: domainGift.DomainGiftToProto(g),
+		Gift: DomainGiftToProto(g),
 	}, nil
 }

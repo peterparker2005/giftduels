@@ -11,8 +11,9 @@ const EnvSchema = z.object({
 	SERVICE_NAME: z.string().default("giftduels-bot"),
 	// Telegram
 	TELEGRAM_BOT_TOKEN: z.string(),
-	TELEGRAM_WEB_APP_URL: z.string().url(),
+	TELEGRAM_WEB_APP_URL: z.url(),
 	TELEGRAM_ADMIN_IDS: z.string().transform((ids) => ids.split(",").map(Number)),
+	TELEGRAM_DUEL_CHANNEL_ID: z.string(),
 
 	// Amqp
 	AMQP_HOST: z.string(),
@@ -63,6 +64,7 @@ class Config {
 			botToken: this.env.TELEGRAM_BOT_TOKEN,
 			webAppUrl: this.env.TELEGRAM_WEB_APP_URL,
 			adminIds: this.env.TELEGRAM_ADMIN_IDS,
+			duelChannelId: this.env.TELEGRAM_DUEL_CHANNEL_ID,
 		};
 	}
 

@@ -1,4 +1,5 @@
 syntax = "proto3";
+
 package giftduels.duel.v1;
 
 option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/duel/v1;duelv1";

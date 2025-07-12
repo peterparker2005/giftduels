@@ -8,9 +8,12 @@ import {
 } from "@giftduels/protobuf-js/giftduels/gift/v1/events_pb";
 import {
 	Gift,
-	GiftAttribute,
-	GiftAttributeSchema,
-	GiftAttributeType,
+	GiftAttributeBackdrop,
+	GiftAttributeBackdropSchema,
+	GiftAttributeModel,
+	GiftAttributeModelSchema,
+	GiftAttributeSymbol,
+	GiftAttributeSymbolSchema,
 	GiftSchema,
 	GiftStatus,
 	GiftView,
@@ -47,53 +50,54 @@ function createTimestamp(unixTimestamp: number) {
 	return create(TimestampSchema, { seconds: BigInt(seconds), nanos });
 }
 
+interface ParsedAttributes {
+	backdrop?: GiftAttributeBackdrop;
+	model?: GiftAttributeModel;
+	symbol?: GiftAttributeSymbol;
+}
+
 function parseAttributes(
 	telegramAttributes?: Api.TypeStarGiftAttribute[],
-): GiftAttribute[] {
+): ParsedAttributes {
+	const result: ParsedAttributes = {};
+
 	if (!telegramAttributes || !Array.isArray(telegramAttributes)) {
-		return [];
+		return result;
 	}
 
-	const mappedAttributes = telegramAttributes.map((attr) => {
-		let attributeType: GiftAttributeType | undefined;
-		let name = "";
-		let rarityPermille = 0;
-
-		if (attr instanceof Api.StarGiftAttributeModel) {
-			attributeType = GiftAttributeType.MODEL;
-			name = attr.name;
-			rarityPermille = attr.rarityPermille;
+	telegramAttributes.forEach((attr) => {
+		if (attr instanceof Api.StarGiftAttributeBackdrop) {
+			result.backdrop = create(GiftAttributeBackdropSchema, {
+				name: attr.name,
+				rarityPerMille: attr.rarityPermille,
+				centerColor: (attr as any).centerColor || "",
+				edgeColor: (attr as any).edgeColor || "",
+				patternColor: (attr as any).patternColor || "",
+				textColor: (attr as any).textColor || "",
+			});
+		} else if (attr instanceof Api.StarGiftAttributeModel) {
+			result.model = create(GiftAttributeModelSchema, {
+				name: attr.name,
+				rarityPerMille: attr.rarityPermille,
+			});
 		} else if (attr instanceof Api.StarGiftAttributePattern) {
-			attributeType = GiftAttributeType.SYMBOL;
-			name = attr.name;
-			rarityPermille = attr.rarityPermille;
-		} else if (attr instanceof Api.StarGiftAttributeBackdrop) {
-			attributeType = GiftAttributeType.BACKDROP;
-			name = attr.name;
-			rarityPermille = attr.rarityPermille;
+			result.symbol = create(GiftAttributeSymbolSchema, {
+				name: attr.name,
+				rarityPerMille: attr.rarityPermille,
+			});
 		} else if (attr instanceof Api.StarGiftAttributeOriginalDetails) {
 			logger.warn(
 				"⚠️ StarGiftAttributeOriginalDetails is not handled yet, skipping",
 			);
-			return null;
 		} else {
 			logger.warn(
 				{ className: (attr as any)?.className },
 				"⚠️ Unknown Telegram gift attribute type, skipping",
 			);
-			return null;
 		}
-
-		return create(GiftAttributeSchema, {
-			type: attributeType,
-			name: name,
-			rarityPerMille: rarityPermille,
-		});
 	});
 
-	return mappedAttributes.filter(
-		(attr): attr is GiftAttribute => attr !== null,
-	);
+	return result;
 }
 
 function slugify(title: string): string {
@@ -123,7 +127,8 @@ export function parseSavedStarGift(
 	let telegramGiftId: string;
 	let title: string;
 	let slug: string;
-	let attributes: GiftAttribute[] = [];
+	let attributes: ParsedAttributes = {};
+	let collectibleId = 0;
 
 	if (gift.className === "StarGiftUnique") {
 		const uniqueGift = gift as Api.StarGiftUnique;
@@ -131,6 +136,7 @@ export function parseSavedStarGift(
 		title = uniqueGift.title || "Unique Gift";
 		slug = uniqueGift.slug || slugify(title);
 		attributes = parseAttributes(uniqueGift.attributes);
+		collectibleId = uniqueGift.num;
 	} else if (gift.className === "StarGift") {
 		const regularGift = gift as Api.StarGift;
 		telegramGiftId = regularGift.id?.toString() || "0";
@@ -154,11 +160,13 @@ export function parseSavedStarGift(
 		telegramGiftId: createGiftTelegramId(telegramGiftId),
 		date: createTimestamp(savedGift.date || Math.floor(Date.now() / 1000)),
 		ownerTelegramId: createTelegramUserId(ownerTelegramId),
-		collectibleId: 0, // Not available in SavedStarGift
+		collectibleId,
 		telegramMessageId: savedGift.msgId || 0,
 		title,
 		slug,
-		attributes,
+		backdrop: attributes.backdrop,
+		model: attributes.model,
+		symbol: attributes.symbol,
 		status,
 		withdrawnAt: undefined,
 	});
@@ -186,7 +194,7 @@ export function parseMessageActionStarGift(
 	let telegramGiftId: string;
 	let title: string;
 	let slug: string;
-	const attributes: GiftAttribute[] = [];
+	const attributes: ParsedAttributes = {};
 
 	if (gift.className === "StarGift") {
 		const starGift = gift as Api.StarGift;
@@ -212,7 +220,9 @@ export function parseMessageActionStarGift(
 			ownerTelegramId: createTelegramUserId(fromUserId),
 			title,
 			slug,
-			attributes,
+			backdrop: attributes.backdrop,
+			model: attributes.model,
+			symbol: attributes.symbol,
 			collectibleId: 0,
 			upgradeMessageId: 0,
 		},
@@ -244,7 +254,7 @@ export function parseMessageActionStarGiftUnique(
 	let telegramGiftId: string;
 	let title: string;
 	let slug: string;
-	let attributes: GiftAttribute[] = [];
+	let attributes: ParsedAttributes = {};
 	let collectibleId = 0;
 
 	if (gift.className === "StarGiftUnique") {
@@ -273,7 +283,9 @@ export function parseMessageActionStarGiftUnique(
 			ownerTelegramId: createTelegramUserId(fromUserId),
 			title,
 			slug,
-			attributes,
+			backdrop: attributes.backdrop,
+			model: attributes.model,
+			symbol: attributes.symbol,
 			collectibleId,
 			upgradeMessageId: message.id || 0,
 		},
@@ -311,6 +323,9 @@ export function parseSavedStarGiftToView(
 		collectibleId: fullGift.collectibleId,
 		status: fullGift.status,
 		withdrawnAt: fullGift.withdrawnAt,
+		backdrop: fullGift.backdrop,
+		model: fullGift.model,
+		symbol: fullGift.symbol,
 	});
 }
 
@@ -348,7 +363,7 @@ export function parseSavedStarGiftToEvent(
 	let telegramGiftId: string;
 	let title: string;
 	let slug: string;
-	let attributes: GiftAttribute[] = [];
+	let attributes: ParsedAttributes = {};
 	let collectibleId = 0;
 
 	if (gift.className === "StarGiftUnique") {
@@ -376,7 +391,9 @@ export function parseSavedStarGiftToEvent(
 			ownerTelegramId: createTelegramUserId(ownerTelegramId),
 			title,
 			slug,
-			attributes,
+			backdrop: attributes.backdrop,
+			model: attributes.model,
+			symbol: attributes.symbol,
 			collectibleId,
 			upgradeMessageId: savedGift.msgId || 0,
 		},

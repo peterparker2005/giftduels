@@ -3,7 +3,6 @@ package grpc
 import (
 	"context"
 
-	domainGift "github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/service/gift"
 	"github.com/peterparker2005/giftduels/packages/grpc-go/authctx"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
@@ -36,7 +35,7 @@ func (h *giftPublicHandler) GetGift(ctx context.Context, req *giftv1.GetGiftRequ
 	}
 
 	return &giftv1.GetGiftResponse{
-		Gift: domainGift.DomainGiftToProtoView(g),
+		Gift: DomainGiftToProtoView(g),
 	}, nil
 }
 
@@ -57,7 +56,7 @@ func (h *giftPublicHandler) GetGifts(ctx context.Context, req *giftv1.GetGiftsRe
 
 	giftViews := make([]*giftv1.GiftView, len(domainGifts.Gifts))
 	for i, g := range domainGifts.Gifts {
-		giftViews[i] = domainGift.DomainGiftToProtoView(g)
+		giftViews[i] = DomainGiftToProtoView(g)
 	}
 
 	return &giftv1.GetGiftsResponse{

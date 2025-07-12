@@ -11,49 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type GiftAttributeType string
-
-const (
-	GiftAttributeTypeModel    GiftAttributeType = "model"
-	GiftAttributeTypeSymbol   GiftAttributeType = "symbol"
-	GiftAttributeTypeBackdrop GiftAttributeType = "backdrop"
-)
-
-func (e *GiftAttributeType) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = GiftAttributeType(s)
-	case string:
-		*e = GiftAttributeType(s)
-	default:
-		return fmt.Errorf("unsupported scan type for GiftAttributeType: %T", src)
-	}
-	return nil
-}
-
-type NullGiftAttributeType struct {
-	GiftAttributeType GiftAttributeType
-	Valid             bool // Valid is true if GiftAttributeType is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullGiftAttributeType) Scan(value interface{}) error {
-	if value == nil {
-		ns.GiftAttributeType, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.GiftAttributeType.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullGiftAttributeType) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.GiftAttributeType), nil
-}
-
 type GiftStatus string
 
 const (
@@ -107,17 +64,31 @@ type Gift struct {
 	Title            string
 	Slug             string
 	Price            float64
+	CollectionID     int32
+	ModelID          int32
+	BackdropID       int32
+	SymbolID         int32
 	Status           GiftStatus
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
 	WithdrawnAt      pgtype.Timestamptz
 }
 
-type GiftAttribute struct {
-	GiftID         pgtype.UUID
-	Type           GiftAttributeType
+type GiftBackdrop struct {
+	ID             int32
 	Name           string
+	ShortName      string
 	RarityPerMille int32
+	CenterColor    pgtype.Text
+	EdgeColor      pgtype.Text
+	PatternColor   pgtype.Text
+	TextColor      pgtype.Text
+}
+
+type GiftCollection struct {
+	ID        int32
+	Name      string
+	ShortName string
 }
 
 type GiftEvent struct {
@@ -126,9 +97,24 @@ type GiftEvent struct {
 	FromUserID    pgtype.Int8
 	ToUserID      pgtype.Int8
 	Action        string
-	Source        pgtype.Text
+	GameMode      pgtype.Text
 	RelatedGameID pgtype.Text
 	Description   pgtype.Text
 	Payload       []byte
 	OccurredAt    pgtype.Timestamptz
+}
+
+type GiftModel struct {
+	ID             int32
+	CollectionID   int32
+	Name           string
+	ShortName      string
+	RarityPerMille int32
+}
+
+type GiftSymbol struct {
+	ID             int32
+	Name           string
+	ShortName      string
+	RarityPerMille int32
 }

@@ -1,3 +1,5 @@
+duel-server: cd apps/service-duel && go run ./cmd/cli/main.go serve
+
 payment-server: cd apps/service-payment && go run ./cmd/cli/main.go serve
 payment-worker-event: cd apps/service-payment && go run ./cmd/cli/main.go worker event
 payment-worker-ton: cd apps/service-payment && go run ./cmd/cli/main.go worker ton

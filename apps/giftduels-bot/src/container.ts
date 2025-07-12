@@ -7,6 +7,7 @@ import {
 } from "awilix";
 import { Bot } from "grammy";
 import { createBot } from "./bot";
+import { DuelService } from "./services/duelService";
 import { InvoiceService } from "./services/invoiceService";
 import { NotificationService } from "./services/notification";
 import { ExtendedContext } from "./types/context";
@@ -16,6 +17,7 @@ export interface Cradle {
 	bot: Bot<ExtendedContext>;
 	invoiceService: InvoiceService;
 	notificationService: NotificationService;
+	duelService: DuelService;
 }
 
 // Создаем и настраиваем контейнер
@@ -34,6 +36,7 @@ container.register({
 	// Сервисы как классы
 	invoiceService: asClass(InvoiceService).singleton(),
 	notificationService: asClass(NotificationService).singleton(),
+	duelService: asClass(DuelService).singleton(),
 });
 
 // Хелпер для получения контейнера с типизацией

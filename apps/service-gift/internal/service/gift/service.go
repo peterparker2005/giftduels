@@ -9,7 +9,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/components/forwarder"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/adapter/pg"
-	"github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
+	giftDomain "github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
 	"github.com/peterparker2005/giftduels/packages/errors/pkg/errors"
 	giftEvents "github.com/peterparker2005/giftduels/packages/events/gift"
 	"github.com/peterparker2005/giftduels/packages/grpc-go/clients"
@@ -25,13 +25,13 @@ import (
 
 type Service struct {
 	txMgr                    pg.TxManager
-	repo                     gift.GiftRepository
+	repo                     giftDomain.GiftRepository
 	log                      *logger.Logger
 	paymentPrivateClient     paymentv1.PaymentPrivateServiceClient
 	telegramBotPrivateClient telegrambotv1.TelegramBotPrivateServiceClient
 }
 
-func New(repo gift.GiftRepository, txMgr pg.TxManager, log *logger.Logger, clients *clients.Clients) *Service {
+func New(repo giftDomain.GiftRepository, txMgr pg.TxManager, log *logger.Logger, clients *clients.Clients) *Service {
 	return &Service{
 		repo:                     repo,
 		txMgr:                    txMgr,
@@ -41,7 +41,7 @@ func New(repo gift.GiftRepository, txMgr pg.TxManager, log *logger.Logger, clien
 	}
 }
 
-func (s *Service) GetGiftByID(ctx context.Context, id string) (*gift.Gift, error) {
+func (s *Service) GetGiftByID(ctx context.Context, id string) (*giftDomain.Gift, error) {
 	gift, err := s.repo.GetGiftByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -50,13 +50,13 @@ func (s *Service) GetGiftByID(ctx context.Context, id string) (*gift.Gift, error
 }
 
 type GetUserGiftsResult struct {
-	Gifts      []*gift.Gift
+	Gifts      []*giftDomain.Gift
 	Total      int32
 	TotalValue float64
 }
 
 type ExecuteWithdrawResult struct {
-	Gifts             []*gift.Gift
+	Gifts             []*giftDomain.Gift
 	StarsInvoiceURL   string // только для Stars валюты
 	IsStarsCommission bool   // указывает, что это Stars комиссия
 }
@@ -97,29 +97,44 @@ func (s *Service) GetUserActiveGifts(ctx context.Context, telegramUserID int64, 
 	}, nil
 }
 
-func (s *Service) StakeGift(ctx context.Context, giftID string) (*gift.Gift, error) {
-	gift, err := s.repo.StakeGiftForGame(ctx, giftID)
+type StakeGiftParams struct {
+	GiftID       string
+	GameMetadata *giftv1.StakeGiftRequest_GameMetadata
+}
+
+type GameMetadata struct {
+	GameMode sharedv1.GameMode
+	GameID   string
+}
+
+func (s *Service) StakeGift(ctx context.Context, params StakeGiftParams) (*giftDomain.Gift, error) {
+	gift, err := s.repo.StakeGiftForGame(ctx, params.GiftID)
 	if err != nil {
 		return nil, err
 	}
 	return gift, nil
 }
 
-func (s *Service) TransferGiftToUser(ctx context.Context, giftID string, telegramUserID int64) (*gift.Gift, error) {
-	// First update the gift owner
-	gift, err := s.repo.UpdateGiftOwner(ctx, giftID, telegramUserID)
-	if err != nil {
-		return nil, err
-	}
+// // TODO:
+// func (s *Service) TransferGiftToUser(ctx context.Context, giftID string, telegramUserID int64) (*giftDomain.Gift, error) {
+// 	// First update the gift owner
+// 	gift, err := s.repo.UpdateGiftOwner(ctx, giftID, telegramUserID)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	// Create transfer record
-	_, err = s.repo.CreateGiftEvent(ctx, giftID, gift.OwnerTelegramID, telegramUserID)
-	if err != nil {
-		return nil, err
-	}
+// 	// Create transfer record
+// 	_, err = s.repo.CreateGiftEvent(ctx, giftDomain.CreateGiftEventParams{
+// 		GiftID:   giftID,
+// 		Action:   giftDomain.EventActionTransfer,
+// 		ToUserID: &telegramUserID,
+// 	})
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	return gift, nil
-}
+// 	return gift, nil
+// }
 
 func (s *Service) ExecuteWithdraw(ctx context.Context, telegramUserID int64, giftIDs []string, commissionCurrency giftv1.ExecuteWithdrawRequest_CommissionCurrency) (*ExecuteWithdrawResult, error) {
 	switch commissionCurrency {
@@ -182,7 +197,7 @@ func (s *Service) executeWithdrawTON(ctx context.Context, telegramUserID int64, 
 			)
 			return nil, errors.NewGiftNotOwnedError("one or more gifts do not belong to you")
 		}
-		if g.Status != gift.StatusOwned {
+		if g.Status != giftDomain.StatusOwned {
 			commitErr = err
 			s.log.Error("gift is not in owned status",
 				zap.String("giftID", g.ID),
@@ -192,7 +207,7 @@ func (s *Service) executeWithdrawTON(ctx context.Context, telegramUserID int64, 
 		}
 	}
 
-	var result []*gift.Gift
+	var result []*giftDomain.Gift
 	var eventsToPublish []*message.Message
 
 	for _, giftID := range giftIDs {
@@ -318,7 +333,7 @@ func (s *Service) executeWithdrawStars(
 			s.log.Error("ownership validation failed", zap.String("giftID", g.ID))
 			return nil, commitErr
 		}
-		if g.Status != gift.StatusOwned {
+		if g.Status != giftDomain.StatusOwned {
 			commitErr = errors.NewGiftNotOwnedError("gift is not available for withdrawal: " + g.ID)
 			s.log.Error("status validation failed", zap.String("giftID", g.ID), zap.String("status", string(g.Status)))
 			return nil, commitErr
@@ -402,7 +417,7 @@ func (s *Service) executeWithdrawStars(
 	}, nil
 }
 
-func (s *Service) CompleteStarsWithdrawal(ctx context.Context, telegramUserID int64, giftIDs []string, starsCommission uint32) ([]*gift.Gift, error) {
+func (s *Service) CompleteStarsWithdrawal(ctx context.Context, telegramUserID int64, giftIDs []string, starsCommission uint32) ([]*giftDomain.Gift, error) {
 	// Начинаем транзакцию, чтобы сохранить пометки и публиковать события
 	tx, err := s.txMgr.BeginTx(ctx)
 	if err != nil {
@@ -435,7 +450,7 @@ func (s *Service) CompleteStarsWithdrawal(ctx context.Context, telegramUserID in
 		ForwarderTopic: giftEvents.SqlOutboxTopic,
 	})
 
-	var result []*gift.Gift
+	var result []*giftDomain.Gift
 	for _, giftID := range giftIDs {
 		g, err := repo.MarkGiftForWithdrawal(ctx, giftID)
 		if err != nil {
@@ -502,7 +517,7 @@ func (s *Service) CompleteStarsWithdrawal(ctx context.Context, telegramUserID in
 	return result, nil
 }
 
-func (s *Service) GetGiftsByIDs(ctx context.Context, giftIDs []string) ([]*gift.Gift, error) {
+func (s *Service) GetGiftsByIDs(ctx context.Context, giftIDs []string) ([]*giftDomain.Gift, error) {
 	gifts, err := s.repo.GetGiftsByIDs(ctx, giftIDs)
 	if err != nil {
 		return nil, err

@@ -16,11 +16,6 @@ service EventPublicService {
 
 message SocketResponse {
   oneof payload {
-    OnlineCountEvent online_count = 1;
-    giftduels.duel.v1.DuelEvent duel_event = 100;
+    giftduels.duel.v1.RollDiceEvent roll_dice_event = 100;
   }
-}
-
-message OnlineCountEvent {
-  int32 online_count = 1;
 }
