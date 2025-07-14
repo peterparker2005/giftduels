@@ -2,6 +2,8 @@ package configs
 
 import (
 	"fmt"
+	"net"
+	"strconv"
 	"time"
 )
 
@@ -17,8 +19,9 @@ type DatabaseConfig struct {
 }
 
 func (db *DatabaseConfig) DSN() string {
+	hostPort := net.JoinHostPort(db.Host, strconv.Itoa(int(db.Port)))
 	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
-		db.User, db.Password, db.Host, db.Port, db.Name, db.SSLMode,
+		"postgres://%s:%s@%s/%s?sslmode=%s",
+		db.User, db.Password, hostPort, db.Name, db.SSLMode,
 	)
 }

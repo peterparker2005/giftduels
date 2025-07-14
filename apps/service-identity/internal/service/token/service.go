@@ -50,7 +50,7 @@ func (s *JWTService) Generate(telegramUserID int64) (string, error) {
 }
 
 func (s *JWTService) Validate(tokenStr string) (*SessionClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenStr, &SessionClaims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, &SessionClaims{}, func(_ *jwt.Token) (interface{}, error) {
 		return s.secret, nil
 	})
 	if err != nil || !token.Valid {

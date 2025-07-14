@@ -25,7 +25,7 @@ func (r *UserRepository) GetByTelegramID(
 	dbUser, err := r.db.GetUserByTelegramID(ctx, telegramID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
+			return nil, ErrUserNotFound
 		}
 		return nil, err
 	}
@@ -59,9 +59,9 @@ func (r *UserRepository) CreateOrUpdate(
 
 	// Если пользователь уже существует, обновляем его
 	if existingUser != nil {
-		updatedUser, err := r.UpsertUser(ctx, params)
-		if err != nil {
-			return nil, false, err
+		updatedUser, upsertErr := r.UpsertUser(ctx, params)
+		if upsertErr != nil {
+			return nil, false, upsertErr
 		}
 		return updatedUser, false, nil // false означает, что пользователь не был создан
 	}

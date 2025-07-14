@@ -1,6 +1,10 @@
 package configs
 
-import "fmt"
+import (
+	"fmt"
+	"net"
+	"strconv"
+)
 
 type AMQPConfig struct {
 	User     string `yaml:"user"     env:"AMQP_USER"     env-default:"admin"`
@@ -10,6 +14,7 @@ type AMQPConfig struct {
 }
 
 func (c *AMQPConfig) Address() string {
-	return fmt.Sprintf("amqp://%s:%s@%s:%d",
-		c.User, c.Password, c.Host, c.Port)
+	hostPort := net.JoinHostPort(c.Host, strconv.Itoa(c.Port))
+	return fmt.Sprintf("amqp://%s:%s@%s",
+		c.User, c.Password, hostPort)
 }

@@ -12,15 +12,15 @@ type SetDepositTransactionParams struct {
 	TxLt   uint64
 }
 
-// CursorRepository хранит и возвращает last_lt для заданного адреса и сети.
+// DepositRepository keeps and returns last_lt for given address and network.
 type DepositRepository interface {
 	WithTx(tx pgx.Tx) DepositRepository
 	CreateDeposit(ctx context.Context, params *CreateDepositParams) (*Deposit, error)
 	GetDepositByPayload(ctx context.Context, payload string) (*Deposit, error)
 	SetDepositTransaction(ctx context.Context, params *SetDepositTransactionParams) (*Deposit, error)
-	// Get возвращает сохранённый lastLT для walletAddress и network.
-	// Если записи нет, возвращает 0 и nil-ошибку.
+	// Get returns saved lastLT for walletAddress and network.
+	// If no record exists, returns 0 and nil-error.
 	GetCursor(ctx context.Context, network, walletAddress string) (uint64, error)
-	// UpsertCursor сохраняет или обновляет курсор для walletAddress и network.
+	// UpsertCursor saves or updates cursor for walletAddress and network.
 	UpsertCursor(ctx context.Context, network, walletAddress string, lastLT uint64) error
 }

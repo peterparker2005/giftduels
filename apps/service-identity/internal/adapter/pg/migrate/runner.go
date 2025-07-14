@@ -5,9 +5,10 @@ import (
 	"fmt"
 
 	"github.com/golang-migrate/migrate/v4"
+	// Required for registering PostgreSQL driver with golang-migrate.
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	// Required for reading migration files from disk.
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/peterparker2005/giftduels/apps/service-identity/internal/config"
 )
 
 const migrationsPath = "file://db/migrations"
@@ -16,8 +17,8 @@ type Runner struct {
 	m *migrate.Migrate
 }
 
-func New(cfg *config.Config) (*Runner, error) {
-	m, err := migrate.New(migrationsPath, cfg.Database.DSN())
+func NewWithDSN(dsn string) (*Runner, error) {
+	m, err := migrate.New(migrationsPath, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create migrator: %w", err)
 	}

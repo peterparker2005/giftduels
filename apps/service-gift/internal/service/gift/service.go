@@ -193,6 +193,21 @@ func (s *Service) GetUserActiveGifts(
 // populateGiftAttributes populates the Model, Backdrop, and Symbol attributes for a slice of gifts.
 func (s *Service) populateGiftAttributes(ctx context.Context, gifts []*giftDomain.Gift) error {
 	// Collect all unique IDs
+	modelIDs, backdropIDs, symbolIDs := s.collectAttributeIDs(gifts)
+
+	// Fetch all models, backdrops, and symbols in parallel
+	models, backdrops, symbols, err := s.fetchAttributesInParallel(ctx, modelIDs, backdropIDs, symbolIDs)
+	if err != nil {
+		return err
+	}
+
+	// Populate the gifts with the fetched data
+	s.populateGiftsWithAttributes(gifts, models, backdrops, symbols)
+
+	return nil
+}
+
+func (s *Service) collectAttributeIDs(gifts []*giftDomain.Gift) (map[int32]bool, map[int32]bool, map[int32]bool) {
 	modelIDs := make(map[int32]bool)
 	backdropIDs := make(map[int32]bool)
 	symbolIDs := make(map[int32]bool)
@@ -203,54 +218,27 @@ func (s *Service) populateGiftAttributes(ctx context.Context, gifts []*giftDomai
 		symbolIDs[gift.Symbol.ID] = true
 	}
 
-	// Fetch all models, backdrops, and symbols in parallel
+	return modelIDs, backdropIDs, symbolIDs
+}
+
+func (s *Service) fetchAttributesInParallel(
+	ctx context.Context,
+	modelIDs, backdropIDs, symbolIDs map[int32]bool,
+) (map[int32]*giftDomain.Model, map[int32]*giftDomain.Backdrop, map[int32]*giftDomain.Symbol, error) {
+	//nolint:mnd // 3 is not a magic number
+	errorChan := make(chan error, 3)
 	modelChan := make(chan map[int32]*giftDomain.Model, 1)
 	backdropChan := make(chan map[int32]*giftDomain.Backdrop, 1)
 	symbolChan := make(chan map[int32]*giftDomain.Symbol, 1)
-	//nolint:mnd // 3 is not a magic number
-	errorChan := make(chan error, 3)
 
 	// Fetch models
-	go func() {
-		models := make(map[int32]*giftDomain.Model)
-		for modelID := range modelIDs {
-			model, err := s.repo.GetGiftModel(ctx, modelID)
-			if err != nil {
-				errorChan <- err
-				return
-			}
-			models[modelID] = model
-		}
-		modelChan <- models
-	}()
+	go s.fetchModels(ctx, modelIDs, modelChan, errorChan)
 
 	// Fetch backdrops
-	go func() {
-		backdrops := make(map[int32]*giftDomain.Backdrop)
-		for backdropID := range backdropIDs {
-			backdrop, err := s.repo.GetGiftBackdrop(ctx, backdropID)
-			if err != nil {
-				errorChan <- err
-				return
-			}
-			backdrops[backdropID] = backdrop
-		}
-		backdropChan <- backdrops
-	}()
+	go s.fetchBackdrops(ctx, backdropIDs, backdropChan, errorChan)
 
 	// Fetch symbols
-	go func() {
-		symbols := make(map[int32]*giftDomain.Symbol)
-		for symbolID := range symbolIDs {
-			symbol, err := s.repo.GetGiftSymbol(ctx, symbolID)
-			if err != nil {
-				errorChan <- err
-				return
-			}
-			symbols[symbolID] = symbol
-		}
-		symbolChan <- symbols
-	}()
+	go s.fetchSymbols(ctx, symbolIDs, symbolChan, errorChan)
 
 	// Wait for all goroutines to complete
 	models := <-modelChan
@@ -260,30 +248,99 @@ func (s *Service) populateGiftAttributes(ctx context.Context, gifts []*giftDomai
 	// Check for errors
 	select {
 	case err := <-errorChan:
-		return err
+		return nil, nil, nil, err
 	default:
 	}
 
-	// Populate the gifts with the fetched data
-	for _, gift := range gifts {
-		if model, exists := models[gift.Model.ID]; exists && model != nil {
-			gift.Model = *model
-		} else {
-			s.log.Warn("Model not found for gift", zap.String("giftID", gift.ID), zap.Int32("modelID", gift.Model.ID))
-		}
-		if backdrop, exists := backdrops[gift.Backdrop.ID]; exists && backdrop != nil {
-			gift.Backdrop = *backdrop
-		} else {
-			s.log.Warn("Backdrop not found for gift", zap.String("giftID", gift.ID), zap.Int32("backdropID", gift.Backdrop.ID))
-		}
-		if symbol, exists := symbols[gift.Symbol.ID]; exists && symbol != nil {
-			gift.Symbol = *symbol
-		} else {
-			s.log.Warn("Symbol not found for gift", zap.String("giftID", gift.ID), zap.Int32("symbolID", gift.Symbol.ID))
-		}
-	}
+	return models, backdrops, symbols, nil
+}
 
-	return nil
+func (s *Service) fetchModels(
+	ctx context.Context,
+	modelIDs map[int32]bool,
+	modelChan chan<- map[int32]*giftDomain.Model,
+	errorChan chan<- error,
+) {
+	models := make(map[int32]*giftDomain.Model)
+	for modelID := range modelIDs {
+		model, err := s.repo.GetGiftModel(ctx, modelID)
+		if err != nil {
+			errorChan <- err
+			return
+		}
+		models[modelID] = model
+	}
+	modelChan <- models
+}
+
+func (s *Service) fetchBackdrops(
+	ctx context.Context,
+	backdropIDs map[int32]bool,
+	backdropChan chan<- map[int32]*giftDomain.Backdrop,
+	errorChan chan<- error,
+) {
+	backdrops := make(map[int32]*giftDomain.Backdrop)
+	for backdropID := range backdropIDs {
+		backdrop, err := s.repo.GetGiftBackdrop(ctx, backdropID)
+		if err != nil {
+			errorChan <- err
+			return
+		}
+		backdrops[backdropID] = backdrop
+	}
+	backdropChan <- backdrops
+}
+
+func (s *Service) fetchSymbols(
+	ctx context.Context,
+	symbolIDs map[int32]bool,
+	symbolChan chan<- map[int32]*giftDomain.Symbol,
+	errorChan chan<- error,
+) {
+	symbols := make(map[int32]*giftDomain.Symbol)
+	for symbolID := range symbolIDs {
+		symbol, err := s.repo.GetGiftSymbol(ctx, symbolID)
+		if err != nil {
+			errorChan <- err
+			return
+		}
+		symbols[symbolID] = symbol
+	}
+	symbolChan <- symbols
+}
+
+func (s *Service) populateGiftsWithAttributes(
+	gifts []*giftDomain.Gift,
+	models map[int32]*giftDomain.Model,
+	backdrops map[int32]*giftDomain.Backdrop,
+	symbols map[int32]*giftDomain.Symbol,
+) {
+	for _, gift := range gifts {
+		s.populateSingleGiftAttributes(gift, models, backdrops, symbols)
+	}
+}
+
+func (s *Service) populateSingleGiftAttributes(
+	gift *giftDomain.Gift,
+	models map[int32]*giftDomain.Model,
+	backdrops map[int32]*giftDomain.Backdrop,
+	symbols map[int32]*giftDomain.Symbol,
+) {
+	if model, exists := models[gift.Model.ID]; exists && model != nil {
+		gift.Model = *model
+	} else {
+		s.log.Warn("Model not found for gift", zap.String("giftID", gift.ID), zap.Int32("modelID", gift.Model.ID))
+	}
+	if backdrop, exists := backdrops[gift.Backdrop.ID]; exists && backdrop != nil {
+		gift.Backdrop = *backdrop
+	} else {
+		s.log.Warn("Backdrop not found for gift", zap.String("giftID", gift.ID), zap.Int32("backdropID", gift.Backdrop.ID))
+	}
+	if symbol, exists := symbols[gift.Symbol.ID]; exists && symbol != nil {
+		gift.Symbol = *symbol
+	} else {
+		s.log.Warn("Symbol not found for gift", zap.String("giftID", gift.ID), zap.Int32("symbolID", gift.Symbol.ID))
+	}
 }
 
 type StakeGiftParams struct {
@@ -705,72 +762,10 @@ func (s *Service) CompleteStarsWithdrawal(
 		return nil, err
 	}
 
-	var result []*giftDomain.Gift
-	var eventsToPublish []*message.Message
-
-	for _, giftID := range giftIDs {
-		g, markErr := repo.MarkGiftForWithdrawal(ctx, giftID)
-		if markErr != nil {
-			commitErr = markErr
-			s.log.Error("failed to mark gift for withdrawal", zap.Error(markErr))
-			return nil, markErr
-		}
-
-		// Используем domain метод для валидации
-		if err = g.CompleteWithdrawal(time.Now()); err != nil {
-			commitErr = err
-			s.log.Error("failed to complete withdrawal in domain",
-				zap.String("giftID", g.ID),
-				zap.Error(err),
-			)
-			return nil, err
-		}
-
-		result = append(result, g)
-
-		// Получаем правильную TON комиссию через PreviewWithdraw
-		previewResp, previewErr := s.paymentPrivateClient.PreviewWithdraw(
-			ctx,
-			&paymentv1.PreviewWithdrawRequest{
-				Gifts: []*paymentv1.GiftWithdrawRequest{
-					{
-						GiftId: &sharedv1.GiftId{Value: g.ID},
-						Price:  &sharedv1.TonAmount{Value: g.Price.String()},
-					},
-				},
-			},
-		)
-		if previewErr != nil {
-			commitErr = previewErr
-			s.log.Error(
-				"failed to preview withdraw for commission calculation",
-				zap.Error(previewErr),
-			)
-			return nil, previewErr
-		}
-
-		// готовим событие для публикации
-		ev := &giftv1.GiftWithdrawRequestedEvent{
-			GiftId:           &sharedv1.GiftId{Value: g.ID},
-			OwnerTelegramId:  &sharedv1.TelegramUserId{Value: g.OwnerTelegramID},
-			TelegramGiftId:   &sharedv1.GiftTelegramId{Value: g.TelegramGiftID},
-			CollectibleId:    g.CollectibleID,
-			UpgradeMessageId: g.UpgradeMessageID,
-			Price:            &sharedv1.TonAmount{Value: g.Price.String()},
-			CommissionAmount: &sharedv1.TonAmount{
-				Value: previewResp.GetTotalTonFee().GetValue(),
-			},
-			Title: g.Title,
-			Slug:  g.Slug,
-		}
-		payload, marshalErr := proto.Marshal(ev)
-		if marshalErr != nil {
-			commitErr = marshalErr
-			s.log.Error("marshal event failed", zap.Error(marshalErr))
-			return nil, marshalErr
-		}
-		msg := message.NewMessage(watermill.NewUUID(), payload)
-		eventsToPublish = append(eventsToPublish, msg)
+	result, eventsToPublish, err := s.processGiftsForStarsWithdrawal(ctx, repo, giftIDs)
+	if err != nil {
+		commitErr = err
+		return nil, err
 	}
 
 	// публикуем все события
@@ -787,6 +782,100 @@ func (s *Service) CompleteStarsWithdrawal(
 	}
 
 	return result, nil
+}
+
+func (s *Service) processGiftsForStarsWithdrawal(
+	ctx context.Context,
+	repo giftDomain.Repository,
+	giftIDs []string,
+) ([]*giftDomain.Gift, []*message.Message, error) {
+	var result []*giftDomain.Gift
+	var eventsToPublish []*message.Message
+
+	for _, giftID := range giftIDs {
+		gift, event, err := s.processSingleGiftForStarsWithdrawal(ctx, repo, giftID)
+		if err != nil {
+			return nil, nil, err
+		}
+		result = append(result, gift)
+		eventsToPublish = append(eventsToPublish, event)
+	}
+
+	return result, eventsToPublish, nil
+}
+
+func (s *Service) processSingleGiftForStarsWithdrawal(
+	ctx context.Context,
+	repo giftDomain.Repository,
+	giftID string,
+) (*giftDomain.Gift, *message.Message, error) {
+	g, markErr := repo.MarkGiftForWithdrawal(ctx, giftID)
+	if markErr != nil {
+		s.log.Error("failed to mark gift for withdrawal", zap.Error(markErr))
+		return nil, nil, markErr
+	}
+
+	// Используем domain метод для валидации
+	if err := g.CompleteWithdrawal(time.Now()); err != nil {
+		s.log.Error("failed to complete withdrawal in domain",
+			zap.String("giftID", g.ID),
+			zap.Error(err),
+		)
+		return nil, nil, err
+	}
+
+	// Получаем правильную TON комиссию через PreviewWithdraw
+	previewResp, previewErr := s.paymentPrivateClient.PreviewWithdraw(
+		ctx,
+		&paymentv1.PreviewWithdrawRequest{
+			Gifts: []*paymentv1.GiftWithdrawRequest{
+				{
+					GiftId: &sharedv1.GiftId{Value: g.ID},
+					Price:  &sharedv1.TonAmount{Value: g.Price.String()},
+				},
+			},
+		},
+	)
+	if previewErr != nil {
+		s.log.Error(
+			"failed to preview withdraw for commission calculation",
+			zap.Error(previewErr),
+		)
+		return nil, nil, previewErr
+	}
+
+	// готовим событие для публикации
+	event, err := s.createWithdrawEvent(g, previewResp.GetTotalTonFee().GetValue())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return g, event, nil
+}
+
+func (s *Service) createWithdrawEvent(
+	gift *giftDomain.Gift,
+	commissionAmount string,
+) (*message.Message, error) {
+	ev := &giftv1.GiftWithdrawRequestedEvent{
+		GiftId:           &sharedv1.GiftId{Value: gift.ID},
+		OwnerTelegramId:  &sharedv1.TelegramUserId{Value: gift.OwnerTelegramID},
+		TelegramGiftId:   &sharedv1.GiftTelegramId{Value: gift.TelegramGiftID},
+		CollectibleId:    gift.CollectibleID,
+		UpgradeMessageId: gift.UpgradeMessageID,
+		Price:            &sharedv1.TonAmount{Value: gift.Price.String()},
+		CommissionAmount: &sharedv1.TonAmount{
+			Value: commissionAmount,
+		},
+		Title: gift.Title,
+		Slug:  gift.Slug,
+	}
+	payload, err := proto.Marshal(ev)
+	if err != nil {
+		s.log.Error("marshal event failed", zap.Error(err))
+		return nil, err
+	}
+	return message.NewMessage(watermill.NewUUID(), payload), nil
 }
 
 func (s *Service) GetGiftsByIDs(ctx context.Context, giftIDs []string) ([]*giftDomain.Gift, error) {

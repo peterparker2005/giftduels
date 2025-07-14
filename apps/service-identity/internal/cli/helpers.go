@@ -1,8 +1,8 @@
-package migrate
+package cli
 
 import (
 	"bufio"
-	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -10,16 +10,21 @@ import (
 	"github.com/peterparker2005/giftduels/apps/service-identity/internal/config"
 )
 
-func newRunner(cfg *config.Config) (*migratepg.Runner, error) {
-	return migratepg.New(cfg)
+func newRunner() (*migratepg.Runner, error) {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	return migratepg.NewWithDSN(cfg.Database.DSN())
 }
 
 func confirm(prompt, want string) bool {
-	fmt.Print(prompt)
+	slog.Default().Info(prompt)
 	in, _ := bufio.NewReader(os.Stdin).ReadString('\n')
 	return strings.TrimSpace(in) == want
 }
 
 func writeFile(filename, content string) error {
-	return os.WriteFile(filename, []byte(content), 0o644)
+	return os.WriteFile(filename, []byte(content), 0o600)
 }

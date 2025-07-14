@@ -1,4 +1,4 @@
-package migrate
+package cli
 
 import (
 	"fmt"
@@ -10,11 +10,10 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	// Required for reading migration files from disk.
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/peterparker2005/giftduels/apps/service-identity/internal/config"
 	"github.com/spf13/cobra"
 )
 
-func NewCmdMigrate(cfg *config.Config) *cobra.Command {
+func newCmdMigrate() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "migrate",
 		Short: "Database migration management",
@@ -28,24 +27,24 @@ func NewCmdMigrate(cfg *config.Config) *cobra.Command {
 	}
 
 	cmd.AddCommand(
-		newUpCmd(cfg),
-		newDownCmd(cfg),
-		newDropCmd(cfg),
-		newForceCmd(cfg),
-		newVersionCmd(cfg),
+		newUpCmd(),
+		newDownCmd(),
+		newDropCmd(),
+		newForceCmd(),
+		newVersionCmd(),
 		newCreateCmd(),
 	)
 
 	return cmd
 }
 
-func newUpCmd(cfg *config.Config) *cobra.Command {
+func newUpCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "up [N]",
 		Short: "Apply all (or N) pending migrations",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			r, err := newRunner(cfg)
+			r, err := newRunner()
 			if err != nil {
 				return err
 			}
@@ -63,7 +62,7 @@ func newUpCmd(cfg *config.Config) *cobra.Command {
 	}
 }
 
-func newDownCmd(cfg *config.Config) *cobra.Command {
+func newDownCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "down N",
 		Short: "Rollback N migrations (DESTRUCTIVE)",
@@ -82,7 +81,7 @@ func newDownCmd(cfg *config.Config) *cobra.Command {
 				return nil
 			}
 
-			r, err := newRunner(cfg)
+			r, err := newRunner()
 			if err != nil {
 				return err
 			}
@@ -93,7 +92,7 @@ func newDownCmd(cfg *config.Config) *cobra.Command {
 	}
 }
 
-func newDropCmd(cfg *config.Config) *cobra.Command {
+func newDropCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "drop",
 		Short: "Drop **ALL** tables (DANGER)",
@@ -103,7 +102,7 @@ func newDropCmd(cfg *config.Config) *cobra.Command {
 				return nil
 			}
 
-			r, err := newRunner(cfg)
+			r, err := newRunner()
 			if err != nil {
 				return err
 			}
@@ -114,7 +113,7 @@ func newDropCmd(cfg *config.Config) *cobra.Command {
 	}
 }
 
-func newForceCmd(cfg *config.Config) *cobra.Command {
+func newForceCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "force VERSION",
 		Short: "Set schema version without running migrations",
@@ -127,7 +126,7 @@ func newForceCmd(cfg *config.Config) *cobra.Command {
 			if !confirm("Type 'yes' to force version: ", "yes") {
 				return nil
 			}
-			r, err := newRunner(cfg)
+			r, err := newRunner()
 			if err != nil {
 				return err
 			}
@@ -138,12 +137,12 @@ func newForceCmd(cfg *config.Config) *cobra.Command {
 	}
 }
 
-func newVersionCmd(cfg *config.Config) *cobra.Command {
+func newVersionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
 		Short: "Show current migration version",
 		RunE: func(_ *cobra.Command, _ []string) error {
-			r, err := newRunner(cfg)
+			r, err := newRunner()
 			if err != nil {
 				return err
 			}
