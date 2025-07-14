@@ -307,7 +307,10 @@ func (s *Service) AddUserBalance(
 	return balance, nil
 }
 
-func (s *Service) PreviewWithdraw(_ context.Context, gifts []*payment.GiftWithdrawRequest) (*payment.WithdrawOptions, error) {
+func (s *Service) PreviewWithdraw(
+	_ context.Context,
+	gifts []*payment.GiftWithdrawRequest,
+) (*payment.WithdrawOptions, error) {
 	var totalStarsFee uint32
 	var totalTonFee *tonamount.TonAmount
 	giftFees := make([]*payment.GiftFee, 0, len(gifts))

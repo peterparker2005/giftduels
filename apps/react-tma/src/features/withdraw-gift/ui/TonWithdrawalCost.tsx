@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BiLoader } from "react-icons/bi";
 
 interface TonWithdrawalCostProps {
@@ -9,6 +9,13 @@ interface TonWithdrawalCostProps {
 
 export function TonWithdrawalCost({ isPending, fee }: TonWithdrawalCostProps) {
 	const [showLoader, setShowLoader] = useState(false);
+	const lastFeeRef = useRef<number>(fee ?? 0.1); // стартовое значение
+
+	useEffect(() => {
+		if (fee !== undefined) {
+			lastFeeRef.current = fee;
+		}
+	}, [fee]);
 
 	useEffect(() => {
 		if (isPending) {
@@ -18,6 +25,8 @@ export function TonWithdrawalCost({ isPending, fee }: TonWithdrawalCostProps) {
 			return () => clearTimeout(timer);
 		}
 	}, [isPending]);
+
+	const displayFee = lastFeeRef.current;
 
 	return (
 		<AnimatePresence mode="wait" initial={false}>
@@ -39,7 +48,7 @@ export function TonWithdrawalCost({ isPending, fee }: TonWithdrawalCostProps) {
 					exit={{ opacity: 0 }}
 					transition={{ duration: 0.2 }}
 				>
-					{fee ?? "0.1"}
+					{displayFee}
 				</motion.p>
 			)}
 		</AnimatePresence>

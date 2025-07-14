@@ -190,7 +190,7 @@ func (s *Service) GetUserActiveGifts(
 	}, nil
 }
 
-// populateGiftAttributes populates the Model, Backdrop, and Symbol attributes for a slice of gifts
+// populateGiftAttributes populates the Model, Backdrop, and Symbol attributes for a slice of gifts.
 func (s *Service) populateGiftAttributes(ctx context.Context, gifts []*giftDomain.Gift) error {
 	// Collect all unique IDs
 	modelIDs := make(map[int32]bool)
@@ -207,6 +207,7 @@ func (s *Service) populateGiftAttributes(ctx context.Context, gifts []*giftDomai
 	modelChan := make(chan map[int32]*giftDomain.Model, 1)
 	backdropChan := make(chan map[int32]*giftDomain.Backdrop, 1)
 	symbolChan := make(chan map[int32]*giftDomain.Symbol, 1)
+	//nolint:mnd // 3 is not a magic number
 	errorChan := make(chan error, 3)
 
 	// Fetch models
@@ -682,7 +683,6 @@ func (s *Service) CompleteStarsWithdrawal(
 	ctx context.Context,
 	giftIDs []string,
 ) ([]*giftDomain.Gift, error) {
-	// Начинаем транзакцию, чтобы сохранить пометки и публиковать события
 	tx, err := s.txMgr.BeginTx(ctx)
 	if err != nil {
 		return nil, err
@@ -699,7 +699,6 @@ func (s *Service) CompleteStarsWithdrawal(
 
 	repo := s.repo.WithTx(tx)
 
-	// готовим Watermill-паблишер
 	fwdPub, err := s.preparePublisher()
 	if err != nil {
 		commitErr = err

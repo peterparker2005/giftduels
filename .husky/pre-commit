@@ -75,8 +75,8 @@ fi
 if [ -n "$STAGED_GO" ]; then
   echo "${YELLOW}→ Linting Go staged files...${NC}"
   
-  if ! command_exists gofmt; then
-    echo "${RED}❌ gofmt not found. Please install Go.${NC}"
+  if ! command_exists golangci-lint; then
+    echo "${RED}❌ golangci-lint not found. Please install Go.${NC}"
     exit 1
   fi
   
@@ -84,39 +84,14 @@ if [ -n "$STAGED_GO" ]; then
   GO_COUNT=$(echo "$STAGED_GO" | wc -l | tr -d ' ')
   echo "${BLUE}   Checking $GO_COUNT Go file(s)${NC}"
   
-  # Format Go files
-  echo "$STAGED_GO" | xargs gofmt -w
-  
-  # Find unique Go module directories more efficiently
-  GO_MOD_DIRS=""
+  echo "${BLUE} Running golangci-lint${NC}"
   for file in $STAGED_GO; do
-    DIR=$(dirname "$file")
-    while [ "$DIR" != "/" ] && [ -n "$DIR" ] && [ "$DIR" != "." ]; do
-      if [ -f "$DIR/go.mod" ]; then
-        GO_MOD_DIRS="$GO_MOD_DIRS\n$DIR"
-        break
-      fi
-      DIR=$(dirname "$DIR")
-    done
+    echo "${BLUE}   Running golangci-lint on $file${NC}"
+    if ! golangci-lint run --fix "$file"; then
+      echo "${RED}❌ golangci-lint failed${NC}"
+      exit 1
+    fi
   done
-  
-  # Remove duplicates and empty lines
-  GO_MOD_DIRS=$(echo -e "$GO_MOD_DIRS" | sort -u | grep -v '^$' | head -10)
-  
-  # Run golangci-lint if available
-  if command_exists golangci-lint; then
-    for dir in $GO_MOD_DIRS; do
-      if [ -n "$dir" ] && [ -d "$dir" ]; then
-        echo "${BLUE}   Running golangci-lint in $dir${NC}"
-        if ! (cd "$dir" && golangci-lint run --fix --out-format=colored-line-number --timeout=5m); then
-          echo "${RED}❌ golangci-lint failed in $dir${NC}"
-          exit 1
-        fi
-      fi
-    done
-  else
-    echo "${YELLOW}⚠️  golangci-lint not found. Skipping advanced Go linting.${NC}"
-  fi
   
   # Re-add formatted files to staging
   echo "$STAGED_GO" | xargs git add
