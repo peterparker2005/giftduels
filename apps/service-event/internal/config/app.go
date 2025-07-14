@@ -8,6 +8,7 @@ import (
 
 type Config struct {
 	configs.ServiceBaseConfig
+
 	Logger configs.LoggerConfig `yaml:"logger"`
 
 	// shared configs
@@ -28,6 +29,7 @@ func LoadConfig() (*Config, error) {
 	return &cfg, nil
 }
 
+//nolint:gochecknoglobals // fx module pattern
 var Module = fx.Module("config",
 	fx.Provide(LoadConfig),
 )

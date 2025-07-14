@@ -2,7 +2,6 @@ import { GiftView } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
 import { BiLogoTelegram } from "react-icons/bi";
 import { Button } from "@/shared/ui/Button";
 import { Icon } from "@/shared/ui/Icon/Icon";
-import { formatThousands } from "@/shared/utils/formatThousands";
 import { getFragmentUrl } from "@/shared/utils/getFragmentUrl";
 import { GiftDetailsDrawer } from "./GiftDetailsDrawer";
 
@@ -43,7 +42,7 @@ export const GiftCard = ({ gift }: GiftCardProps) => {
 					>
 						<div>
 							<Icon icon="TON" className="w-5 h-5 shrink-0" />
-							<span>{formatThousands(gift.price?.value)}</span>
+							<span>{gift.price?.value}</span>
 						</div>
 					</Button>
 					<Button

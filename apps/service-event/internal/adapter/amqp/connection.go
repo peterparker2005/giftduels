@@ -2,7 +2,7 @@ package amqp
 
 import (
 	"github.com/ThreeDotsLabs/watermill-amqp/v3/pkg/amqp"
-	"github.com/peterparker2005/giftduels/apps/service-duel/internal/config"
+	"github.com/peterparker2005/giftduels/apps/service-event/internal/config"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 )
 

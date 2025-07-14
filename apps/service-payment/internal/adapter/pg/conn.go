@@ -32,7 +32,7 @@ func Connect(ctx context.Context, cfg Config) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("failed to connect to DB: %w", err)
 	}
 
-	if err := db.Ping(ctx); err != nil {
+	if err = db.Ping(ctx); err != nil {
 		return nil, fmt.Errorf("ping failed: %w", err)
 	}
 

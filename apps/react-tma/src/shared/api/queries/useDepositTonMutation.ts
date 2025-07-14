@@ -7,7 +7,7 @@ export function useDepositTonMutation() {
 		mutationFn: (amount: string) => {
 			return paymentClient.depositTon({
 				tonAmount: {
-					value: Number(amount),
+					value: amount,
 				},
 			});
 		},

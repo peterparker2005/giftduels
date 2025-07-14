@@ -2,8 +2,10 @@ package pg
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/ccoveille/go-safecast"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -35,9 +37,13 @@ func (r *DepositRepository) WithTx(tx pgx.Tx) ton.DepositRepository {
 }
 
 func (r *DepositRepository) CreateDeposit(ctx context.Context, params *ton.CreateDepositParams) (*ton.Deposit, error) {
+	amountNano, err := safecast.ToInt64(params.AmountNano)
+	if err != nil {
+		return nil, err
+	}
 	deposit, err := r.q.CreateDeposit(ctx, sqlc.CreateDepositParams{
 		TelegramUserID: params.TelegramUserID,
-		AmountNano:     params.AmountNano,
+		AmountNano:     amountNano,
 		Payload:        params.Payload,
 		ExpiresAt:      pgtype.Timestamptz{Time: params.ExpiresAt, Valid: true},
 	})
@@ -55,11 +61,23 @@ func (r *DepositRepository) GetDepositByPayload(ctx context.Context, payload str
 	return ToDepositDomain(deposit), nil
 }
 
-func (r *DepositRepository) SetDepositTransaction(ctx context.Context, params *ton.SetDepositTransactionParams) (*ton.Deposit, error) {
+func (r *DepositRepository) SetDepositTransaction(
+	ctx context.Context,
+	params *ton.SetDepositTransactionParams,
+) (*ton.Deposit, error) {
+	id, err := pgUUID(params.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	txLtInt, err := safecast.ToInt64(params.TxLt)
+	if err != nil {
+		return nil, err
+	}
 	deposit, err := r.q.SetDepositTransaction(ctx, sqlc.SetDepositTransactionParams{
-		ID:     mustPgUUID(params.ID),
+		ID:     id,
 		TxHash: pgtype.Text{String: params.TxHash, Valid: true},
-		TxLt:   pgtype.Int8{Int64: params.TxLt, Valid: true},
+		TxLt:   pgtype.Int8{Int64: txLtInt, Valid: true},
 	})
 	if err != nil {
 		return nil, err
@@ -77,12 +95,16 @@ func (r *DepositRepository) GetCursor(ctx context.Context, network, walletAddres
 		WalletAddress: walletAddress,
 	})
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return 0, nil
 		}
 		return 0, fmt.Errorf("ton cursor get: %w", err)
 	}
-	return uint64(lastLt), nil
+	lastLtUint, err := safecast.ToUint64(lastLt)
+	if err != nil {
+		return 0, err
+	}
+	return lastLtUint, nil
 }
 
 func (r *DepositRepository) UpsertCursor(ctx context.Context, network, walletAddress string, lastLT uint64) error {
@@ -90,9 +112,13 @@ func (r *DepositRepository) UpsertCursor(ctx context.Context, network, walletAdd
 	if err != nil {
 		return fmt.Errorf("ton cursor upsert: %w", err)
 	}
+	lastLtInt, err := safecast.ToInt64(lastLT)
+	if err != nil {
+		return err
+	}
 	return r.q.UpsertTonCursor(ctx, sqlc.UpsertTonCursorParams{
 		Network:       net,
 		WalletAddress: walletAddress,
-		LastLt:        int64(lastLT),
+		LastLt:        lastLtInt,
 	})
 }

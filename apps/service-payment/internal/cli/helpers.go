@@ -2,7 +2,7 @@ package cli
 
 import (
 	"bufio"
-	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -20,11 +20,11 @@ func newRunner() (*migratepg.Runner, error) {
 }
 
 func confirm(prompt, want string) bool {
-	fmt.Print(prompt)
+	slog.Default().Info(prompt)
 	in, _ := bufio.NewReader(os.Stdin).ReadString('\n')
 	return strings.TrimSpace(in) == want
 }
 
 func writeFile(filename, content string) error {
-	return os.WriteFile(filename, []byte(content), 0o644)
+	return os.WriteFile(filename, []byte(content), 0o600)
 }

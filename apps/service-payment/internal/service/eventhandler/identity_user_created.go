@@ -36,19 +36,19 @@ func (h *IdentityNewUserHandler) Handle(msg *message.Message) error {
 		return fmt.Errorf("unmarshal event: %w", err)
 	}
 
-	userBalance, err := h.repo.GetUserBalance(ctx, ev.TelegramId.Value)
+	userBalance, err := h.repo.GetUserBalance(ctx, ev.GetTelegramId().GetValue())
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		h.logger.Error("Failed to get balance", zap.Error(err), zap.String("message_id", msg.UUID))
 		return fmt.Errorf("get balance: %w", err)
 	}
 
 	if userBalance != nil {
-		h.logger.Info("Balance already exists", zap.Int64("telegram_user_id", ev.TelegramId.Value))
+		h.logger.Info("Balance already exists", zap.Int64("telegram_user_id", ev.GetTelegramId().GetValue()))
 		return nil
 	}
 
 	newBalance := &payment.CreateBalanceParams{
-		TelegramUserID: ev.TelegramId.Value,
+		TelegramUserID: ev.GetTelegramId().GetValue(),
 	}
 
 	if err := h.repo.Create(ctx, newBalance); err != nil {

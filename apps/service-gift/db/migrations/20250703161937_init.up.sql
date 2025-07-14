@@ -62,7 +62,7 @@ CREATE TABLE gifts (
   upgrade_message_id  INT           NOT NULL,
   title               TEXT          NOT NULL,
   slug                TEXT          NOT NULL,
-  price               FLOAT         NOT NULL,
+  price               NUMERIC(20, 2) NOT NULL,
   collection_id       INT           NOT NULL REFERENCES gift_collections(id),
   model_id            INT           NOT NULL REFERENCES gift_models(id),
   backdrop_id         INT           NOT NULL REFERENCES gift_backdrops(id),

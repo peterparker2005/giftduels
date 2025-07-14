@@ -10,15 +10,16 @@ type TelegramConfig struct {
 	BotToken string `yaml:"bot_token" env:"TELEGRAM_BOT_TOKEN"`
 }
 
-type TonnelApiConfig struct {
+type TonnelConfig struct {
 	InitData string `yaml:"init_data" env:"TONNEL_API_INIT_DATA"`
 }
 
 type Config struct {
 	configs.ServiceBaseConfig
-	Logger          configs.LoggerConfig `yaml:"logger"`
-	Telegram        TelegramConfig       `yaml:"telegram"`
-	TonnelApiConfig TonnelApiConfig      `yaml:"tonnel"`
+
+	Logger       configs.LoggerConfig `yaml:"logger"`
+	Telegram     TelegramConfig       `yaml:"telegram"`
+	TonnelConfig TonnelConfig         `yaml:"tonnel"`
 
 	// shared configs
 	Database configs.DatabaseConfig `yaml:"database"`
@@ -38,6 +39,7 @@ func LoadConfig() (*Config, error) {
 	return &cfg, nil
 }
 
+//nolint:gochecknoglobals // fx module pattern
 var Module = fx.Module("config",
 	fx.Provide(LoadConfig),
 )

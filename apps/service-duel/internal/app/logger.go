@@ -9,6 +9,8 @@ import (
 )
 
 // LoggerModule предоставляет настроенный логгер через fx
+//
+//nolint:gochecknoglobals // fx module pattern
 var LoggerModule = fx.Module("logger",
 	fx.Provide(
 		func(cfg *config.Config) (*logger.Logger, error) {

@@ -2,10 +2,13 @@ package migrate
 
 import (
 	"fmt"
+	"log/slog"
 	"strconv"
 	"time"
 
+	// Required for registering PostgreSQL driver with golang-migrate.
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	// Required for reading migration files from disk.
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/peterparker2005/giftduels/apps/service-identity/internal/config"
 	"github.com/spf13/cobra"
@@ -30,7 +33,7 @@ func NewCmdMigrate(cfg *config.Config) *cobra.Command {
 		newDropCmd(cfg),
 		newForceCmd(cfg),
 		newVersionCmd(cfg),
-		newCreateCmd(cfg),
+		newCreateCmd(),
 	)
 
 	return cmd
@@ -41,7 +44,7 @@ func newUpCmd(cfg *config.Config) *cobra.Command {
 		Use:   "up [N]",
 		Short: "Apply all (or N) pending migrations",
 		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			r, err := newRunner(cfg)
 			if err != nil {
 				return err
@@ -65,7 +68,7 @@ func newDownCmd(cfg *config.Config) *cobra.Command {
 		Use:   "down N",
 		Short: "Rollback N migrations (DESTRUCTIVE)",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			n, err := strconv.Atoi(args[0])
 			if err != nil {
 				return err
@@ -75,7 +78,7 @@ func newDownCmd(cfg *config.Config) *cobra.Command {
 				fmt.Sprintf("⚠️ This will rollback %d migration(s). Type 'yes' to proceed: ", n),
 				"yes",
 			) {
-				fmt.Println("❌ cancelled")
+				slog.Default().Error("❌ cancelled")
 				return nil
 			}
 
@@ -94,9 +97,9 @@ func newDropCmd(cfg *config.Config) *cobra.Command {
 	return &cobra.Command{
 		Use:   "drop",
 		Short: "Drop **ALL** tables (DANGER)",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			if !confirm("TYPE 'DROP ALL DATA' to erase everything: ", "DROP ALL DATA") {
-				fmt.Println("❌ cancelled")
+				slog.Default().Error("❌ cancelled")
 				return nil
 			}
 
@@ -116,7 +119,7 @@ func newForceCmd(cfg *config.Config) *cobra.Command {
 		Use:   "force VERSION",
 		Short: "Set schema version without running migrations",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			v, err := strconv.Atoi(args[0])
 			if err != nil {
 				return err
@@ -139,7 +142,7 @@ func newVersionCmd(cfg *config.Config) *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
 		Short: "Show current migration version",
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			r, err := newRunner(cfg)
 			if err != nil {
 				return err
@@ -150,19 +153,19 @@ func newVersionCmd(cfg *config.Config) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Printf("📋 version: %d (dirty=%v)\n", v, dirty)
+			slog.Default().Info("📋 version", "version", v, "dirty", dirty)
 			return nil
 		},
 	}
 }
 
-func newCreateCmd(cfg *config.Config) *cobra.Command {
+func newCreateCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "create NAME",
 		Short: "Create new migration files",
 		Long:  "Create new up and down migration files with timestamp prefix.",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			name := args[0]
 			timestamp := time.Now().Format("20060102150405")
 
@@ -200,9 +203,7 @@ func newCreateCmd(cfg *config.Config) *cobra.Command {
 				return fmt.Errorf("failed to create down migration: %w", err)
 			}
 
-			fmt.Printf("✅ Created migration files:\n")
-			fmt.Printf("   📄 %s\n", upFile)
-			fmt.Printf("   📄 %s\n", downFile)
+			slog.Default().Info("✅ Created migration files", "upFile", upFile, "downFile", downFile)
 
 			return nil
 		},

@@ -7,6 +7,7 @@ require (
 	github.com/ThreeDotsLabs/watermill v1.4.7
 	github.com/ThreeDotsLabs/watermill-amqp/v3 v3.0.1
 	github.com/ThreeDotsLabs/watermill-sql/v3 v3.1.0
+	github.com/ccoveille/go-safecast v1.6.1
 	github.com/envoyproxy/go-control-plane/envoy v1.32.4
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/golang-migrate/migrate/v4 v4.18.3
@@ -15,6 +16,7 @@ require (
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/rabbitmq/amqp091-go v1.10.0
+	github.com/shopspring/decimal v1.2.0
 	github.com/spf13/cobra v1.9.1
 	github.com/telegram-mini-apps/init-data-golang v1.5.0
 	github.com/xssnick/tonutils-go v1.13.1

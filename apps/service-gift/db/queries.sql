@@ -1,47 +1,18 @@
 -- name: GetGiftByID :one
-SELECT
-  g.*,
-  gc.id AS collection_id, gc.name AS collection_name, gc.short_name AS collection_short_name,
-  gm.id AS model_id, gm.name AS model_name, gm.short_name AS model_short_name, gm.rarity_per_mille AS model_rarity,
-  gb.id AS backdrop_id, gb.name AS backdrop_name, gb.short_name AS backdrop_short_name, gb.rarity_per_mille AS backdrop_rarity,
-  gb.center_color, gb.edge_color, gb.pattern_color, gb.text_color,
-  gs.id AS symbol_id, gs.name AS symbol_name, gs.short_name AS symbol_short_name, gs.rarity_per_mille AS symbol_rarity
-FROM gifts g
-JOIN gift_collections gc ON gc.id = g.collection_id
-JOIN gift_models gm ON gm.id = g.model_id
-JOIN gift_backdrops gb ON gb.id = g.backdrop_id
-JOIN gift_symbols gs ON gs.id = g.symbol_id
-WHERE g.id = $1;
+SELECT *
+FROM gifts
+WHERE id = $1;
 
 -- name: GetGiftsByIDs :many
-SELECT
-  g.*,
-  gc.id AS collection_id, gc.name AS collection_name, gc.short_name AS collection_short_name,
-  gm.id AS model_id, gm.name AS model_name, gm.short_name AS model_short_name, gm.rarity_per_mille AS model_rarity,
-  gb.id AS backdrop_id, gb.name AS backdrop_name, gb.short_name AS backdrop_short_name, gb.rarity_per_mille AS backdrop_rarity,
-  gb.center_color, gb.edge_color, gb.pattern_color, gb.text_color,
-  gs.id AS symbol_id, gs.name AS symbol_name, gs.short_name AS symbol_short_name, gs.rarity_per_mille AS symbol_rarity
-FROM gifts g
-JOIN gift_collections gc ON gc.id = g.collection_id
-JOIN gift_models gm ON gm.id = g.model_id
-JOIN gift_backdrops gb ON gb.id = g.backdrop_id
-JOIN gift_symbols gs ON gs.id = g.symbol_id
-WHERE g.id = ANY($1::uuid[]);
+SELECT *
+FROM gifts
+WHERE id = ANY($1::uuid[]);
 
 -- name: GetUserGifts :many
-SELECT
-  g.*,
-  gc.id AS collection_id, gc.name AS collection_name, gc.short_name AS collection_short_name,
-  gm.id AS model_id, gm.name AS model_name, gm.short_name AS model_short_name,
-  gb.id AS backdrop_id, gb.name AS backdrop_name, gb.short_name AS backdrop_short_name,
-  gs.id AS symbol_id, gs.name AS symbol_name, gs.short_name AS symbol_short_name
-FROM gifts g
-JOIN gift_collections gc ON gc.id = g.collection_id
-JOIN gift_models gm ON gm.id = g.model_id
-JOIN gift_backdrops gb ON gb.id = g.backdrop_id
-JOIN gift_symbols gs ON gs.id = g.symbol_id
-WHERE g.owner_telegram_id = $1
-ORDER BY g.created_at DESC
+SELECT *
+FROM gifts
+WHERE owner_telegram_id = $1
+ORDER BY created_at DESC
 LIMIT $2 OFFSET $3;
 
 -- name: GetUserGiftsCount :one
@@ -50,58 +21,12 @@ FROM gifts
 WHERE owner_telegram_id = $1;
 
 -- name: GetUserActiveGifts :many
-SELECT
-  -- поля самого подарка
-  g.id,
-  g.telegram_gift_id,
-  g.collectible_id,
-  g.owner_telegram_id,
-  g.upgrade_message_id,
-  g.title,
-  g.slug,
-  g.price,
-  g.status,
-  g.created_at,
-  g.updated_at,
-  g.withdrawn_at,
-
-  -- collection
-  gc.id   AS collection_id,
-  gc.name AS collection_name,
-  gc.short_name AS collection_short_name,
-
-  -- model (вместе с rarity)
-  gm.id                 AS model_id,
-  gm.name               AS model_name,
-  gm.short_name         AS model_short_name,
-  gm.rarity_per_mille   AS model_rarity,
-
-  -- backdrop (с rarity и цветами)
-  gb.id                 AS backdrop_id,
-  gb.name               AS backdrop_name,
-  gb.short_name         AS backdrop_short_name,
-  gb.rarity_per_mille   AS backdrop_rarity,
-  gb.center_color       AS backdrop_center_color,
-  gb.edge_color         AS backdrop_edge_color,
-  gb.pattern_color      AS backdrop_pattern_color,
-  gb.text_color         AS backdrop_text_color,
-
-  -- symbol (с rarity)
-  gs.id               AS symbol_id,
-  gs.name             AS symbol_name,
-  gs.short_name       AS symbol_short_name,
-  gs.rarity_per_mille AS symbol_rarity
-
-FROM gifts g
-  JOIN gift_collections gc ON gc.id = g.collection_id
-  JOIN gift_models     gm ON gm.id = g.model_id
-  JOIN gift_backdrops  gb ON gb.id = g.backdrop_id
-  JOIN gift_symbols    gs ON gs.id = g.symbol_id
-WHERE g.owner_telegram_id = $1
-  AND g.status NOT IN ('withdrawn','withdraw_pending')
-ORDER BY g.created_at DESC
-LIMIT  $2
-OFFSET $3;
+SELECT *
+FROM gifts
+WHERE owner_telegram_id = $1
+  AND status NOT IN ('withdrawn', 'withdraw_pending')
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
 
 -- name: GetUserActiveGiftsCount :one
 SELECT COUNT(*)
@@ -207,6 +132,10 @@ WHERE id = $1;
 SELECT * FROM gift_symbols
 WHERE id = $1;
 
+-- name: GetGiftCollection :one
+SELECT * FROM gift_collections
+WHERE id = $1;
+
 -- name: CreateCollection :one
 INSERT INTO gift_collections (name, short_name)
 VALUES ($1, $2)
@@ -242,3 +171,23 @@ WHERE name = $1;
 -- name: FindSymbolByName :one
 SELECT * FROM gift_symbols
 WHERE name = $1;
+
+-- name: GetGiftCollectionsByIDs :many
+SELECT *
+FROM gift_collections
+WHERE id = ANY($1::int[]);
+
+-- name: GetGiftModelsByIDs :many
+SELECT *
+FROM gift_models
+WHERE id = ANY($1::int[]);
+
+-- name: GetGiftBackdropsByIDs :many
+SELECT *
+FROM gift_backdrops
+WHERE id = ANY($1::int[]);
+
+-- name: GetGiftSymbolsByIDs :many
+SELECT *
+FROM gift_symbols
+WHERE id = ANY($1::int[]);

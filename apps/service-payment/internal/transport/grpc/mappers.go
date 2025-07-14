@@ -1,6 +1,7 @@
 package grpc
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/domain/payment"
@@ -9,49 +10,60 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func TransactionReasonToDomain(reason paymentv1.TransactionReason) payment.TransactionReason {
+func TransactionReasonToDomain(reason paymentv1.TransactionReason) (payment.TransactionReason, error) {
 	switch reason {
 	case paymentv1.TransactionReason_TRANSACTION_REASON_WITHDRAW:
-		return payment.TransactionReasonWithdraw
+		return payment.TransactionReasonWithdraw, nil
 	case paymentv1.TransactionReason_TRANSACTION_REASON_REFUND:
-		return payment.TransactionReasonRefund
+		return payment.TransactionReasonRefund, nil
 	case paymentv1.TransactionReason_TRANSACTION_REASON_DEPOSIT:
-		return payment.TransactionReasonDeposit
+		return payment.TransactionReasonDeposit, nil
+	case paymentv1.TransactionReason_TRANSACTION_REASON_UNSPECIFIED:
+		return "", errors.New("transaction reason is unspecified")
 	default:
-		panic(fmt.Sprintf("unknown transaction reason: %v", reason))
+		return "", fmt.Errorf("unknown transaction reason: %v", reason)
 	}
 }
 
-func TransactionReasonToProto(reason payment.TransactionReason) paymentv1.TransactionReason {
+func TransactionReasonToProto(reason payment.TransactionReason) (paymentv1.TransactionReason, error) {
 	switch reason {
 	case payment.TransactionReasonWithdraw:
-		return paymentv1.TransactionReason_TRANSACTION_REASON_WITHDRAW
+		return paymentv1.TransactionReason_TRANSACTION_REASON_WITHDRAW, nil
 	case payment.TransactionReasonRefund:
-		return paymentv1.TransactionReason_TRANSACTION_REASON_REFUND
+		return paymentv1.TransactionReason_TRANSACTION_REASON_REFUND, nil
 	case payment.TransactionReasonDeposit:
-		return paymentv1.TransactionReason_TRANSACTION_REASON_DEPOSIT
+		return paymentv1.TransactionReason_TRANSACTION_REASON_DEPOSIT, nil
 	default:
-		panic(fmt.Sprintf("unknown transaction reason: %v", reason))
+		return paymentv1.TransactionReason_TRANSACTION_REASON_UNSPECIFIED, fmt.Errorf(
+			"unknown transaction reason: %v",
+			reason,
+		)
 	}
 }
 
-func TransactionToProto(t *payment.Transaction) *paymentv1.TransactionView {
+func TransactionToProto(t *payment.Transaction) (*paymentv1.TransactionView, error) {
+	reason, err := TransactionReasonToProto(t.Reason)
+	if err != nil {
+		return nil, err
+	}
+	amount := t.Amount.String()
+	metadata, _ := TransactionMetadataToProto(t.Metadata)
 	return &paymentv1.TransactionView{
 		TransactionId: &sharedv1.TransactionId{
 			Value: t.ID,
 		},
 		TonAmount: &sharedv1.TonAmount{
-			Value: t.Amount,
+			Value: amount,
 		},
-		Reason:    TransactionReasonToProto(t.Reason),
-		Metadata:  TransactionMetadataToProto(t.Metadata),
+		Reason:    reason,
+		Metadata:  metadata,
 		CreatedAt: timestamppb.New(t.CreatedAt),
-	}
+	}, nil
 }
 
-func TransactionMetadataToProto(m *payment.TransactionMetadata) *paymentv1.TransactionMetadata {
+func TransactionMetadataToProto(m *payment.TransactionMetadata) (*paymentv1.TransactionMetadata, error) {
 	if m == nil || m.Gift == nil {
-		return nil
+		return nil, errors.New("transaction metadata is nil or gift is nil")
 	}
 	return &paymentv1.TransactionMetadata{
 		Data: &paymentv1.TransactionMetadata_Gift{
@@ -61,26 +73,26 @@ func TransactionMetadataToProto(m *payment.TransactionMetadata) *paymentv1.Trans
 				Slug:   m.Gift.Slug,
 			},
 		},
-	}
+	}, nil
 }
 
-func TransactionMetadataToDomain(m *paymentv1.TransactionMetadata) *payment.TransactionMetadata {
+func TransactionMetadataToDomain(m *paymentv1.TransactionMetadata) (*payment.TransactionMetadata, error) {
 	if m == nil {
-		return nil
+		return nil, errors.New("transaction metadata is nil")
 	}
-	switch metadata := m.Data.(type) {
+	switch metadata := m.GetData().(type) {
 	case *paymentv1.TransactionMetadata_Gift:
 		if metadata.Gift == nil {
-			return nil
+			return nil, errors.New("transaction metadata gift is nil")
 		}
 		return &payment.TransactionMetadata{
-			Gift: &payment.TransactionMetadata_GiftDetails{
-				GiftID: metadata.Gift.GiftId,
-				Title:  metadata.Gift.Title,
-				Slug:   metadata.Gift.Slug,
+			Gift: &payment.TransactionMetadataGiftDetails{
+				GiftID: metadata.Gift.GetGiftId(),
+				Title:  metadata.Gift.GetTitle(),
+				Slug:   metadata.Gift.GetSlug(),
 			},
-		}
+		}, nil
 	default:
-		return nil
+		return nil, errors.New("transaction metadata is unknown")
 	}
 }

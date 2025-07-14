@@ -19,7 +19,7 @@ func NewRecoveryInterceptor(log *logger.Logger) grpc.UnaryServerInterceptor {
 	)
 }
 
-func NewVersionInterceptors() (unary []grpc.UnaryServerInterceptor, stream []grpc.StreamServerInterceptor) {
+func NewVersionInterceptors() ([]grpc.UnaryServerInterceptor, []grpc.StreamServerInterceptor) {
 	return []grpc.UnaryServerInterceptor{version.UnaryInterceptor()},
 		[]grpc.StreamServerInterceptor{version.StreamInterceptor()}
 }

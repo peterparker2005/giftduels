@@ -2,6 +2,8 @@ package duel
 
 import (
 	"time"
+
+	"github.com/peterparker2005/giftduels/packages/tonamount-go"
 )
 
 type ID string
@@ -24,10 +26,10 @@ const (
 type Duel struct {
 	ID               ID
 	DisplayNumber    int64
-	Params           DuelParams
+	Params           Params
 	WinnerID         *TelegramUserID
 	NextRollDeadline *time.Time
-	TotalStakeValue  float64
+	TotalStakeValue  *tonamount.TonAmount
 	Status           Status
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
@@ -38,7 +40,7 @@ type Duel struct {
 	Rounds       []Round
 }
 
-type DuelParams struct {
+type Params struct {
 	IsPrivate  bool
 	MaxPlayers MaxPlayers
 	MaxGifts   MaxGifts
@@ -52,7 +54,7 @@ type Participant struct {
 type Stake struct {
 	TelegramUserID TelegramUserID
 	GiftID         string
-	StakeValue     float64
+	StakeValue     *tonamount.TonAmount
 }
 
 type Round struct {

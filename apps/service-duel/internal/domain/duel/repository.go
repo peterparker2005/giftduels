@@ -9,7 +9,7 @@ import (
 
 type CreateDuelParams struct {
 	DuelID       ID
-	Params       DuelParams
+	Params       Params
 	Participants []Participant
 	Stakes       []Stake
 }

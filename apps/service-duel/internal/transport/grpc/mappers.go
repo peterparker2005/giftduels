@@ -1,20 +1,29 @@
 package grpc
 
 import (
+	"errors"
+
+	"github.com/ccoveille/go-safecast"
 	duelDomain "github.com/peterparker2005/giftduels/apps/service-duel/internal/domain/duel"
 	duelv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/duel/v1"
 	sharedv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/shared/v1"
+	"github.com/peterparker2005/giftduels/packages/tonamount-go"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func mapDuel(duel *duelDomain.Duel) *duelv1.Duel {
+func mapDuel(duel *duelDomain.Duel) (*duelv1.Duel, error) {
+	params, err := mapDuelParams(duel.Params)
+	if err != nil {
+		return nil, err
+	}
+
 	result := &duelv1.Duel{
 		DuelId:    &sharedv1.DuelId{Value: duel.ID.String()},
-		Params:    mapDuelParams(duel.Params),
+		Params:    params,
 		CreatedAt: timestamppb.New(duel.CreatedAt),
 		UpdatedAt: timestamppb.New(duel.UpdatedAt),
 		TotalStakeValue: &sharedv1.TonAmount{
-			Value: duel.TotalStakeValue,
+			Value: duel.TotalStakeValue.String(),
 		},
 		Status: mapDuelStatus(duel.Status),
 	}
@@ -49,18 +58,32 @@ func mapDuel(duel *duelDomain.Duel) *duelv1.Duel {
 	// Map rounds
 	result.RoundsHistory = make([]*duelv1.DuelRound, len(duel.Rounds))
 	for i, round := range duel.Rounds {
-		result.RoundsHistory[i] = mapDuelRound(round)
+		round, err := mapDuelRound(round)
+		if err != nil {
+			return nil, err
+		}
+		result.RoundsHistory[i] = round
 	}
 
-	return result
+	return result, nil
 }
 
-func mapDuelParams(params duelDomain.DuelParams) *duelv1.DuelParams {
+func mapDuelParams(params duelDomain.Params) (*duelv1.DuelParams, error) {
+	maxPlayers, err := safecast.ToUint32(params.MaxPlayers)
+	if err != nil {
+		return nil, err
+	}
+
+	maxGifts, err := safecast.ToUint32(params.MaxGifts)
+	if err != nil {
+		return nil, err
+	}
+
 	return &duelv1.DuelParams{
 		IsPrivate:  params.IsPrivate,
-		MaxPlayers: uint32(params.MaxPlayers),
-		MaxGifts:   uint32(params.MaxGifts),
-	}
+		MaxPlayers: maxPlayers,
+		MaxGifts:   maxGifts,
+	}, nil
 }
 
 func mapDuelStatus(status duelDomain.Status) duelv1.DuelStatus {
@@ -96,21 +119,28 @@ func mapDuelStake(stake duelDomain.Stake) *duelv1.DuelStake {
 		// This requires fetching gift data from gift service
 		Gift: nil,
 		StakeValue: &sharedv1.TonAmount{
-			Value: stake.StakeValue,
+			Value: stake.StakeValue.String(),
 		},
 	}
 }
 
-func mapDuelRound(round duelDomain.Round) *duelv1.DuelRound {
+func mapDuelRound(round duelDomain.Round) (*duelv1.DuelRound, error) {
 	rolls := make([]*duelv1.DuelRoll, len(round.Rolls))
 	for i, roll := range round.Rolls {
 		rolls[i] = mapDuelRoll(roll)
 	}
 
-	return &duelv1.DuelRound{
-		RoundNumber: int32(round.RoundNumber),
+	roundNumber, err := safecast.ToInt32(round.RoundNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	duelRound := &duelv1.DuelRound{
+		RoundNumber: roundNumber,
 		Rolls:       rolls,
 	}
+
+	return duelRound, nil
 }
 
 func mapDuelRoll(roll duelDomain.Roll) *duelv1.DuelRoll {
@@ -127,12 +157,22 @@ func mapDuelRoll(roll duelDomain.Roll) *duelv1.DuelRoll {
 // Reverse mappers: proto -> domain
 
 func mapDuelFromProto(protoDuel *duelv1.Duel) (*duelDomain.Duel, error) {
-	id, err := duelDomain.NewID(protoDuel.DuelId.Value)
+	id, err := duelDomain.NewID(protoDuel.GetDuelId().GetValue())
 	if err != nil {
 		return nil, err
 	}
 
-	params, err := mapDuelParamsFromProto(protoDuel.Params)
+	params, err := mapDuelParamsFromProto(protoDuel.GetParams())
+	if err != nil {
+		return nil, err
+	}
+
+	totalStakeValue, err := tonamount.NewTonAmountFromString(protoDuel.GetTotalStakeValue().GetValue())
+	if err != nil {
+		return nil, err
+	}
+
+	status, err := mapDuelStatusFromProto(protoDuel.GetStatus())
 	if err != nil {
 		return nil, err
 	}
@@ -140,34 +180,34 @@ func mapDuelFromProto(protoDuel *duelv1.Duel) (*duelDomain.Duel, error) {
 	duel := &duelDomain.Duel{
 		ID:              id,
 		Params:          params,
-		Status:          mapDuelStatusFromProto(protoDuel.Status),
-		CreatedAt:       protoDuel.CreatedAt.AsTime(),
-		UpdatedAt:       protoDuel.UpdatedAt.AsTime(),
-		TotalStakeValue: protoDuel.TotalStakeValue.Value,
+		Status:          status,
+		CreatedAt:       protoDuel.GetCreatedAt().AsTime(),
+		UpdatedAt:       protoDuel.GetUpdatedAt().AsTime(),
+		TotalStakeValue: totalStakeValue,
 	}
 
 	// Optional fields
-	if protoDuel.WinnerTelegramUserId != nil {
-		winnerID, err := duelDomain.NewTelegramUserID(protoDuel.WinnerTelegramUserId.Value)
+	if protoDuel.GetWinnerTelegramUserId() != nil {
+		winnerID, err := duelDomain.NewTelegramUserID(protoDuel.GetWinnerTelegramUserId().GetValue())
 		if err != nil {
 			return nil, err
 		}
 		duel.WinnerID = &winnerID
 	}
 
-	if protoDuel.NextRollDeadline != nil {
-		deadline := protoDuel.NextRollDeadline.AsTime()
+	if protoDuel.GetNextRollDeadline() != nil {
+		deadline := protoDuel.GetNextRollDeadline().AsTime()
 		duel.NextRollDeadline = &deadline
 	}
 
-	if protoDuel.CompletedAt != nil {
-		completedAt := protoDuel.CompletedAt.AsTime()
+	if protoDuel.GetCompletedAt() != nil {
+		completedAt := protoDuel.GetCompletedAt().AsTime()
 		duel.CompletedAt = &completedAt
 	}
 
 	// Map participants
-	duel.Participants = make([]duelDomain.Participant, len(protoDuel.Participants))
-	for i, participant := range protoDuel.Participants {
+	duel.Participants = make([]duelDomain.Participant, len(protoDuel.GetParticipants()))
+	for i, participant := range protoDuel.GetParticipants() {
 		mapped, err := mapDuelParticipantFromProto(participant)
 		if err != nil {
 			return nil, err
@@ -176,8 +216,8 @@ func mapDuelFromProto(protoDuel *duelv1.Duel) (*duelDomain.Duel, error) {
 	}
 
 	// Map stakes
-	duel.Stakes = make([]duelDomain.Stake, len(protoDuel.Stakes))
-	for i, stake := range protoDuel.Stakes {
+	duel.Stakes = make([]duelDomain.Stake, len(protoDuel.GetStakes()))
+	for i, stake := range protoDuel.GetStakes() {
 		mapped, err := mapDuelStakeFromProto(stake)
 		if err != nil {
 			return nil, err
@@ -186,11 +226,11 @@ func mapDuelFromProto(protoDuel *duelv1.Duel) (*duelDomain.Duel, error) {
 	}
 
 	// Map rounds
-	duel.Rounds = make([]duelDomain.Round, len(protoDuel.RoundsHistory))
-	for i, round := range protoDuel.RoundsHistory {
-		mapped, err := mapDuelRoundFromProto(round)
-		if err != nil {
-			return nil, err
+	duel.Rounds = make([]duelDomain.Round, len(protoDuel.GetRoundsHistory()))
+	for i, round := range protoDuel.GetRoundsHistory() {
+		mapped, mapErr := mapDuelRoundFromProto(round)
+		if mapErr != nil {
+			return nil, mapErr
 		}
 		duel.Rounds[i] = mapped
 	}
@@ -198,53 +238,60 @@ func mapDuelFromProto(protoDuel *duelv1.Duel) (*duelDomain.Duel, error) {
 	return duel, nil
 }
 
-func mapDuelParamsFromProto(protoParams *duelv1.DuelParams) (duelDomain.DuelParams, error) {
-	maxPlayers, err := duelDomain.NewMaxPlayers(int32(protoParams.MaxPlayers))
+func mapDuelParamsFromProto(protoParams *duelv1.DuelParams) (duelDomain.Params, error) {
+	maxPlayers, err := duelDomain.NewMaxPlayers(int32(protoParams.GetMaxPlayers()))
 	if err != nil {
-		return duelDomain.DuelParams{}, err
+		return duelDomain.Params{}, err
 	}
 
-	maxGifts, err := duelDomain.NewMaxGifts(int32(protoParams.MaxGifts))
+	maxGifts, err := duelDomain.NewMaxGifts(int32(protoParams.GetMaxGifts()))
 	if err != nil {
-		return duelDomain.DuelParams{}, err
+		return duelDomain.Params{}, err
 	}
 
-	return duelDomain.DuelParams{
-		IsPrivate:  protoParams.IsPrivate,
+	return duelDomain.Params{
+		IsPrivate:  protoParams.GetIsPrivate(),
 		MaxPlayers: maxPlayers,
 		MaxGifts:   maxGifts,
 	}, nil
 }
 
-func mapDuelStatusFromProto(protoStatus duelv1.DuelStatus) duelDomain.Status {
+func mapDuelStatusFromProto(protoStatus duelv1.DuelStatus) (duelDomain.Status, error) {
 	switch protoStatus {
 	case duelv1.DuelStatus_DUEL_STATUS_WAITING_FOR_OPPONENT:
-		return duelDomain.StatusWaitingForOpponent
+		return duelDomain.StatusWaitingForOpponent, nil
 	case duelv1.DuelStatus_DUEL_STATUS_IN_PROGRESS:
-		return duelDomain.StatusInProgress
+		return duelDomain.StatusInProgress, nil
 	case duelv1.DuelStatus_DUEL_STATUS_COMPLETED:
-		return duelDomain.StatusCompleted
+		return duelDomain.StatusCompleted, nil
 	case duelv1.DuelStatus_DUEL_STATUS_CANCELLED:
-		return duelDomain.StatusCancelled
+		return duelDomain.StatusCancelled, nil
+	case duelv1.DuelStatus_DUEL_STATUS_UNSPECIFIED:
+		return "", errors.New("invalid duel status")
 	default:
-		return duelDomain.StatusWaitingForOpponent // Default fallback
+		return "", errors.New("invalid duel status")
 	}
 }
 
 func mapDuelParticipantFromProto(protoParticipant *duelv1.DuelParticipant) (duelDomain.Participant, error) {
-	telegramUserID, err := duelDomain.NewTelegramUserID(protoParticipant.TelegramUserId.Value)
+	telegramUserID, err := duelDomain.NewTelegramUserID(protoParticipant.GetTelegramUserId().GetValue())
 	if err != nil {
 		return duelDomain.Participant{}, err
 	}
 
 	return duelDomain.Participant{
 		TelegramUserID: telegramUserID,
-		IsCreator:      protoParticipant.IsCreator,
+		IsCreator:      protoParticipant.GetIsCreator(),
 	}, nil
 }
 
 func mapDuelStakeFromProto(protoStake *duelv1.DuelStake) (duelDomain.Stake, error) {
-	telegramUserID, err := duelDomain.NewTelegramUserID(protoStake.ParticipantTelegramUserId.Value)
+	telegramUserID, err := duelDomain.NewTelegramUserID(protoStake.GetParticipantTelegramUserId().GetValue())
+	if err != nil {
+		return duelDomain.Stake{}, err
+	}
+
+	stakeValue, err := tonamount.NewTonAmountFromString(protoStake.GetStakeValue().GetValue())
 	if err != nil {
 		return duelDomain.Stake{}, err
 	}
@@ -253,13 +300,13 @@ func mapDuelStakeFromProto(protoStake *duelv1.DuelStake) (duelDomain.Stake, erro
 		TelegramUserID: telegramUserID,
 		// TODO: Extract GiftID from protobuf Gift if available
 		GiftID:     "", // For now, empty - would need to map from protobuf gift
-		StakeValue: protoStake.StakeValue.Value,
+		StakeValue: stakeValue,
 	}, nil
 }
 
 func mapDuelRoundFromProto(protoRound *duelv1.DuelRound) (duelDomain.Round, error) {
-	rolls := make([]duelDomain.Roll, len(protoRound.Rolls))
-	for i, roll := range protoRound.Rolls {
+	rolls := make([]duelDomain.Roll, len(protoRound.GetRolls()))
+	for i, roll := range protoRound.GetRolls() {
 		mapped, err := mapDuelRollFromProto(roll)
 		if err != nil {
 			return duelDomain.Round{}, err
@@ -268,21 +315,21 @@ func mapDuelRoundFromProto(protoRound *duelv1.DuelRound) (duelDomain.Round, erro
 	}
 
 	return duelDomain.Round{
-		RoundNumber: int(protoRound.RoundNumber),
+		RoundNumber: int(protoRound.GetRoundNumber()),
 		Rolls:       rolls,
 	}, nil
 }
 
 func mapDuelRollFromProto(protoRoll *duelv1.DuelRoll) (duelDomain.Roll, error) {
-	telegramUserID, err := duelDomain.NewTelegramUserID(protoRoll.ParticipantTelegramUserId.Value)
+	telegramUserID, err := duelDomain.NewTelegramUserID(protoRoll.GetParticipantTelegramUserId().GetValue())
 	if err != nil {
 		return duelDomain.Roll{}, err
 	}
 
 	return duelDomain.Roll{
 		TelegramUserID: telegramUserID,
-		DiceValue:      int(protoRoll.DiceValue),
-		RolledAt:       protoRoll.RolledAt.AsTime(),
-		IsAutoRolled:   protoRoll.IsAutoRolled,
+		DiceValue:      int(protoRoll.GetDiceValue()),
+		RolledAt:       protoRoll.GetRolledAt().AsTime(),
+		IsAutoRolled:   protoRoll.GetIsAutoRolled(),
 	}, nil
 }

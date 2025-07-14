@@ -1,7 +1,7 @@
 package serve
 
 import (
-	"github.com/peterparker2005/giftduels/apps/service-duel/internal/app"
+	"github.com/peterparker2005/giftduels/apps/service-event/internal/app"
 	"github.com/spf13/cobra"
 )
 

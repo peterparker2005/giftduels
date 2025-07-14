@@ -1,7 +1,6 @@
 package clients
 
 import (
-	"context"
 	"fmt"
 
 	giftv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1"
@@ -14,7 +13,7 @@ type GiftClient struct {
 	Private giftv1.GiftPrivateServiceClient
 }
 
-func NewGiftClient(ctx context.Context, address string, opts ...grpc.DialOption) (*GiftClient, error) {
+func NewGiftClient(address string, opts ...grpc.DialOption) (*GiftClient, error) {
 	conn, err := grpc.NewClient(address, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("dial gift service %s: %w", address, err)

@@ -2,6 +2,7 @@ package pg
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -23,7 +24,7 @@ func (r *UserRepository) GetByTelegramID(
 ) (*user.User, error) {
 	dbUser, err := r.db.GetUserByTelegramID(ctx, telegramID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err

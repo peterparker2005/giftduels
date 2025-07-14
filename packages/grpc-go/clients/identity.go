@@ -1,7 +1,6 @@
 package clients
 
 import (
-	"context"
 	"fmt"
 
 	identityv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/identity/v1"
@@ -14,7 +13,7 @@ type IdentityClient struct {
 	Private identityv1.IdentityPrivateServiceClient
 }
 
-func NewIdentityClient(ctx context.Context, address string, opts ...grpc.DialOption) (*IdentityClient, error) {
+func NewIdentityClient(address string, opts ...grpc.DialOption) (*IdentityClient, error) {
 	conn, err := grpc.NewClient(address, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("dial identity service %s: %w", address, err)

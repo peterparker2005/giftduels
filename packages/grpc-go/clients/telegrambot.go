@@ -1,7 +1,6 @@
 package clients
 
 import (
-	"context"
 	"fmt"
 
 	telegrambotv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/telegrambot/v1"
@@ -13,7 +12,7 @@ type TelegramBotClient struct {
 	Private telegrambotv1.TelegramBotPrivateServiceClient
 }
 
-func NewTelegramBotClient(ctx context.Context, address string, opts ...grpc.DialOption) (*TelegramBotClient, error) {
+func NewTelegramBotClient(address string, opts ...grpc.DialOption) (*TelegramBotClient, error) {
 	conn, err := grpc.NewClient(address, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("dial telegram bot service %s: %w", address, err)

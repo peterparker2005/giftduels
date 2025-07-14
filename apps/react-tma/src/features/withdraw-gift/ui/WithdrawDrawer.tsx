@@ -1,5 +1,11 @@
+import { create } from "@bufbuild/protobuf";
 import { ExecuteWithdrawRequest_CommissionCurrency } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_public_service_pb";
-import { useEffect, useMemo, useState } from "react";
+import { GiftWithdrawRequestSchema } from "@giftduels/protobuf-js/giftduels/payment/v1/public_service_pb";
+import {
+	GiftIdSchema,
+	TonAmountSchema,
+} from "@giftduels/protobuf-js/giftduels/shared/v1/common_pb";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useGiftsQuery } from "@/shared/api/queries/useGiftsQuery";
 import { usePreviewWithdraw } from "@/shared/api/queries/usePreviewWithdraw";
 import {
@@ -30,7 +36,10 @@ export const WithdrawDrawer = ({ children, disabled }: WithdrawDrawerProps) => {
 	const [isOpen, setIsOpen] = useState(false);
 
 	// Flatten all pages into a single array of gifts
-	const allGifts = data?.pages.flatMap((page) => page.gifts) || [];
+	const allGifts = useMemo(
+		() => data?.pages.flatMap((page) => page.gifts) || [],
+		[data?.pages],
+	);
 
 	// Preview withdraw logic moved here for caching
 	const {
@@ -39,69 +48,78 @@ export const WithdrawDrawer = ({ children, disabled }: WithdrawDrawerProps) => {
 		isPending: isPreviewPending,
 	} = usePreviewWithdraw();
 
-	// Calculate total TON amount for selected gifts
-	const totalTonAmount = useMemo(() => {
-		if (!allGifts || selectedGifts.length === 0) return 0;
-
-		return selectedGifts.reduce((total, giftId) => {
-			const gift = allGifts.find((g) => g.giftId?.value === giftId);
-			return total + (gift?.price?.value || 0);
-		}, 0);
-	}, [selectedGifts, allGifts]);
+	// Create a stable reference for gift data
+	const giftDataMap = useMemo(() => {
+		const map = new Map();
+		allGifts.forEach((gift) => {
+			if (gift.giftId?.value) {
+				map.set(gift.giftId.value, gift);
+			}
+		});
+		return map;
+	}, [allGifts]);
 
 	// Preview withdraw when selected gifts change
 	useEffect(() => {
-		if (totalTonAmount > 0) {
-			previewWithdraw(totalTonAmount);
-		}
-	}, [previewWithdraw, totalTonAmount]);
+		const gifts = selectedGifts.map((giftId) => {
+			const gift = giftDataMap.get(giftId);
+			return create(GiftWithdrawRequestSchema, {
+				giftId: create(GiftIdSchema, { value: giftId }),
+				price: create(TonAmountSchema, {
+					value: gift?.price?.value || "0",
+				}),
+			});
+		});
+		previewWithdraw(gifts);
+	}, [previewWithdraw, selectedGifts, giftDataMap]);
 
-	const handleProceedToConfirm = (giftIds: string[]) => {
+	const handleProceedToConfirm = useCallback((giftIds: string[]) => {
 		setSelectedGifts(giftIds);
 		setStep("confirm");
-	};
+	}, []);
 
-	const handleBackToSelect = () => {
+	const handleBackToSelect = useCallback(() => {
 		setStep("select");
-	};
+	}, []);
 
-	const handleToggleGift = (giftId: string) => {
+	const handleToggleGift = useCallback((giftId: string) => {
 		setSelectedGifts((prev) => {
 			if (prev.includes(giftId)) {
 				return prev.filter((id) => id !== giftId);
 			}
 			return [...prev, giftId];
 		});
-	};
+	}, []);
 
-	const handleSelectAll = () => {
+	const handleSelectAll = useCallback(() => {
 		if (!allGifts) return;
 		const allGiftIds = allGifts
 			.map((gift) => gift.giftId?.value || "")
 			.filter(Boolean);
 		setSelectedGifts(allGiftIds);
-	};
+	}, [allGifts]);
 
-	const handleClearSelection = () => {
+	const handleClearSelection = useCallback(() => {
 		setSelectedGifts([]);
-	};
+	}, []);
 
-	const handleRemoveGift = (giftId: string) => {
+	const handleRemoveGift = useCallback((giftId: string) => {
 		setSelectedGifts((prev) => prev.filter((id) => id !== giftId));
-	};
+	}, []);
 
-	const handleWithdrawSuccess = () => {
+	const handleWithdrawSuccess = useCallback(() => {
 		// Close the drawer and reset state
 		setIsOpen(false);
-	};
+	}, []);
 
-	const handleCommissionCurrencyChange = (
-		currency: ExecuteWithdrawRequest_CommissionCurrency,
-	) => {
-		setSelectedCommissionCurrency(currency);
-	};
+	const handleCommissionCurrencyChange = useCallback(
+		(currency: ExecuteWithdrawRequest_CommissionCurrency) => {
+			setSelectedCommissionCurrency(currency);
+		},
+		[],
+	);
 
-	const handleDrawerOpenChange = (open: boolean) => {
+	const handleDrawerOpenChange = useCallback((open: boolean) => {
 		setIsOpen(open);
 		if (!open) {
 			// Reset state when drawer closes
@@ -111,7 +129,7 @@ export const WithdrawDrawer = ({ children, disabled }: WithdrawDrawerProps) => {
 				ExecuteWithdrawRequest_CommissionCurrency.TON,
 			);
 		}
-	};
+	}, []);
 
 	// Auto-navigate back to select screen if all gifts are removed
 	useEffect(() => {
@@ -120,7 +138,7 @@ export const WithdrawDrawer = ({ children, disabled }: WithdrawDrawerProps) => {
 		}
 	}, [step, selectedGifts.length]);
 
-	const getTitle = () => {
+	const getTitle = useCallback(() => {
 		switch (step) {
 			case "select":
 				return "Select gifts for withdrawal";
@@ -129,7 +147,7 @@ export const WithdrawDrawer = ({ children, disabled }: WithdrawDrawerProps) => {
 			default:
 				return "Withdraw gifts";
 		}
-	};
+	}, [step]);
 
 	const renderContent = () => {
 		if (isLoading) {

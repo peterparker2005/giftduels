@@ -20,7 +20,7 @@ RETURNING id, telegram_user_id, ton_amount, created_at, updated_at
 
 type AddUserBalanceParams struct {
 	TelegramUserID int64
-	TonAmount      float64
+	TonAmount      pgtype.Numeric
 }
 
 func (q *Queries) AddUserBalance(ctx context.Context, arg AddUserBalanceParams) (UserBalance, error) {
@@ -86,7 +86,7 @@ RETURNING id, telegram_user_id, amount, reason, created_at, metadata
 
 type CreateTransactionParams struct {
 	TelegramUserID int64
-	Amount         float64
+	Amount         pgtype.Numeric
 	Reason         TransactionReason
 	Metadata       []byte
 }
@@ -122,7 +122,7 @@ RETURNING id, telegram_user_id, ton_amount, created_at, updated_at
 
 type CreateUserBalanceParams struct {
 	TelegramUserID int64
-	TonAmount      float64
+	TonAmount      pgtype.Numeric
 }
 
 func (q *Queries) CreateUserBalance(ctx context.Context, arg CreateUserBalanceParams) (UserBalance, error) {
@@ -302,7 +302,7 @@ RETURNING id, telegram_user_id, ton_amount, created_at, updated_at
 
 type SpendUserBalanceParams struct {
 	TelegramUserID int64
-	TonAmount      float64
+	TonAmount      pgtype.Numeric
 }
 
 func (q *Queries) SpendUserBalance(ctx context.Context, arg SpendUserBalanceParams) (UserBalance, error) {

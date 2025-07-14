@@ -17,7 +17,10 @@ type TelegramGiftWithdrawFailedHandler struct {
 	log            *logger.Logger
 }
 
-func NewTelegramGiftWithdrawFailedHandler(paymentService *payment.Service, log *logger.Logger) *TelegramGiftWithdrawFailedHandler {
+func NewTelegramGiftWithdrawFailedHandler(
+	paymentService *payment.Service,
+	log *logger.Logger,
+) *TelegramGiftWithdrawFailedHandler {
 	return &TelegramGiftWithdrawFailedHandler{
 		paymentService: paymentService,
 		log:            log,
@@ -33,21 +36,21 @@ func (h *TelegramGiftWithdrawFailedHandler) Handle(msg *message.Message) error {
 		return err
 	}
 
-	telegramUserID := event.OwnerTelegramId.GetValue()
-	commissionAmount := event.CommissionAmount.GetValue()
+	telegramUserID := event.GetOwnerTelegramId().GetValue()
+	commissionAmount := event.GetCommissionAmount().GetValue()
 
 	h.log.Info("processing gift withdrawal failure, rolling back commission",
 		zap.Int64("telegram_user_id", telegramUserID),
-		zap.Float64("commission_amount", commissionAmount),
-		zap.String("gift_id", event.GiftId.GetValue()),
-		zap.String("error_reason", event.ErrorReason),
+		zap.String("commission_amount", commissionAmount),
+		zap.String("gift_id", event.GetGiftId().GetValue()),
+		zap.String("error_reason", event.GetErrorReason()),
 	)
 
 	metadata := paymentDomain.TransactionMetadata{
-		Gift: &paymentDomain.TransactionMetadata_GiftDetails{
-			GiftID: event.GiftId.GetValue(),
-			Title:  event.Title,
-			Slug:   event.Slug,
+		Gift: &paymentDomain.TransactionMetadataGiftDetails{
+			GiftID: event.GetGiftId().GetValue(),
+			Title:  event.GetTitle(),
+			Slug:   event.GetSlug(),
 		},
 	}
 
@@ -56,16 +59,16 @@ func (h *TelegramGiftWithdrawFailedHandler) Handle(msg *message.Message) error {
 		h.log.Error("failed to rollback withdrawal commission",
 			zap.Error(err),
 			zap.Int64("telegram_user_id", telegramUserID),
-			zap.Float64("commission_amount", commissionAmount),
+			zap.String("commission_amount", commissionAmount),
 		)
 
 		// TODO: Опубликовать событие о неудачном rollback комиссии для компенсации
 		// Это критическая ошибка - комиссия не возвращена, но статус подарка может быть сброшен
 		h.log.Error("CRITICAL: Commission rollback failed - requires manual intervention",
 			zap.Int64("telegram_user_id", telegramUserID),
-			zap.Float64("commission_amount", commissionAmount),
-			zap.String("gift_id", event.GiftId.GetValue()),
-			zap.String("original_error", event.ErrorReason),
+			zap.String("commission_amount", commissionAmount),
+			zap.String("gift_id", event.GetGiftId().GetValue()),
+			zap.String("original_error", event.GetErrorReason()),
 		)
 
 		return err
@@ -73,8 +76,8 @@ func (h *TelegramGiftWithdrawFailedHandler) Handle(msg *message.Message) error {
 
 	h.log.Info("successfully rolled back withdrawal commission",
 		zap.Int64("telegram_user_id", telegramUserID),
-		zap.Float64("commission_amount", commissionAmount),
-		zap.String("gift_id", event.GiftId.GetValue()),
+		zap.String("commission_amount", commissionAmount),
+		zap.String("gift_id", event.GetGiftId().GetValue()),
 	)
 
 	return nil

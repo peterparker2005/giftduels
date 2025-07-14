@@ -1,7 +1,6 @@
 package clients
 
 import (
-	"context"
 	"fmt"
 
 	paymentv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/payment/v1"
@@ -14,7 +13,7 @@ type PaymentClient struct {
 	Private paymentv1.PaymentPrivateServiceClient
 }
 
-func NewPaymentClient(ctx context.Context, address string, opts ...grpc.DialOption) (*PaymentClient, error) {
+func NewPaymentClient(address string, opts ...grpc.DialOption) (*PaymentClient, error) {
 	conn, err := grpc.NewClient(address, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("dial gift service %s: %w", address, err)

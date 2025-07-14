@@ -12,10 +12,10 @@ func (c *ServiceConfig) Address() string {
 }
 
 type GRPCConfig struct {
-	Identity    ServiceConfig `yaml:"identity_service" env-prefix:"GRPC_IDENTITY_SERVICE_"`
-	Gift        ServiceConfig `yaml:"gift_service" env-prefix:"GRPC_GIFT_SERVICE_"`
-	Duel        ServiceConfig `yaml:"duel_service" env-prefix:"GRPC_DUEL_SERVICE_"`
-	Payment     ServiceConfig `yaml:"payment_service" env-prefix:"GRPC_PAYMENT_SERVICE_"`
+	Identity    ServiceConfig `yaml:"identity_service"     env-prefix:"GRPC_IDENTITY_SERVICE_"`
+	Gift        ServiceConfig `yaml:"gift_service"         env-prefix:"GRPC_GIFT_SERVICE_"`
+	Duel        ServiceConfig `yaml:"duel_service"         env-prefix:"GRPC_DUEL_SERVICE_"`
+	Payment     ServiceConfig `yaml:"payment_service"      env-prefix:"GRPC_PAYMENT_SERVICE_"`
 	TelegramBot ServiceConfig `yaml:"telegram_bot_service" env-prefix:"GRPC_TELEGRAM_BOT_SERVICE_"`
-	Event       ServiceConfig `yaml:"event_service" env-prefix:"GRPC_EVENT_SERVICE_"`
+	Event       ServiceConfig `yaml:"event_service"        env-prefix:"GRPC_EVENT_SERVICE_"`
 }

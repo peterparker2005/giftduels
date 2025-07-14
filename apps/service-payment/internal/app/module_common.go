@@ -11,6 +11,7 @@ import (
 	"go.uber.org/fx/fxevent"
 )
 
+//nolint:gochecknoglobals // fx module pattern
 var moduleCommon = fx.Options(
 	LoggerModule,
 	fx.Provide(func(cfg *config.Config) (*clients.Clients, error) {

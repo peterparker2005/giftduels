@@ -5,37 +5,35 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// Config — общие настройки логгера.
+// Config is the common logger settings.
 type Config struct {
-	Service     string // обязательное
+	Service     string // required
 	Level       string // debug|info|warn|error|fatal
-	Pretty      bool   // вывод в человекочитаемом виде
-	Environment string // development|staging|production (опционально)
-	Version     string // версия сервиса (опционально)
+	Pretty      bool   // human-readable output
+	Environment string // development|staging|production (optional)
+	Version     string // service version (optional)
 }
 
-// Logger — thin wrapper над zap.Logger с кэшированными baseFields.
+// Logger is a thin wrapper over zap.Logger with cached baseFields.
 type Logger struct {
 	zap        *zap.Logger
 	baseFields []zap.Field
 }
 
-// NewLogger настраивает zap-конфиг и сразу вычисляет baseFields.
+// NewLogger configures zap-config and immediately calculates baseFields.
 func NewLogger(cfg Config) (*Logger, error) {
-	// 1) Собираем zap.Config
 	var zapCfg zap.Config
 	if cfg.Pretty {
 		zapCfg = zap.NewDevelopmentConfig()
-		// Для pretty логирования используем консольный энкодер
 		zapCfg.Encoding = "console"
 		zapCfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 		zapCfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		zapCfg.EncoderConfig.ConsoleSeparator = " "
 	} else {
 		zapCfg = zap.NewProductionConfig()
-		zapCfg.Encoding = "json"                     // Структурированный JSON
-		zapCfg.OutputPaths = []string{"stdout"}      // один источник — STDOUT
-		zapCfg.ErrorOutputPaths = []string{"stderr"} // ошибки во STDERR
+		zapCfg.Encoding = "json"
+		zapCfg.OutputPaths = []string{"stdout"}
+		zapCfg.ErrorOutputPaths = []string{"stderr"}
 
 		enc := &zapCfg.EncoderConfig
 		enc.TimeKey = "timestamp"
@@ -43,21 +41,19 @@ func NewLogger(cfg Config) (*Logger, error) {
 		enc.LevelKey = "level"
 		enc.EncodeLevel = zapcore.LowercaseLevelEncoder
 		enc.MessageKey = "message"
-		enc.CallerKey = ""     // не выводим caller
-		enc.StacktraceKey = "" // не выводим stacktrace
+		enc.CallerKey = ""
+		enc.StacktraceKey = ""
 	}
 
 	if lvl, err := zap.ParseAtomicLevel(cfg.Level); err == nil {
 		zapCfg.Level = lvl
 	}
 
-	// 2) Строим сам Logger
 	zl, err := zapCfg.Build()
 	if err != nil {
 		return nil, err
 	}
 
-	// 3) Вычисляем неизменяемые базовые поля
 	base := []zap.Field{
 		zap.String("service", cfg.Service),
 	}
@@ -74,8 +70,6 @@ func NewLogger(cfg Config) (*Logger, error) {
 	}, nil
 }
 
-// Info/Debug/Warn/Error/Fatal работают через variadic zap.Field.
-// Всегда подтягивают baseFields первым аргументом.
 func (l *Logger) Info(msg string, fields ...zap.Field) {
 	l.zap.Info(msg, append(l.baseFields, fields...)...)
 }
@@ -96,7 +90,7 @@ func (l *Logger) Fatal(msg string, fields ...zap.Field) {
 	l.zap.Fatal(msg, append(l.baseFields, fields...)...)
 }
 
-// With возвращает новый Logger с доп. полями, но сохраняет baseFields.
+// With returns a new Logger with additional fields, but preserves baseFields.
 func (l *Logger) With(fields ...zap.Field) *Logger {
 	return &Logger{
 		zap:        l.zap.With(fields...),
@@ -104,7 +98,7 @@ func (l *Logger) With(fields ...zap.Field) *Logger {
 	}
 }
 
-// Sync — не забывайте вызывать перед shutdown.
+// Sync is called before shutdown.
 func (l *Logger) Sync() error {
 	return l.zap.Sync()
 }

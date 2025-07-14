@@ -5,12 +5,12 @@ import (
 	"go.uber.org/zap"
 )
 
-// WatermillLogger адаптер zap логгера для Watermill
+// WatermillLogger is a zap logger adapter for Watermill.
 type WatermillLogger struct {
 	logger *Logger
 }
 
-// NewWatermillLogger создает новый адаптер логгера
+// NewWatermill creates a new logger adapter.
 func NewWatermill(logger *Logger) watermill.LoggerAdapter {
 	return &WatermillLogger{
 		logger: logger,

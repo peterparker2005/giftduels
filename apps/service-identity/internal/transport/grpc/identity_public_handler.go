@@ -21,13 +21,19 @@ var _ identityv1.IdentityPublicServiceServer = (*IdentityPublicHandler)(nil)
 
 type IdentityPublicHandler struct {
 	identityv1.IdentityPublicServiceServer
-	tokenSvc token.TokenService
+
+	tokenSvc token.Service
 	userSvc  *userservice.Service
 	logger   *logger.Logger
 	cfg      *config.Config
 }
 
-func NewIdentityPublicHandler(tokenSvc token.TokenService, userSvc *userservice.Service, logger *logger.Logger, cfg *config.Config) identityv1.IdentityPublicServiceServer {
+func NewIdentityPublicHandler(
+	tokenSvc token.Service,
+	userSvc *userservice.Service,
+	logger *logger.Logger,
+	cfg *config.Config,
+) identityv1.IdentityPublicServiceServer {
 	return &IdentityPublicHandler{
 		tokenSvc: tokenSvc,
 		userSvc:  userSvc,
@@ -37,13 +43,17 @@ func NewIdentityPublicHandler(tokenSvc token.TokenService, userSvc *userservice.
 }
 
 // Authorize обрабатывает запрос авторизации, проверяет initData и генерирует сессионный token.
-func (h *IdentityPublicHandler) Authorize(ctx context.Context, req *identityv1.AuthorizeRequest) (*identityv1.AuthorizeResponse, error) {
-	if err := initdata.Validate(req.InitData, h.cfg.Telegram.BotToken, 24*time.Hour); err != nil {
+func (h *IdentityPublicHandler) Authorize(
+	ctx context.Context,
+	req *identityv1.AuthorizeRequest,
+) (*identityv1.AuthorizeResponse, error) {
+	//nolint:mnd // 24 hours is a reasonable timeout
+	if err := initdata.Validate(req.GetInitData(), h.cfg.Telegram.BotToken, 24*time.Hour); err != nil {
 		h.logger.Warn("invalid initData", zap.Error(err))
 		return nil, errors.NewValidationError("init_data", "Invalid initialization data")
 	}
 
-	parsed, err := initdata.Parse(req.InitData)
+	parsed, err := initdata.Parse(req.GetInitData())
 	if err != nil {
 		h.logger.Error("failed to parse initData", zap.Error(err))
 		return nil, errors.NewInternalError("failed to parse initialization data")
@@ -80,7 +90,10 @@ func (h *IdentityPublicHandler) Authorize(ctx context.Context, req *identityv1.A
 	}, nil
 }
 
-func (h *IdentityPublicHandler) GetProfile(ctx context.Context, req *emptypb.Empty) (*identityv1.GetProfileResponse, error) {
+func (h *IdentityPublicHandler) GetProfile(
+	ctx context.Context,
+	_ *emptypb.Empty,
+) (*identityv1.GetProfileResponse, error) {
 	telegramID, err := authctx.TelegramUserID(ctx)
 	if err != nil {
 		return nil, err
@@ -96,7 +109,7 @@ func (h *IdentityPublicHandler) GetProfile(ctx context.Context, req *emptypb.Emp
 	}, nil
 }
 
-// Helper functions to safely extract values from initData
+// Helper functions to safely extract values from initData.
 func getStringOrEmpty(val string) string {
 	return val
 }

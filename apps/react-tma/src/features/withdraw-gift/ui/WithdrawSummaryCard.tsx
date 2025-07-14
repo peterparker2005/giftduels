@@ -1,16 +1,17 @@
 import { GiftView } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
 import { BiX } from "react-icons/bi";
 import { Icon } from "@/shared/ui/Icon/Icon";
-import { formatThousands } from "@/shared/utils/formatThousands";
 import { getFragmentUrl } from "@/shared/utils/getFragmentUrl";
 
 interface WithdrawSummaryCardProps {
 	gift: GiftView;
+	fee: number;
 	onRemove: () => void;
 }
 
 export const WithdrawSummaryCard = ({
 	gift,
+	fee,
 	onRemove,
 }: WithdrawSummaryCardProps) => {
 	return (
@@ -36,9 +37,15 @@ export const WithdrawSummaryCard = ({
 					<div className="rounded-full bg-[#2D9EED] w-5 h-5 flex items-center justify-center">
 						<Icon icon="TON" className="w-3 h-3 shrink-0" />
 					</div>
-					<span className="text-xs font-medium">
-						{formatThousands(gift.price?.value)}
-					</span>
+					<span className="text-xs font-medium">{gift.price?.value}</span>
+					{fee > 0 && (
+						<>
+							<span className="text-xs text-muted-foreground">+</span>
+							<span className="text-xs text-muted-foreground">
+								{fee.toFixed(2)}
+							</span>
+						</>
+					)}
 				</div>
 			</div>
 

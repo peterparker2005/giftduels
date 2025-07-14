@@ -51,7 +51,10 @@ func (r *duelRepository) GetDuelByID(ctx context.Context, id duelDomain.ID) (*du
 	return duel, nil
 }
 
-func (r *duelRepository) GetDuelList(ctx context.Context, pageRequest *shared.PageRequest) ([]*duelDomain.Duel, int64, error) {
+func (r *duelRepository) GetDuelList(
+	ctx context.Context,
+	pageRequest *shared.PageRequest,
+) ([]*duelDomain.Duel, int64, error) {
 	total, err := r.q.GetVisibleDuelsCount(ctx)
 	if err != nil {
 		return nil, 0, err

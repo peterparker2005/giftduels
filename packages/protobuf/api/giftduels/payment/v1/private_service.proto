@@ -3,6 +3,7 @@ syntax = "proto3";
 package giftduels.payment.v1;
 
 import "giftduels/payment/v1/payment.proto";
+import "giftduels/payment/v1/public_service.proto";
 import "giftduels/shared/v1/common.proto";
 
 option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/payment/v1;paymentv1";
@@ -13,17 +14,7 @@ service PaymentPrivateService {
   rpc GetUserBalance(GetUserBalanceRequest) returns (GetUserBalanceResponse) {}
   // buf:lint:ignore RPC_REQUEST_STANDARD_NAME
   // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
-  rpc PreviewWithdraw(PrivatePreviewWithdrawRequest) returns (PrivatePreviewWithdrawResponse) {}
-}
-
-message PrivatePreviewWithdrawRequest {
-  shared.v1.TonAmount ton_amount = 1;
-}
-
-message PrivatePreviewWithdrawResponse {
-  repeated GiftFee fees = 1;
-  shared.v1.StarsAmount total_stars_fee = 2;
-  shared.v1.TonAmount total_ton_fee = 3;
+  rpc PreviewWithdraw(PreviewWithdrawRequest) returns (PreviewWithdrawResponse) {}
 }
 
 message SpendUserBalanceRequest {

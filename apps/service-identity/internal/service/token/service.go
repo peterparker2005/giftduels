@@ -11,11 +11,12 @@ import (
 )
 
 type SessionClaims struct {
-	TelegramUserID int64 `json:"tg_uid"`
 	jwt.RegisteredClaims
+
+	TelegramUserID int64 `json:"tg_uid"`
 }
 
-type TokenService interface {
+type Service interface {
 	Generate(telegramUserID int64) (string, error)
 	Validate(tokenStr string) (*SessionClaims, error)
 }

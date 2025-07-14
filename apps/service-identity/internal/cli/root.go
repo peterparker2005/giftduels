@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"log"
+	"log/slog"
 
 	"github.com/peterparker2005/giftduels/apps/service-identity/internal/cli/command/migrate"
 	"github.com/peterparker2005/giftduels/apps/service-identity/internal/cli/command/serve"
@@ -15,7 +15,8 @@ func rootCmd() *cobra.Command {
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
+		slog.Default().Error("failed to load config", "error", err)
+		return nil
 	}
 
 	cmd.AddCommand(

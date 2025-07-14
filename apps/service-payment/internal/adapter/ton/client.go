@@ -8,11 +8,16 @@ import (
 	domain "github.com/peterparker2005/giftduels/apps/service-payment/internal/domain/ton"
 	"github.com/peterparker2005/giftduels/apps/service-payment/pkg/boc"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
+	"github.com/peterparker2005/giftduels/packages/tonamount-go"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/liteclient"
 	"github.com/xssnick/tonutils-go/tlb"
 	"github.com/xssnick/tonutils-go/ton"
 	"go.uber.org/zap"
+)
+
+const (
+	bocMinDocBytes = 2
 )
 
 type adapter struct {
@@ -26,13 +31,17 @@ const (
 	mainnetURL = "https://ton-blockchain.github.io/global.config.json"
 )
 
-// NewTonAPI создаёт адаптер TonAPI
-func NewTonAPI(appCfg *config.Config, logger *logger.Logger) (domain.TonAPI, error) {
+// NewTonAPI создаёт адаптер TonAPI.
+func NewTonAPI(appCfg *config.Config, logger *logger.Logger) (domain.API, error) {
 	url := testnetURL
 	if appCfg.Ton.Network == config.TonNetworkMainnet {
 		url = mainnetURL
 	}
-	logger.Info("🔧 TON adapter: network=%s, configURL=%s", zap.String("network", appCfg.Ton.Network.String()), zap.String("configURL", url))
+	logger.Info(
+		"🔧 TON adapter: network=%s, configURL=%s",
+		zap.String("network", appCfg.Ton.Network.String()),
+		zap.String("configURL", url),
+	)
 	client := liteclient.NewConnectionPool()
 	cfg, err := liteclient.GetConfigFromUrl(context.Background(), url)
 	if err != nil {
@@ -71,7 +80,12 @@ func (a *adapter) GetAccountLastLT(ctx context.Context, addrStr string) (uint64,
 	return acc.LastTxLT, nil
 }
 
-func (a *adapter) SubscribeTransactions(ctx context.Context, addrStr string, fromLT uint64, out chan<- domain.Transaction) error {
+func (a *adapter) SubscribeTransactions(
+	ctx context.Context,
+	addrStr string,
+	fromLT uint64,
+	out chan<- domain.Transaction,
+) error {
 	addr := address.MustParseAddr(addrStr)
 	// запускаем в фоне
 	// rawCh – канал для низкоуровневых tlb.Transaction
@@ -79,7 +93,11 @@ func (a *adapter) SubscribeTransactions(ctx context.Context, addrStr string, fro
 
 	// 1) запустить саму подписку (блокирующий вызов) в отдельной горутине
 	go func() {
-		a.logger.Info("📡 TON adapter: subscribe transactions", zap.String("addr", addrStr), zap.Uint64("fromLT", fromLT))
+		a.logger.Info(
+			"📡 TON adapter: subscribe transactions",
+			zap.String("addr", addrStr),
+			zap.Uint64("fromLT", fromLT),
+		)
 		a.api.SubscribeOnTransactions(ctx, addr, fromLT, rawCh)
 		a.logger.Info("⚠️ SubscribeOnTransactions finished, closing rawCh")
 		close(rawCh)
@@ -93,7 +111,11 @@ func (a *adapter) SubscribeTransactions(ctx context.Context, addrStr string, fro
 			}
 			ti := raw.IO.In.AsInternal()
 			sender := ti.SrcAddr.String()
-			amountStr := ti.Amount.Nano().String()
+			amount, err := tonamount.NewTonAmountFromNano(ti.Amount.Nano().Uint64())
+			if err != nil {
+				a.logger.Warn("invalid amount", zap.String("amount", ti.Amount.Nano().String()), zap.Error(err))
+				continue
+			}
 			currency := "TON"
 
 			// Extract payload from transaction body
@@ -101,7 +123,7 @@ func (a *adapter) SubscribeTransactions(ctx context.Context, addrStr string, fro
 			if ti.Body != nil {
 				// Convert entire body to BOC base64 (this is what tonworker expects)
 				bocBytes := ti.Body.ToBOC()
-				if len(bocBytes) > 2 { // Skip empty BOC (usually 2 bytes for empty cell)
+				if len(bocBytes) > bocMinDocBytes { // Skip empty BOC (usually 2 bytes for empty cell)
 					payload = boc.EncodeBOCAsBase64(bocBytes)
 					a.logger.Debug("📦 Extracted BOC payload",
 						zap.String("payload", payload),
@@ -111,7 +133,7 @@ func (a *adapter) SubscribeTransactions(ctx context.Context, addrStr string, fro
 
 			out <- domain.Transaction{
 				Sender:   sender,
-				Amount:   amountStr,
+				Amount:   amount,
 				Currency: currency,
 				Payload:  payload,
 				LastLT:   raw.LT,

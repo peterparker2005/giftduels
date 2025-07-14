@@ -13,6 +13,7 @@ import (
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 )
 
+//nolint:gochecknoglobals // fx module pattern
 var CommonModule = fx.Options(
 	config.Module,
 	LoggerModule,

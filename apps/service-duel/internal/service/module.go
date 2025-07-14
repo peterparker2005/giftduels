@@ -6,6 +6,7 @@ import (
 	"github.com/peterparker2005/giftduels/apps/service-duel/internal/service/duel"
 )
 
+//nolint:gochecknoglobals // fx module pattern
 var Module = fx.Module("service",
 	fx.Provide(
 		duel.NewDuelService,

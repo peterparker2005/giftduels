@@ -19,7 +19,7 @@ type Deposit struct {
 	ID             uuid.UUID
 	TelegramUserID int64
 	Status         DepositStatus
-	AmountNano     int64
+	AmountNano     uint64
 	Payload        string
 	ExpiresAt      time.Time
 	TxHash         *string
@@ -30,7 +30,7 @@ type Deposit struct {
 
 type CreateDepositParams struct {
 	TelegramUserID int64
-	AmountNano     int64
+	AmountNano     uint64
 	Payload        string
 	ExpiresAt      time.Time
 }

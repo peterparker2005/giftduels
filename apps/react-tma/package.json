@@ -6,9 +6,9 @@
 	"scripts": {
 		"dev": "vite",
 		"build": "tsc -b && vite build",
-		"biome": "biome check",
-		"biome:fix": "biome check --write .",
-		"tsc": "tsc -b",
+		"lint": "pnpm typecheck && biome check .",
+		"lint:fix": "pnpm typecheck && biome check --write .",
+		"typecheck": "tsc -b",
 		"preview": "vite preview"
 	},
 	"dependencies": {

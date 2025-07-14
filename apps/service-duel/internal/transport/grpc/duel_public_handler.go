@@ -5,6 +5,7 @@ import (
 
 	duelDomain "github.com/peterparker2005/giftduels/apps/service-duel/internal/domain/duel"
 	duelService "github.com/peterparker2005/giftduels/apps/service-duel/internal/service/duel"
+	"github.com/peterparker2005/giftduels/packages/errors/pkg/errors"
 	"github.com/peterparker2005/giftduels/packages/grpc-go/authctx"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	duelv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/duel/v1"
@@ -19,7 +20,7 @@ type duelPublicHandler struct {
 	duelService *duelService.DuelService
 }
 
-// NewDuelPublicHandler создает новый GRPC handler
+// NewDuelPublicHandler создает новый GRPC handler.
 func NewDuelPublicHandler(logger *logger.Logger, duelService *duelService.DuelService) duelv1.DuelPublicServiceServer {
 	return &duelPublicHandler{
 		logger:      logger,
@@ -27,18 +28,24 @@ func NewDuelPublicHandler(logger *logger.Logger, duelService *duelService.DuelSe
 	}
 }
 
-func (h *duelPublicHandler) GetDuelList(ctx context.Context, req *duelv1.GetDuelListRequest) (*duelv1.GetDuelListResponse, error) {
+func (h *duelPublicHandler) GetDuelList(
+	ctx context.Context,
+	req *duelv1.GetDuelListRequest,
+) (*duelv1.GetDuelListResponse, error) {
 	pageRequest := shared.NewPageRequest(req.GetPageRequest().GetPage(), req.GetPageRequest().GetPageSize())
 
 	response, err := h.duelService.GetDuelList(ctx, pageRequest)
 	if err != nil {
-		return nil, err
+		return nil, errors.NewInternalError("failed to get duel list")
 	}
 
 	// Map duels to protobuf
 	protoDuels := make([]*duelv1.Duel, len(response.Duels))
 	for i, duel := range response.Duels {
-		protoDuels[i] = mapDuel(duel)
+		protoDuels[i], err = mapDuel(duel)
+		if err != nil {
+			return nil, errors.NewInternalError("failed to map duel")
+		}
 	}
 
 	return &duelv1.GetDuelListResponse{
@@ -46,22 +53,25 @@ func (h *duelPublicHandler) GetDuelList(ctx context.Context, req *duelv1.GetDuel
 	}, nil
 }
 
-func (h *duelPublicHandler) CreateDuel(ctx context.Context, req *duelv1.CreateDuelRequest) (*duelv1.CreateDuelResponse, error) {
+func (h *duelPublicHandler) CreateDuel(
+	ctx context.Context,
+	req *duelv1.CreateDuelRequest,
+) (*duelv1.CreateDuelResponse, error) {
 	telegramUserID, err := authctx.TelegramUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	params, err := mapDuelParamsFromProto(req.Params)
+	params, err := mapDuelParamsFromProto(req.GetParams())
 	if err != nil {
-		return nil, err
+		return nil, errors.NewInternalError("failed to create duel")
 	}
 
 	// Map stakes
-	stakes := make([]duelDomain.Stake, len(req.Stakes))
-	for i, stake := range req.Stakes {
+	stakes := make([]duelDomain.Stake, len(req.GetStakes()))
+	for i, stake := range req.GetStakes() {
 		stakes[i] = duelDomain.Stake{
-			GiftID: stake.GiftId.Value,
+			GiftID: stake.GetGiftId().GetValue(),
 		}
 	}
 

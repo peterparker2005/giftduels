@@ -18,12 +18,13 @@ func (n TonNetwork) String() string {
 }
 
 type TonConfig struct {
-	Network       TonNetwork `env:"TON_NETWORK" default:"testnet"`
+	Network       TonNetwork `env:"TON_NETWORK"        default:"testnet"`
 	WalletAddress string     `env:"TON_WALLET_ADDRESS"`
 }
 
 type Config struct {
 	configs.ServiceBaseConfig
+
 	Logger   configs.LoggerConfig   `yaml:"logger"`
 	Database configs.DatabaseConfig `yaml:"database"`
 	AMQP     configs.AMQPConfig     `yaml:"amqp"`
@@ -43,6 +44,7 @@ func LoadConfig() (*Config, error) {
 	return &cfg, nil
 }
 
+//nolint:gochecknoglobals // fx module pattern
 var Module = fx.Options(
 	fx.Provide(LoadConfig),
 )

@@ -8,8 +8,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	amqputil "github.com/peterparker2005/giftduels/apps/service-payment/internal/adapter/amqp"
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/config"
-	"github.com/peterparker2005/giftduels/apps/service-payment/internal/domain/payment"
-	paymentService "github.com/peterparker2005/giftduels/apps/service-payment/internal/service/payment"
 	giftEvents "github.com/peterparker2005/giftduels/packages/events/gift"
 	"github.com/peterparker2005/giftduels/packages/events/identity"
 	paymentEvents "github.com/peterparker2005/giftduels/packages/events/payment"
@@ -20,6 +18,7 @@ import (
 	"go.uber.org/zap"
 )
 
+//nolint:gochecknoglobals // fx module pattern
 var Module = fx.Options(
 	fx.Provide(
 		amqputil.ProvideConnection,
@@ -30,19 +29,9 @@ var Module = fx.Options(
 		},
 	),
 
-	fx.Provide(func(
-		repo payment.Repository,
-		l *logger.Logger,
-	) *IdentityNewUserHandler {
-		return NewIdentityNewUserHandler(repo, l)
-	}),
+	fx.Provide(NewIdentityNewUserHandler),
 
-	fx.Provide(func(
-		service *paymentService.Service,
-		l *logger.Logger,
-	) *TelegramGiftWithdrawFailedHandler {
-		return NewTelegramGiftWithdrawFailedHandler(service, l)
-	}),
+	fx.Provide(NewTelegramGiftWithdrawFailedHandler),
 
 	fx.Invoke(func(
 		cfg *config.Config,
@@ -68,8 +57,18 @@ var Module = fx.Options(
 			return err
 		}
 
-		router.AddNoPublisherHandler("identity_new_user", identity.TopicUserCreated.String(), identitySub, newUserHandler.Handle)
-		router.AddNoPublisherHandler("telegram_gift_withdraw_fail", giftEvents.TopicGiftWithdrawFailed.String(), telegramSub, telegramGiftWithdrawFailHandler.Handle)
+		router.AddNoPublisherHandler(
+			"identity_new_user",
+			identity.TopicUserCreated.String(),
+			identitySub,
+			newUserHandler.Handle,
+		)
+		router.AddNoPublisherHandler(
+			"telegram_gift_withdraw_fail",
+			giftEvents.TopicGiftWithdrawFailed.String(),
+			telegramSub,
+			telegramGiftWithdrawFailHandler.Handle,
+		)
 		// router.AddNoPublisherHandler("tg_gift_poison", giftEvents.Config(cfg.ServiceName).Exchange+".poison", giftSub, func(m *message.Message) error {
 		// 	log.Warn("💀 poison", zap.String("body", string(m.Payload)))
 		// 	return nil
@@ -87,7 +86,7 @@ var Module = fx.Options(
 				})
 
 				go func() {
-					if err := router.Run(runCtx); err != nil &&
+					if err = router.Run(runCtx); err != nil &&
 						!errors.Is(err, context.Canceled) {
 						log.Fatal("router stopped", zap.Error(err))
 					}

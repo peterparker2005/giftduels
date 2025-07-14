@@ -5,6 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/peterparker2005/giftduels/packages/shared"
+	"github.com/peterparker2005/giftduels/packages/tonamount-go"
 )
 
 type CreateBalanceParams struct {
@@ -13,19 +14,19 @@ type CreateBalanceParams struct {
 
 type CreateTransactionParams struct {
 	TelegramUserID int64
-	Amount         float64
+	Amount         *tonamount.TonAmount
 	Reason         TransactionReason
 	Metadata       []byte
 }
 
 type AddUserBalanceParams struct {
 	TelegramUserID int64
-	Amount         float64
+	Amount         *tonamount.TonAmount
 }
 
 type SpendUserBalanceParams struct {
 	TelegramUserID int64
-	Amount         float64
+	Amount         *tonamount.TonAmount
 }
 
 type Repository interface {
@@ -39,6 +40,10 @@ type Repository interface {
 	AddUserBalance(ctx context.Context, params *AddUserBalanceParams) (*Balance, error)
 	SpendUserBalance(ctx context.Context, params *SpendUserBalanceParams) (*Balance, error)
 
-	GetUserTransactions(ctx context.Context, telegramUserID int64, pagination *shared.PageRequest) ([]*Transaction, error)
+	GetUserTransactions(
+		ctx context.Context,
+		telegramUserID int64,
+		pagination *shared.PageRequest,
+	) ([]*Transaction, error)
 	GetUserTransactionsCount(ctx context.Context, telegramUserID int64) (int64, error)
 }

@@ -1,7 +1,13 @@
+import { create } from "@bufbuild/protobuf";
 import {
 	GiftAttributeType,
 	GiftView,
 } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
+import { GiftWithdrawRequestSchema } from "@giftduels/protobuf-js/giftduels/payment/v1/public_service_pb";
+import {
+	GiftIdSchema,
+	TonAmountSchema,
+} from "@giftduels/protobuf-js/giftduels/shared/v1/common_pb";
 import { useEffect, useMemo } from "react";
 import { WithdrawActions } from "@/features/withdraw-gift";
 import { usePreviewWithdraw } from "@/shared/api/queries/usePreviewWithdraw";
@@ -18,11 +24,6 @@ export const GiftDetailsCard = ({
 	gift,
 	onCloseDrawer,
 }: GiftDetailsCardProps) => {
-	// Calculate total TON amount for the gift
-	const totalTonAmount = useMemo(() => {
-		return gift.price?.value || 0;
-	}, [gift.price?.value]);
-
 	// Preview withdraw logic
 	const {
 		mutate: previewWithdraw,
@@ -32,10 +33,16 @@ export const GiftDetailsCard = ({
 
 	// Preview withdraw when component mounts
 	useEffect(() => {
-		if (totalTonAmount > 0) {
-			previewWithdraw(totalTonAmount);
+		if (gift.price?.value && Number(gift.price.value) > 0) {
+			const gifts = [
+				create(GiftWithdrawRequestSchema, {
+					giftId: create(GiftIdSchema, { value: gift.giftId?.value || "" }),
+					price: create(TonAmountSchema, { value: gift.price.value }),
+				}),
+			];
+			previewWithdraw(gifts);
 		}
-	}, [previewWithdraw, totalTonAmount]);
+	}, [previewWithdraw, gift.giftId?.value, gift.price?.value]);
 
 	// Get gift ID for WithdrawActions
 	const giftIds = useMemo(() => {

@@ -5,13 +5,14 @@ import (
 )
 
 type SessionClaims struct {
+	jwt.RegisteredClaims
+
 	UserID         string `json:"uid"`
 	TelegramUserID int64  `json:"telegram_user_id"`
-	jwt.RegisteredClaims
 }
 
 func ParseToken(tokenStr string, secret string) (*SessionClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenStr, &SessionClaims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, &SessionClaims{}, func(_ *jwt.Token) (interface{}, error) {
 		return []byte(secret), nil
 	})
 	if err != nil || !token.Valid {

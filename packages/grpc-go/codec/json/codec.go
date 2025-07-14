@@ -8,6 +8,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+//nolint:gochecknoinits // required for connectrpc
 func init() {
 	encoding.RegisterCodec(Codec{})
 }
@@ -18,14 +19,14 @@ func (Codec) Name() string {
 	return "json"
 }
 
-func (codec Codec) Marshal(message interface{}) (out []byte, err error) {
+func (codec Codec) Marshal(message interface{}) ([]byte, error) {
 	if protoMessage, ok := message.(proto.Message); ok {
 		return protojson.Marshal(protoMessage)
 	}
 	return json.Marshal(message)
 }
 
-func (codec Codec) Unmarshal(data []byte, message interface{}) (err error) {
+func (codec Codec) Unmarshal(data []byte, message interface{}) error {
 	if protoMessage, ok := message.(proto.Message); ok {
 		return protojson.Unmarshal(data, protoMessage)
 	}

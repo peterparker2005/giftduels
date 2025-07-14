@@ -2,8 +2,8 @@ package grpc
 
 import (
 	"context"
-	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
@@ -21,16 +21,17 @@ import (
 
 type IdentityEnvoyHandler struct {
 	envoyauthv3.UnimplementedAuthorizationServer
-	tokenSvc token.TokenService
+
+	tokenSvc token.Service
 	logger   *logger.Logger
 }
 
-func NewIdentityEnvoyHandler(ts token.TokenService, lg *logger.Logger) envoyauthv3.AuthorizationServer {
+func NewIdentityEnvoyHandler(ts token.Service, lg *logger.Logger) envoyauthv3.AuthorizationServer {
 	return &IdentityEnvoyHandler{tokenSvc: ts, logger: lg}
 }
 
 func (h *IdentityEnvoyHandler) Check(
-	ctx context.Context,
+	_ context.Context,
 	req *envoyauthv3.CheckRequest,
 ) (*envoyauthv3.CheckResponse, error) {
 	httpReq := req.GetAttributes().GetRequest().GetHttp()
@@ -57,6 +58,7 @@ func (h *IdentityEnvoyHandler) Check(
 	if auth == "" {
 		return denyResponse(codes.Unauthenticated, "missing Authorization header"), nil
 	}
+	//nolint:mnd // just split header by space
 	parts := strings.SplitN(auth, " ", 2)
 	if len(parts) != 2 || parts[0] != "Bearer" {
 		return denyResponse(codes.Unauthenticated, "invalid bearer format"), nil
@@ -73,7 +75,7 @@ func (h *IdentityEnvoyHandler) Check(
 	hdr := &corev3.HeaderValueOption{
 		Header: &corev3.HeaderValue{
 			Key:   authctx.TelegramUserIDKey.String(),
-			Value: fmt.Sprint(claims.TelegramUserID),
+			Value: strconv.FormatInt(claims.TelegramUserID, 10),
 		},
 		Append: wrapperspb.Bool(false),
 	}
@@ -91,9 +93,11 @@ func okResponse(hdrs []*corev3.HeaderValueOption) *envoyauthv3.CheckResponse {
 
 func denyResponse(code codes.Code, msg string) *envoyauthv3.CheckResponse {
 	return &envoyauthv3.CheckResponse{
+		//nolint:gosec // ok
 		Status: &rpcstatus.Status{Code: int32(code), Message: msg},
 		HttpResponse: &envoyauthv3.CheckResponse_DeniedResponse{
 			DeniedResponse: &envoyauthv3.DeniedHttpResponse{
+				//nolint:gosec // ok
 				Status: &typev3.HttpStatus{Code: typev3.StatusCode(code)},
 			},
 		},

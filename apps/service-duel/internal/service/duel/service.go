@@ -9,6 +9,7 @@ import (
 	giftv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1"
 	sharedv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/shared/v1"
 	"github.com/peterparker2005/giftduels/packages/shared"
+	"github.com/peterparker2005/giftduels/packages/tonamount-go"
 )
 
 type DuelService struct {
@@ -34,12 +35,16 @@ func (s *DuelService) GetDuelList(ctx context.Context, pageRequest *shared.PageR
 }
 
 type CreateDuelParams struct {
-	Params       duelDomain.DuelParams
+	Params       duelDomain.Params
 	Participants []duelDomain.Participant
 	Stakes       []duelDomain.Stake
 }
 
-func (s *DuelService) CreateDuel(ctx context.Context, telegramUserID int64, params CreateDuelParams) (duelDomain.ID, error) {
+func (s *DuelService) CreateDuel(
+	ctx context.Context,
+	telegramUserID int64,
+	params CreateDuelParams,
+) (duelDomain.ID, error) {
 	gameID := uuid.New().String()
 	for i, stake := range params.Stakes {
 		gift, err := s.giftPrivateClient.StakeGift(ctx, &giftv1.StakeGiftRequest{
@@ -53,7 +58,11 @@ func (s *DuelService) CreateDuel(ctx context.Context, telegramUserID int64, para
 		if err != nil {
 			return "", err
 		}
-		params.Stakes[i].StakeValue = gift.GetGift().GetPrice().GetValue()
+		price, err := tonamount.NewTonAmountFromString(gift.GetGift().GetPrice().GetValue())
+		if err != nil {
+			return "", err
+		}
+		params.Stakes[i].StakeValue = price
 		params.Stakes[i].TelegramUserID = duelDomain.TelegramUserID(telegramUserID)
 	}
 	duelID, err := duelDomain.NewID(gameID)

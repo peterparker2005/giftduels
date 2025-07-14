@@ -7,7 +7,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// DomainGiftToProto преобразует domain Gift в protobuf Gift
+// DomainGiftToProto преобразует domain Gift в protobuf Gift.
 func DomainGiftToProto(domainGift *gift.Gift) *giftv1.Gift {
 	protoGift := &giftv1.Gift{
 		GiftId:            &sharedv1.GiftId{Value: domainGift.ID},
@@ -15,14 +15,14 @@ func DomainGiftToProto(domainGift *gift.Gift) *giftv1.Gift {
 		Status:            DomainStatusToProto(domainGift.Status),
 		TelegramMessageId: domainGift.UpgradeMessageID,
 		Date:              timestamppb.New(domainGift.CreatedAt),
-		Price:             &sharedv1.TonAmount{Value: domainGift.Price},
+		Price:             &sharedv1.TonAmount{Value: domainGift.Price.String()},
 		TelegramGiftId:    &sharedv1.GiftTelegramId{Value: domainGift.TelegramGiftID},
 		CollectibleId:     domainGift.CollectibleID,
 		Title:             domainGift.Title,
 		Slug:              domainGift.Slug,
-		Backdrop:          DomainBackdropToProto(&domainGift.Backdrop),
-		Model:             DomainModelToProto(&domainGift.Model),
-		Symbol:            DomainSymbolToProto(&domainGift.Symbol),
+		Backdrop:          DomainBackdropToProto(domainGift.Backdrop),
+		Model:             DomainModelToProto(domainGift.Model),
+		Symbol:            DomainSymbolToProto(domainGift.Symbol),
 	}
 
 	if domainGift.WithdrawnAt != nil {
@@ -61,14 +61,14 @@ func DomainAttributesToProto(attributes []gift.Attribute) []*giftv1.GiftAttribut
 	return protoAttributes
 }
 
-// DomainGiftToProtoView преобразует domain Gift в protobuf GiftView
+// DomainGiftToProtoView преобразует domain Gift в protobuf GiftView.
 func DomainGiftToProtoView(domainGift *gift.Gift) *giftv1.GiftView {
 	protoView := &giftv1.GiftView{
 		GiftId:         &sharedv1.GiftId{Value: domainGift.ID},
 		Status:         DomainStatusToProto(domainGift.Status),
 		Title:          domainGift.Title,
 		Slug:           domainGift.Slug,
-		Price:          &sharedv1.TonAmount{Value: domainGift.Price},
+		Price:          &sharedv1.TonAmount{Value: domainGift.Price.String()},
 		TelegramGiftId: &sharedv1.GiftTelegramId{Value: domainGift.TelegramGiftID},
 		CollectibleId:  domainGift.CollectibleID,
 	}
@@ -98,8 +98,8 @@ func DomainGiftToProtoView(domainGift *gift.Gift) *giftv1.GiftView {
 	return protoView
 }
 
-// DomainBackdropToProto преобразует domain Backdrop в protobuf GiftAttributeBackdrop
-func DomainBackdropToProto(backdrop *gift.Backdrop) *giftv1.GiftAttributeBackdrop {
+// DomainBackdropToProto преобразует domain Backdrop в protobuf GiftAttributeBackdrop.
+func DomainBackdropToProto(backdrop gift.Backdrop) *giftv1.GiftAttributeBackdrop {
 	protoBackdrop := &giftv1.GiftAttributeBackdrop{
 		Name:           backdrop.Name,
 		RarityPerMille: backdrop.RarityPerMille,
@@ -121,23 +121,23 @@ func DomainBackdropToProto(backdrop *gift.Backdrop) *giftv1.GiftAttributeBackdro
 	return protoBackdrop
 }
 
-// DomainModelToProto преобразует domain Model в protobuf GiftAttributeModel
-func DomainModelToProto(model *gift.Model) *giftv1.GiftAttributeModel {
+// DomainModelToProto преобразует domain Model в protobuf GiftAttributeModel.
+func DomainModelToProto(model gift.Model) *giftv1.GiftAttributeModel {
 	return &giftv1.GiftAttributeModel{
 		Name:           model.Name,
 		RarityPerMille: model.RarityPerMille,
 	}
 }
 
-// DomainSymbolToProto преобразует domain Symbol в protobuf GiftAttributeSymbol
-func DomainSymbolToProto(symbol *gift.Symbol) *giftv1.GiftAttributeSymbol {
+// DomainSymbolToProto преобразует domain Symbol в protobuf GiftAttributeSymbol.
+func DomainSymbolToProto(symbol gift.Symbol) *giftv1.GiftAttributeSymbol {
 	return &giftv1.GiftAttributeSymbol{
 		Name:           symbol.Name,
 		RarityPerMille: symbol.RarityPerMille,
 	}
 }
 
-// DomainStatusToProto преобразует domain статус в protobuf статус
+// DomainStatusToProto преобразует domain статус в protobuf статус.
 func DomainStatusToProto(domainStatus gift.Status) giftv1.GiftStatus {
 	switch domainStatus {
 	case gift.StatusOwned:

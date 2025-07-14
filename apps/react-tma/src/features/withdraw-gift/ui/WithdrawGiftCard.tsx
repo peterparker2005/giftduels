@@ -1,7 +1,6 @@
 import { GiftView } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
 import { Checkbox } from "@/shared/ui/Checkbox";
 import { Icon } from "@/shared/ui/Icon/Icon";
-import { formatThousands } from "@/shared/utils/formatThousands";
 import { getFragmentUrl } from "@/shared/utils/getFragmentUrl";
 
 interface WithdrawGiftCardProps {
@@ -45,9 +44,7 @@ export const WithdrawGiftCard = ({
 					<div className="rounded-full bg-[#2D9EED] w-5 h-5 flex items-center justify-center">
 						<Icon icon="TON" className="w-3 h-3 shrink-0" />
 					</div>
-					<span className="text-xs font-medium">
-						{formatThousands(gift.price?.value)}
-					</span>
+					<span className="text-xs font-medium">{gift.price?.value}</span>
 				</div>
 			</div>
 			<div className="absolute top-1/2 -translate-y-1/2 right-4 p-1">

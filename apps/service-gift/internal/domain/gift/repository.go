@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/peterparker2005/giftduels/packages/tonamount-go"
 )
 
 type CreateGiftParams struct {
@@ -15,7 +16,7 @@ type CreateGiftParams struct {
 	UpgradeMessageID int32
 	TelegramGiftID   int64
 	Status           Status
-	Price            float64
+	Price            *tonamount.TonAmount
 	Title            string
 	Slug             string
 	CreatedAt        time.Time
@@ -66,26 +67,46 @@ type CreateGiftEventParams struct {
 	Payload       json.RawMessage
 }
 
-type GiftRepository interface {
-	WithTx(tx pgx.Tx) GiftRepository
+type Repository interface {
+	WithTx(tx pgx.Tx) Repository
 	GetGiftByID(ctx context.Context, id string) (*Gift, error)
-	GetUserGifts(ctx context.Context, limit int32, offset int32, ownerTelegramID int64) (*GetUserGiftsResult, error)
-	GetUserActiveGifts(ctx context.Context, limit int32, offset int32, ownerTelegramID int64) (*GetUserGiftsResult, error)
+	GetUserGifts(
+		ctx context.Context,
+		limit int32,
+		offset int32,
+		ownerTelegramID int64,
+	) (*GetUserGiftsResult, error)
+	GetUserActiveGifts(
+		ctx context.Context,
+		limit int32,
+		offset int32,
+		ownerTelegramID int64,
+	) (*GetUserGiftsResult, error)
 	StakeGiftForGame(ctx context.Context, id string) (*Gift, error)
 	UpdateGiftOwner(ctx context.Context, id string, ownerTelegramID int64) (*Gift, error)
 	MarkGiftForWithdrawal(ctx context.Context, id string) (*Gift, error)
 	CancelGiftWithdrawal(ctx context.Context, id string) (*Gift, error)
 	CompleteGiftWithdrawal(ctx context.Context, id string) (*Gift, error)
-	CreateGift(ctx context.Context, params *CreateGiftParams, collectionID, modelID, backdropID, symbolID int32) (*Gift, error)
-	CreateGiftEvent(ctx context.Context, params CreateGiftEventParams) (*GiftEvent, error)
-	GetGiftEvents(ctx context.Context, giftID string, limit int32, offset int32) ([]*GiftEvent, error)
+	CreateGift(
+		ctx context.Context,
+		params *CreateGiftParams,
+		collectionID, modelID, backdropID, symbolID int32,
+	) (*Gift, error)
+	CreateGiftEvent(ctx context.Context, params CreateGiftEventParams) (*Event, error)
+	GetGiftEvents(
+		ctx context.Context,
+		giftID string,
+		limit int32,
+		offset int32,
+	) ([]*Event, error)
 	GetGiftsByIDs(ctx context.Context, ids []string) ([]*Gift, error)
-	SaveGiftWithPrice(ctx context.Context, id string, price float64) (*Gift, error)
+	SaveGiftWithPrice(ctx context.Context, id string, price *tonamount.TonAmount) (*Gift, error)
 
 	// Lookup table methods
 	GetGiftModel(ctx context.Context, id int32) (*Model, error)
 	GetGiftBackdrop(ctx context.Context, id int32) (*Backdrop, error)
 	GetGiftSymbol(ctx context.Context, id int32) (*Symbol, error)
+	GetGiftCollection(ctx context.Context, id int32) (*Collection, error)
 
 	// Create lookup table methods
 	CreateCollection(ctx context.Context, params *CreateCollectionParams) (*Collection, error)

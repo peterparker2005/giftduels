@@ -1,6 +1,9 @@
 package pg
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -22,10 +25,36 @@ func mustPgUUID(id string) pgtype.UUID {
 	return v
 }
 
-func mustPgUUIDs(ids []string) []pgtype.UUID {
-	out := make([]pgtype.UUID, len(ids))
-	for i, id := range ids {
-		out[i] = mustPgUUID(id)
+func pgNumeric(amount string) (pgtype.Numeric, error) {
+	var n pgtype.Numeric
+	if amount == "" {
+		// by default n.Valid == false
+		return n, nil
 	}
-	return out
+	// Numeric.Scan can parse string to pgtype.Numeric
+	if err := n.Scan(amount); err != nil {
+		return n, fmt.Errorf("pgNumeric: invalid numeric %q: %w", amount, err)
+	}
+	return n, nil
+}
+
+func fromPgNumeric(n pgtype.Numeric) (string, error) {
+	if !n.Valid {
+		return "", errors.New("pgNumeric: invalid numeric")
+	}
+	// Value returns driver.Value (usually string)
+	v, err := n.Value()
+	if err != nil {
+		// should not happen, but just in case
+		return "", err
+	}
+	switch s := v.(type) {
+	case string:
+		return s, nil
+	case []byte:
+		return string(s), nil
+	default:
+		// just in case
+		return fmt.Sprint(v), nil
+	}
 }

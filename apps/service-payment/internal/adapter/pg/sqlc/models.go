@@ -163,7 +163,7 @@ type TonCursor struct {
 type UserBalance struct {
 	ID             pgtype.UUID
 	TelegramUserID int64
-	TonAmount      float64
+	TonAmount      pgtype.Numeric
 	CreatedAt      pgtype.Timestamp
 	UpdatedAt      pgtype.Timestamp
 }
@@ -171,7 +171,7 @@ type UserBalance struct {
 type UserTransaction struct {
 	ID             pgtype.UUID
 	TelegramUserID int64
-	Amount         float64
+	Amount         pgtype.Numeric
 	Reason         TransactionReason
 	CreatedAt      pgtype.Timestamp
 	Metadata       []byte

@@ -55,6 +55,6 @@ message GetGiftsRequest {
 
 message GetGiftsResponse {
   repeated GiftView gifts = 1;
-  double total_value = 2;
+  shared.v1.TonAmount total_value = 2;
   shared.v1.PageResponse pagination = 100;
 }

@@ -11,7 +11,7 @@ import (
 
 type TxManager interface {
 	BeginTx(ctx context.Context) (pgx.Tx, error)
-	Sql() *sql.DB
+	SQL() *sql.DB
 }
 
 func NewPgxTxManager(pool *pgxpool.Pool) TxManager {
@@ -26,6 +26,6 @@ func (m *pgxTxManager) BeginTx(ctx context.Context) (pgx.Tx, error) {
 	return m.pool.Begin(ctx)
 }
 
-func (m *pgxTxManager) Sql() *sql.DB {
+func (m *pgxTxManager) SQL() *sql.DB {
 	return stdlib.OpenDBFromPool(m.pool)
 }

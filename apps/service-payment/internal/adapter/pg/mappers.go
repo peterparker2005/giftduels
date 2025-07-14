@@ -4,16 +4,28 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/ccoveille/go-safecast"
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/adapter/pg/sqlc"
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/domain/payment"
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/domain/ton"
+	"github.com/peterparker2005/giftduels/packages/tonamount-go"
 )
 
 func ToBalanceDomain(b sqlc.UserBalance) *payment.Balance {
+	tonAmountStr, err := fromPgNumeric(b.TonAmount)
+	if err != nil {
+		panic(err)
+	}
+
+	tonAmount, err := tonamount.NewTonAmountFromString(tonAmountStr)
+	if err != nil {
+		panic(err)
+	}
+
 	return &payment.Balance{
 		ID:             b.ID.String(),
 		TelegramUserID: b.TelegramUserID,
-		TonAmount:      b.TonAmount,
+		TonAmount:      tonAmount,
 		CreatedAt:      b.CreatedAt.Time,
 		UpdatedAt:      b.UpdatedAt.Time,
 	}
@@ -27,15 +39,23 @@ func ToDepositDomain(d sqlc.Deposit) *ton.Deposit {
 
 	var txLt *uint64
 	if d.TxLt.Valid {
-		val := uint64(d.TxLt.Int64)
+		val, err := safecast.ToUint64(d.TxLt.Int64)
+		if err != nil {
+			panic(err)
+		}
 		txLt = &val
+	}
+
+	amountNano, err := safecast.ToUint64(d.AmountNano)
+	if err != nil {
+		panic(err)
 	}
 
 	return &ton.Deposit{
 		ID:             d.ID.Bytes,
 		TelegramUserID: d.TelegramUserID,
 		Status:         ton.DepositStatus(d.Status),
-		AmountNano:     d.AmountNano,
+		AmountNano:     amountNano,
 		Payload:        d.Payload,
 		ExpiresAt:      d.ExpiresAt.Time,
 		TxHash:         txHash,
@@ -66,10 +86,20 @@ func ToTransactionDomain(t sqlc.UserTransaction) *payment.Transaction {
 		}
 	}
 
+	amountStr, err := fromPgNumeric(t.Amount)
+	if err != nil {
+		panic(err)
+	}
+
+	amount, err := tonamount.NewTonAmountFromString(amountStr)
+	if err != nil {
+		panic(err)
+	}
+
 	return &payment.Transaction{
 		ID:             t.ID.String(),
 		TelegramUserID: t.TelegramUserID,
-		Amount:         t.Amount,
+		Amount:         amount,
 		Reason:         payment.TransactionReason(t.Reason),
 		CreatedAt:      t.CreatedAt.Time,
 		Metadata:       metadata,

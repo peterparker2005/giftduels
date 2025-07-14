@@ -3,25 +3,30 @@ package user
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/google/uuid"
 	"github.com/peterparker2005/giftduels/apps/service-identity/internal/domain/user"
 	identityEvents "github.com/peterparker2005/giftduels/packages/events/identity"
+	"github.com/peterparker2005/giftduels/packages/logger-go"
 	identityv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/identity/v1"
 	sharedv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/shared/v1"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
 
 type Service struct {
 	repo      user.UserRepository
 	publisher message.Publisher
+	log       *logger.Logger
 }
 
-func NewService(userRepo user.UserRepository, publisher message.Publisher) *Service {
+func NewService(userRepo user.UserRepository, publisher message.Publisher, log *logger.Logger) *Service {
 	return &Service{
 		repo:      userRepo,
 		publisher: publisher,
+		log:       log,
 	}
 }
 
@@ -42,16 +47,16 @@ func (s *Service) UpsertUser(ctx context.Context, params *user.CreateUserParams)
 
 	// Если пользователь был создан впервые, публикуем событие
 	if created {
-		if err := s.publishUserCreatedEvent(ctx, u); err != nil {
+		if err = s.publishUserCreatedEvent(u); err != nil {
 			// Логируем ошибку, но не возвращаем её, так как пользователь уже создан
-			fmt.Printf("Failed to publish user created event: %v\n", err)
+			s.log.Error("Failed to publish user created event", zap.Error(err))
 		}
 	}
 
 	return u, nil
 }
 
-func (s *Service) publishUserCreatedEvent(ctx context.Context, u *user.User) error {
+func (s *Service) publishUserCreatedEvent(u *user.User) error {
 	event := &identityv1.NewUserEvent{
 		UserId: &sharedv1.UserId{
 			Value: u.ID,
@@ -71,7 +76,7 @@ func (s *Service) publishUserCreatedEvent(ctx context.Context, u *user.User) err
 	// Добавляем метаданные
 	metadata := map[string]string{
 		"event_type":       identityEvents.TopicUserCreated.String(),
-		"telegram_user_id": fmt.Sprintf("%d", u.TelegramID),
+		"telegram_user_id": strconv.FormatInt(u.TelegramID, 10),
 		"user_id":          u.ID,
 	}
 

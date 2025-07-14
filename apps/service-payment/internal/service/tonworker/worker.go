@@ -2,7 +2,6 @@ package tonworker
 
 import (
 	"context"
-	"strconv"
 	"time"
 
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/config"
@@ -14,7 +13,7 @@ import (
 )
 
 type Processor struct {
-	api             ton.TonAPI
+	api             ton.API
 	depositRepo     ton.DepositRepository
 	paymentService  *payment.Service
 	treasuryAddress string
@@ -23,7 +22,7 @@ type Processor struct {
 }
 
 func NewProcessor(
-	api ton.TonAPI,
+	api ton.API,
 	depositRepo ton.DepositRepository,
 	paymentService *payment.Service,
 	cfg *config.Config,
@@ -47,7 +46,7 @@ func (p *Processor) Start() {
 	}()
 }
 
-func (p *Processor) Stop(ctx context.Context) error {
+func (p *Processor) Stop(_ context.Context) error {
 	if p.cancel != nil {
 		p.cancel()
 	}
@@ -58,86 +57,95 @@ func (p *Processor) run(ctx context.Context) {
 	const retryDelay = 5 * time.Second
 
 	for {
-		// 1) Прекращаем работу, если контекст отменён
-		select {
-		case <-ctx.Done():
+		if ctx.Err() != nil {
 			p.logger.Info("🛑 TON Worker stopping")
 			return
-		default:
 		}
 
-		// 2) Читаем курсор из БД
 		lastLT, err := p.depositRepo.GetCursor(ctx, "testnet", p.treasuryAddress)
 		if err != nil {
 			p.logger.Error("failed to get cursor", zap.Error(err))
 			time.Sleep(retryDelay)
 			continue
 		}
-		p.logger.Info("🔍 TON Worker", zap.Uint64("fromLT", lastLT))
 
-		// 3) Подписываемся и обрабатываем канал
-		txCh := make(chan ton.Transaction)
-		if err := p.api.SubscribeTransactions(ctx, p.treasuryAddress, lastLT, txCh); err != nil {
-			p.logger.Error("subscribe error", zap.Error(err))
-			time.Sleep(retryDelay)
-			continue
-		}
-		p.logger.Info("🚀 TON Worker started")
+		p.subscribeAndProcess(ctx, lastLT, retryDelay)
+	}
+}
 
-		// 4) Читаем из канала, пока он не закроется или не отменится контекст
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case tx, ok := <-txCh:
-				if !ok {
-					p.logger.Warn("⚠️ txCh closed, will retry subscription")
-					time.Sleep(retryDelay)
-					// выйти из внутреннего цикла, чтобы заново подписаться
-					break
-				}
-				// 5) Обрабатываем транзакцию и сохраняем курсор
-				p.logger.Info("🔔 Received",
-					zap.String("amount", tx.Amount),
-					zap.String("currency", tx.Currency),
-					zap.String("sender", tx.Sender),
-					zap.String("payload", tx.Payload),
-				)
+func (p *Processor) subscribeAndProcess(ctx context.Context, fromLT uint64, retryDelay time.Duration) {
+	p.logger.Info("🔍 TON Worker", zap.Uint64("fromLT", fromLT))
 
-				// Process deposit if payload is provided
-				if tx.Payload != "" && tx.Currency == "TON" {
-					amountNano, err := strconv.ParseInt(tx.Amount, 10, 64)
-					if err != nil {
-						p.logger.Warn("failed to parse amount", zap.Error(err), zap.String("amount", tx.Amount))
-					} else {
-						// Decode BOC payload back to original UUID
-						originalPayload, err := boc.DecodeStringFromBOC(tx.Payload)
-						if err != nil {
-							p.logger.Warn("failed to decode BOC payload", zap.Error(err), zap.String("payload", tx.Payload))
-						} else {
-							p.logger.Info("🔓 Decoded BOC payload", zap.String("original", originalPayload), zap.String("boc", tx.Payload))
-							err = p.paymentService.ProcessDepositTransaction(ctx, originalPayload, "", int64(tx.LastLT), amountNano)
-							if err != nil {
-								p.logger.Warn("failed to process deposit transaction", zap.Error(err), zap.String("payload", originalPayload))
-							} else {
-								p.logger.Info("✅ Deposit processed successfully", zap.String("payload", originalPayload), zap.Int64("amount", amountNano))
-							}
-						}
-					}
-				}
+	txCh := make(chan ton.Transaction)
+	if err := p.api.SubscribeTransactions(ctx, p.treasuryAddress, fromLT, txCh); err != nil {
+		p.logger.Error("subscribe error", zap.Error(err))
+		time.Sleep(retryDelay)
+		return
+	}
+	p.logger.Info("🚀 TON Worker started")
 
-				if err := p.depositRepo.UpsertCursor(ctx, "testnet", p.treasuryAddress, tx.LastLT); err != nil {
-					p.logger.Warn("failed to save cursor", zap.Error(err))
-				}
-			}
-			// если канал закрылся — выйти наружу и перезапустить подписку
-			if ctx.Err() != nil {
+	p.readLoop(ctx, txCh, retryDelay)
+}
+
+func (p *Processor) readLoop(ctx context.Context, txCh chan ton.Transaction, retryDelay time.Duration) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case tx, ok := <-txCh:
+			if !ok {
+				p.logger.Warn("txCh closed, will retry subscription")
+				time.Sleep(retryDelay)
 				return
 			}
-			select {
-			case <-txCh:
-			default:
-			}
+			p.handleTx(ctx, tx)
+			p.saveCursor(ctx, tx.LastLT)
 		}
+	}
+}
+
+func (p *Processor) handleTx(ctx context.Context, tx ton.Transaction) {
+	p.logger.Info("🔔 Received",
+		zap.String("amount", tx.Amount.String()),
+		zap.String("currency", tx.Currency),
+		zap.String("sender", tx.Sender),
+		zap.String("payload", tx.Payload),
+	)
+
+	// ранний выход вместо вложенных if
+	if tx.Payload == "" || tx.Currency != "TON" {
+		return
+	}
+
+	p.processDeposit(ctx, tx)
+}
+
+func (p *Processor) processDeposit(ctx context.Context, tx ton.Transaction) {
+	// 1) парсим nano
+	nano, err := tx.Amount.ToNano()
+	if err != nil {
+		p.logger.Warn("invalid amount", zap.String("amount", tx.Amount.String()), zap.Error(err))
+		return
+	}
+
+	// 2) декодируем BOC
+	original, err := boc.DecodeStringFromBOC(tx.Payload)
+	if err != nil {
+		p.logger.Warn("failed to decode BOC", zap.String("payload", tx.Payload), zap.Error(err))
+		return
+	}
+	p.logger.Info("🔓 Decoded BOC", zap.String("original", original))
+
+	// 3) обрабатываем в сервисе
+	if err = p.paymentService.ProcessDepositTransaction(ctx, original, "", tx.LastLT, tx.Amount); err != nil {
+		p.logger.Warn("failed to process deposit", zap.String("payload", original), zap.Error(err))
+	} else {
+		p.logger.Info("✅ Deposit processed", zap.String("payload", original), zap.Uint64("amount", nano))
+	}
+}
+
+func (p *Processor) saveCursor(ctx context.Context, lastLT uint64) {
+	if err := p.depositRepo.UpsertCursor(ctx, "testnet", p.treasuryAddress, lastLT); err != nil {
+		p.logger.Warn("failed to save cursor", zap.Error(err))
 	}
 }

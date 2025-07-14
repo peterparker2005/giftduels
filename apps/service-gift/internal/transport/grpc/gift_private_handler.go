@@ -21,7 +21,10 @@ func NewGiftPrivateHandler(giftService *gift.Service) giftv1.GiftPrivateServiceS
 	}
 }
 
-func (h *giftPrivateHandler) PrivateGetGifts(ctx context.Context, req *giftv1.PrivateGetGiftsRequest) (*giftv1.PrivateGetGiftsResponse, error) {
+func (h *giftPrivateHandler) PrivateGetGifts(
+	ctx context.Context,
+	req *giftv1.PrivateGetGiftsRequest,
+) (*giftv1.PrivateGetGiftsResponse, error) {
 	giftIDs := make([]string, len(req.GetGiftIds()))
 	for i, giftID := range req.GetGiftIds() {
 		giftIDs[i] = giftID.GetValue()
@@ -41,10 +44,20 @@ func (h *giftPrivateHandler) PrivateGetGifts(ctx context.Context, req *giftv1.Pr
 	}, nil
 }
 
-func (h *giftPrivateHandler) GetUserGifts(ctx context.Context, req *giftv1.GetUserGiftsRequest) (*giftv1.GetUserGiftsResponse, error) {
-	pagination := shared.NewPageRequest(req.GetPagination().GetPage(), req.GetPagination().GetPageSize())
+func (h *giftPrivateHandler) GetUserGifts(
+	ctx context.Context,
+	req *giftv1.GetUserGiftsRequest,
+) (*giftv1.GetUserGiftsResponse, error) {
+	pagination := shared.NewPageRequest(
+		req.GetPagination().GetPage(),
+		req.GetPagination().GetPageSize(),
+	)
 
-	domainGifts, err := h.giftService.GetUserGifts(ctx, req.TelegramUserId.Value, pagination)
+	domainGifts, err := h.giftService.GetUserGifts(
+		ctx,
+		req.GetTelegramUserId().GetValue(),
+		pagination,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -66,9 +79,12 @@ func (h *giftPrivateHandler) GetUserGifts(ctx context.Context, req *giftv1.GetUs
 	}, nil
 }
 
-func (h *giftPrivateHandler) StakeGift(ctx context.Context, req *giftv1.StakeGiftRequest) (*giftv1.StakeGiftResponse, error) {
+func (h *giftPrivateHandler) StakeGift(
+	ctx context.Context,
+	req *giftv1.StakeGiftRequest,
+) (*giftv1.StakeGiftResponse, error) {
 	g, err := h.giftService.StakeGift(ctx, gift.StakeGiftParams{
-		GiftID:       req.GetGiftId().Value,
+		GiftID:       req.GetGiftId().GetValue(),
 		GameMetadata: req.GetGameMetadata(),
 	})
 	if err != nil {
@@ -91,8 +107,11 @@ func (h *giftPrivateHandler) StakeGift(ctx context.Context, req *giftv1.StakeGif
 // 	}, nil
 // }
 
-func (h *giftPrivateHandler) PrivateGetGift(ctx context.Context, req *giftv1.PrivateGetGiftRequest) (*giftv1.PrivateGetGiftResponse, error) {
-	g, err := h.giftService.GetGiftByID(ctx, req.GetGiftId().Value)
+func (h *giftPrivateHandler) PrivateGetGift(
+	ctx context.Context,
+	req *giftv1.PrivateGetGiftRequest,
+) (*giftv1.PrivateGetGiftResponse, error) {
+	g, err := h.giftService.GetGiftByID(ctx, req.GetGiftId().GetValue())
 	if err != nil {
 		return nil, err
 	}

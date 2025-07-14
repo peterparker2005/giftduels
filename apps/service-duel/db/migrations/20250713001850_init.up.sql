@@ -70,7 +70,7 @@ CREATE TABLE duel_stakes (
 -- Index to quickly find duels needing auto-roll checks
 CREATE INDEX idx_duels_next_roll_deadline
   ON duels(next_roll_deadline)
-  WHERE status = 'IN_PROGRESS';
+  WHERE status = 'in_progress';
 
 -- Trigger to update updated_at on row change
 CREATE OR REPLACE FUNCTION trg_update_timestamp()

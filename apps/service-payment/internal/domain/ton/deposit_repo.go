@@ -9,7 +9,7 @@ import (
 type SetDepositTransactionParams struct {
 	ID     string
 	TxHash string
-	TxLt   int64
+	TxLt   uint64
 }
 
 // CursorRepository хранит и возвращает last_lt для заданного адреса и сети.

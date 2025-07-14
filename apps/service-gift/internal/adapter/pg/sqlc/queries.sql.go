@@ -162,7 +162,7 @@ type CreateGiftParams struct {
 	Slug             string
 	OwnerTelegramID  int64
 	UpgradeMessageID int32
-	Price            float64
+	Price            pgtype.Numeric
 	CollectibleID    int32
 	CollectionID     int32
 	ModelID          int32
@@ -408,63 +408,50 @@ func (q *Queries) GetGiftBackdrop(ctx context.Context, id int32) (GiftBackdrop, 
 	return i, err
 }
 
-const getGiftByID = `-- name: GetGiftByID :one
-SELECT
-  g.id, g.telegram_gift_id, g.collectible_id, g.owner_telegram_id, g.upgrade_message_id, g.title, g.slug, g.price, g.collection_id, g.model_id, g.backdrop_id, g.symbol_id, g.status, g.created_at, g.updated_at, g.withdrawn_at,
-  gc.id AS collection_id, gc.name AS collection_name, gc.short_name AS collection_short_name,
-  gm.id AS model_id, gm.name AS model_name, gm.short_name AS model_short_name, gm.rarity_per_mille AS model_rarity,
-  gb.id AS backdrop_id, gb.name AS backdrop_name, gb.short_name AS backdrop_short_name, gb.rarity_per_mille AS backdrop_rarity,
-  gb.center_color, gb.edge_color, gb.pattern_color, gb.text_color,
-  gs.id AS symbol_id, gs.name AS symbol_name, gs.short_name AS symbol_short_name, gs.rarity_per_mille AS symbol_rarity
-FROM gifts g
-JOIN gift_collections gc ON gc.id = g.collection_id
-JOIN gift_models gm ON gm.id = g.model_id
-JOIN gift_backdrops gb ON gb.id = g.backdrop_id
-JOIN gift_symbols gs ON gs.id = g.symbol_id
-WHERE g.id = $1
+const getGiftBackdropsByIDs = `-- name: GetGiftBackdropsByIDs :many
+SELECT id, name, short_name, rarity_per_mille, center_color, edge_color, pattern_color, text_color
+FROM gift_backdrops
+WHERE id = ANY($1::int[])
 `
 
-type GetGiftByIDRow struct {
-	ID                  pgtype.UUID
-	TelegramGiftID      int64
-	CollectibleID       int32
-	OwnerTelegramID     int64
-	UpgradeMessageID    int32
-	Title               string
-	Slug                string
-	Price               float64
-	CollectionID        int32
-	ModelID             int32
-	BackdropID          int32
-	SymbolID            int32
-	Status              GiftStatus
-	CreatedAt           pgtype.Timestamptz
-	UpdatedAt           pgtype.Timestamptz
-	WithdrawnAt         pgtype.Timestamptz
-	CollectionID_2      int32
-	CollectionName      string
-	CollectionShortName string
-	ModelID_2           int32
-	ModelName           string
-	ModelShortName      string
-	ModelRarity         int32
-	BackdropID_2        int32
-	BackdropName        string
-	BackdropShortName   string
-	BackdropRarity      int32
-	CenterColor         pgtype.Text
-	EdgeColor           pgtype.Text
-	PatternColor        pgtype.Text
-	TextColor           pgtype.Text
-	SymbolID_2          int32
-	SymbolName          string
-	SymbolShortName     string
-	SymbolRarity        int32
+func (q *Queries) GetGiftBackdropsByIDs(ctx context.Context, dollar_1 []int32) ([]GiftBackdrop, error) {
+	rows, err := q.db.Query(ctx, getGiftBackdropsByIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GiftBackdrop
+	for rows.Next() {
+		var i GiftBackdrop
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ShortName,
+			&i.RarityPerMille,
+			&i.CenterColor,
+			&i.EdgeColor,
+			&i.PatternColor,
+			&i.TextColor,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
-func (q *Queries) GetGiftByID(ctx context.Context, id pgtype.UUID) (GetGiftByIDRow, error) {
+const getGiftByID = `-- name: GetGiftByID :one
+SELECT id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, collection_id, model_id, backdrop_id, symbol_id, status, created_at, updated_at, withdrawn_at
+FROM gifts
+WHERE id = $1
+`
+
+func (q *Queries) GetGiftByID(ctx context.Context, id pgtype.UUID) (Gift, error) {
 	row := q.db.QueryRow(ctx, getGiftByID, id)
-	var i GetGiftByIDRow
+	var i Gift
 	err := row.Scan(
 		&i.ID,
 		&i.TelegramGiftID,
@@ -482,27 +469,46 @@ func (q *Queries) GetGiftByID(ctx context.Context, id pgtype.UUID) (GetGiftByIDR
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.WithdrawnAt,
-		&i.CollectionID_2,
-		&i.CollectionName,
-		&i.CollectionShortName,
-		&i.ModelID_2,
-		&i.ModelName,
-		&i.ModelShortName,
-		&i.ModelRarity,
-		&i.BackdropID_2,
-		&i.BackdropName,
-		&i.BackdropShortName,
-		&i.BackdropRarity,
-		&i.CenterColor,
-		&i.EdgeColor,
-		&i.PatternColor,
-		&i.TextColor,
-		&i.SymbolID_2,
-		&i.SymbolName,
-		&i.SymbolShortName,
-		&i.SymbolRarity,
 	)
 	return i, err
+}
+
+const getGiftCollection = `-- name: GetGiftCollection :one
+SELECT id, name, short_name FROM gift_collections
+WHERE id = $1
+`
+
+func (q *Queries) GetGiftCollection(ctx context.Context, id int32) (GiftCollection, error) {
+	row := q.db.QueryRow(ctx, getGiftCollection, id)
+	var i GiftCollection
+	err := row.Scan(&i.ID, &i.Name, &i.ShortName)
+	return i, err
+}
+
+const getGiftCollectionsByIDs = `-- name: GetGiftCollectionsByIDs :many
+SELECT id, name, short_name
+FROM gift_collections
+WHERE id = ANY($1::int[])
+`
+
+func (q *Queries) GetGiftCollectionsByIDs(ctx context.Context, dollar_1 []int32) ([]GiftCollection, error) {
+	rows, err := q.db.Query(ctx, getGiftCollectionsByIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GiftCollection
+	for rows.Next() {
+		var i GiftCollection
+		if err := rows.Scan(&i.ID, &i.Name, &i.ShortName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getGiftEvents = `-- name: GetGiftEvents :many
@@ -568,6 +574,38 @@ func (q *Queries) GetGiftModel(ctx context.Context, id int32) (GiftModel, error)
 	return i, err
 }
 
+const getGiftModelsByIDs = `-- name: GetGiftModelsByIDs :many
+SELECT id, collection_id, name, short_name, rarity_per_mille
+FROM gift_models
+WHERE id = ANY($1::int[])
+`
+
+func (q *Queries) GetGiftModelsByIDs(ctx context.Context, dollar_1 []int32) ([]GiftModel, error) {
+	rows, err := q.db.Query(ctx, getGiftModelsByIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GiftModel
+	for rows.Next() {
+		var i GiftModel
+		if err := rows.Scan(
+			&i.ID,
+			&i.CollectionID,
+			&i.Name,
+			&i.ShortName,
+			&i.RarityPerMille,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getGiftSymbol = `-- name: GetGiftSymbol :one
 SELECT id, name, short_name, rarity_per_mille FROM gift_symbols
 WHERE id = $1
@@ -585,69 +623,52 @@ func (q *Queries) GetGiftSymbol(ctx context.Context, id int32) (GiftSymbol, erro
 	return i, err
 }
 
-const getGiftsByIDs = `-- name: GetGiftsByIDs :many
-SELECT
-  g.id, g.telegram_gift_id, g.collectible_id, g.owner_telegram_id, g.upgrade_message_id, g.title, g.slug, g.price, g.collection_id, g.model_id, g.backdrop_id, g.symbol_id, g.status, g.created_at, g.updated_at, g.withdrawn_at,
-  gc.id AS collection_id, gc.name AS collection_name, gc.short_name AS collection_short_name,
-  gm.id AS model_id, gm.name AS model_name, gm.short_name AS model_short_name, gm.rarity_per_mille AS model_rarity,
-  gb.id AS backdrop_id, gb.name AS backdrop_name, gb.short_name AS backdrop_short_name, gb.rarity_per_mille AS backdrop_rarity,
-  gb.center_color, gb.edge_color, gb.pattern_color, gb.text_color,
-  gs.id AS symbol_id, gs.name AS symbol_name, gs.short_name AS symbol_short_name, gs.rarity_per_mille AS symbol_rarity
-FROM gifts g
-JOIN gift_collections gc ON gc.id = g.collection_id
-JOIN gift_models gm ON gm.id = g.model_id
-JOIN gift_backdrops gb ON gb.id = g.backdrop_id
-JOIN gift_symbols gs ON gs.id = g.symbol_id
-WHERE g.id = ANY($1::uuid[])
+const getGiftSymbolsByIDs = `-- name: GetGiftSymbolsByIDs :many
+SELECT id, name, short_name, rarity_per_mille
+FROM gift_symbols
+WHERE id = ANY($1::int[])
 `
 
-type GetGiftsByIDsRow struct {
-	ID                  pgtype.UUID
-	TelegramGiftID      int64
-	CollectibleID       int32
-	OwnerTelegramID     int64
-	UpgradeMessageID    int32
-	Title               string
-	Slug                string
-	Price               float64
-	CollectionID        int32
-	ModelID             int32
-	BackdropID          int32
-	SymbolID            int32
-	Status              GiftStatus
-	CreatedAt           pgtype.Timestamptz
-	UpdatedAt           pgtype.Timestamptz
-	WithdrawnAt         pgtype.Timestamptz
-	CollectionID_2      int32
-	CollectionName      string
-	CollectionShortName string
-	ModelID_2           int32
-	ModelName           string
-	ModelShortName      string
-	ModelRarity         int32
-	BackdropID_2        int32
-	BackdropName        string
-	BackdropShortName   string
-	BackdropRarity      int32
-	CenterColor         pgtype.Text
-	EdgeColor           pgtype.Text
-	PatternColor        pgtype.Text
-	TextColor           pgtype.Text
-	SymbolID_2          int32
-	SymbolName          string
-	SymbolShortName     string
-	SymbolRarity        int32
+func (q *Queries) GetGiftSymbolsByIDs(ctx context.Context, dollar_1 []int32) ([]GiftSymbol, error) {
+	rows, err := q.db.Query(ctx, getGiftSymbolsByIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GiftSymbol
+	for rows.Next() {
+		var i GiftSymbol
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ShortName,
+			&i.RarityPerMille,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
-func (q *Queries) GetGiftsByIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]GetGiftsByIDsRow, error) {
+const getGiftsByIDs = `-- name: GetGiftsByIDs :many
+SELECT id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, collection_id, model_id, backdrop_id, symbol_id, status, created_at, updated_at, withdrawn_at
+FROM gifts
+WHERE id = ANY($1::uuid[])
+`
+
+func (q *Queries) GetGiftsByIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]Gift, error) {
 	rows, err := q.db.Query(ctx, getGiftsByIDs, dollar_1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetGiftsByIDsRow
+	var items []Gift
 	for rows.Next() {
-		var i GetGiftsByIDsRow
+		var i Gift
 		if err := rows.Scan(
 			&i.ID,
 			&i.TelegramGiftID,
@@ -665,25 +686,6 @@ func (q *Queries) GetGiftsByIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.WithdrawnAt,
-			&i.CollectionID_2,
-			&i.CollectionName,
-			&i.CollectionShortName,
-			&i.ModelID_2,
-			&i.ModelName,
-			&i.ModelShortName,
-			&i.ModelRarity,
-			&i.BackdropID_2,
-			&i.BackdropName,
-			&i.BackdropShortName,
-			&i.BackdropRarity,
-			&i.CenterColor,
-			&i.EdgeColor,
-			&i.PatternColor,
-			&i.TextColor,
-			&i.SymbolID_2,
-			&i.SymbolName,
-			&i.SymbolShortName,
-			&i.SymbolRarity,
 		); err != nil {
 			return nil, err
 		}
@@ -696,58 +698,12 @@ func (q *Queries) GetGiftsByIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]
 }
 
 const getUserActiveGifts = `-- name: GetUserActiveGifts :many
-SELECT
-  -- поля самого подарка
-  g.id,
-  g.telegram_gift_id,
-  g.collectible_id,
-  g.owner_telegram_id,
-  g.upgrade_message_id,
-  g.title,
-  g.slug,
-  g.price,
-  g.status,
-  g.created_at,
-  g.updated_at,
-  g.withdrawn_at,
-
-  -- collection
-  gc.id   AS collection_id,
-  gc.name AS collection_name,
-  gc.short_name AS collection_short_name,
-
-  -- model (вместе с rarity)
-  gm.id                 AS model_id,
-  gm.name               AS model_name,
-  gm.short_name         AS model_short_name,
-  gm.rarity_per_mille   AS model_rarity,
-
-  -- backdrop (с rarity и цветами)
-  gb.id                 AS backdrop_id,
-  gb.name               AS backdrop_name,
-  gb.short_name         AS backdrop_short_name,
-  gb.rarity_per_mille   AS backdrop_rarity,
-  gb.center_color       AS backdrop_center_color,
-  gb.edge_color         AS backdrop_edge_color,
-  gb.pattern_color      AS backdrop_pattern_color,
-  gb.text_color         AS backdrop_text_color,
-
-  -- symbol (с rarity)
-  gs.id               AS symbol_id,
-  gs.name             AS symbol_name,
-  gs.short_name       AS symbol_short_name,
-  gs.rarity_per_mille AS symbol_rarity
-
-FROM gifts g
-  JOIN gift_collections gc ON gc.id = g.collection_id
-  JOIN gift_models     gm ON gm.id = g.model_id
-  JOIN gift_backdrops  gb ON gb.id = g.backdrop_id
-  JOIN gift_symbols    gs ON gs.id = g.symbol_id
-WHERE g.owner_telegram_id = $1
-  AND g.status NOT IN ('withdrawn','withdraw_pending')
-ORDER BY g.created_at DESC
-LIMIT  $2
-OFFSET $3
+SELECT id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, collection_id, model_id, backdrop_id, symbol_id, status, created_at, updated_at, withdrawn_at
+FROM gifts
+WHERE owner_telegram_id = $1
+  AND status NOT IN ('withdrawn', 'withdraw_pending')
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
 `
 
 type GetUserActiveGiftsParams struct {
@@ -756,49 +712,15 @@ type GetUserActiveGiftsParams struct {
 	Offset          int32
 }
 
-type GetUserActiveGiftsRow struct {
-	ID                   pgtype.UUID
-	TelegramGiftID       int64
-	CollectibleID        int32
-	OwnerTelegramID      int64
-	UpgradeMessageID     int32
-	Title                string
-	Slug                 string
-	Price                float64
-	Status               GiftStatus
-	CreatedAt            pgtype.Timestamptz
-	UpdatedAt            pgtype.Timestamptz
-	WithdrawnAt          pgtype.Timestamptz
-	CollectionID         int32
-	CollectionName       string
-	CollectionShortName  string
-	ModelID              int32
-	ModelName            string
-	ModelShortName       string
-	ModelRarity          int32
-	BackdropID           int32
-	BackdropName         string
-	BackdropShortName    string
-	BackdropRarity       int32
-	BackdropCenterColor  pgtype.Text
-	BackdropEdgeColor    pgtype.Text
-	BackdropPatternColor pgtype.Text
-	BackdropTextColor    pgtype.Text
-	SymbolID             int32
-	SymbolName           string
-	SymbolShortName      string
-	SymbolRarity         int32
-}
-
-func (q *Queries) GetUserActiveGifts(ctx context.Context, arg GetUserActiveGiftsParams) ([]GetUserActiveGiftsRow, error) {
+func (q *Queries) GetUserActiveGifts(ctx context.Context, arg GetUserActiveGiftsParams) ([]Gift, error) {
 	rows, err := q.db.Query(ctx, getUserActiveGifts, arg.OwnerTelegramID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetUserActiveGiftsRow
+	var items []Gift
 	for rows.Next() {
-		var i GetUserActiveGiftsRow
+		var i Gift
 		if err := rows.Scan(
 			&i.ID,
 			&i.TelegramGiftID,
@@ -808,29 +730,14 @@ func (q *Queries) GetUserActiveGifts(ctx context.Context, arg GetUserActiveGifts
 			&i.Title,
 			&i.Slug,
 			&i.Price,
+			&i.CollectionID,
+			&i.ModelID,
+			&i.BackdropID,
+			&i.SymbolID,
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.WithdrawnAt,
-			&i.CollectionID,
-			&i.CollectionName,
-			&i.CollectionShortName,
-			&i.ModelID,
-			&i.ModelName,
-			&i.ModelShortName,
-			&i.ModelRarity,
-			&i.BackdropID,
-			&i.BackdropName,
-			&i.BackdropShortName,
-			&i.BackdropRarity,
-			&i.BackdropCenterColor,
-			&i.BackdropEdgeColor,
-			&i.BackdropPatternColor,
-			&i.BackdropTextColor,
-			&i.SymbolID,
-			&i.SymbolName,
-			&i.SymbolShortName,
-			&i.SymbolRarity,
 		); err != nil {
 			return nil, err
 		}
@@ -857,19 +764,10 @@ func (q *Queries) GetUserActiveGiftsCount(ctx context.Context, ownerTelegramID i
 }
 
 const getUserGifts = `-- name: GetUserGifts :many
-SELECT
-  g.id, g.telegram_gift_id, g.collectible_id, g.owner_telegram_id, g.upgrade_message_id, g.title, g.slug, g.price, g.collection_id, g.model_id, g.backdrop_id, g.symbol_id, g.status, g.created_at, g.updated_at, g.withdrawn_at,
-  gc.id AS collection_id, gc.name AS collection_name, gc.short_name AS collection_short_name,
-  gm.id AS model_id, gm.name AS model_name, gm.short_name AS model_short_name,
-  gb.id AS backdrop_id, gb.name AS backdrop_name, gb.short_name AS backdrop_short_name,
-  gs.id AS symbol_id, gs.name AS symbol_name, gs.short_name AS symbol_short_name
-FROM gifts g
-JOIN gift_collections gc ON gc.id = g.collection_id
-JOIN gift_models gm ON gm.id = g.model_id
-JOIN gift_backdrops gb ON gb.id = g.backdrop_id
-JOIN gift_symbols gs ON gs.id = g.symbol_id
-WHERE g.owner_telegram_id = $1
-ORDER BY g.created_at DESC
+SELECT id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, collection_id, model_id, backdrop_id, symbol_id, status, created_at, updated_at, withdrawn_at
+FROM gifts
+WHERE owner_telegram_id = $1
+ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
 `
 
@@ -879,46 +777,15 @@ type GetUserGiftsParams struct {
 	Offset          int32
 }
 
-type GetUserGiftsRow struct {
-	ID                  pgtype.UUID
-	TelegramGiftID      int64
-	CollectibleID       int32
-	OwnerTelegramID     int64
-	UpgradeMessageID    int32
-	Title               string
-	Slug                string
-	Price               float64
-	CollectionID        int32
-	ModelID             int32
-	BackdropID          int32
-	SymbolID            int32
-	Status              GiftStatus
-	CreatedAt           pgtype.Timestamptz
-	UpdatedAt           pgtype.Timestamptz
-	WithdrawnAt         pgtype.Timestamptz
-	CollectionID_2      int32
-	CollectionName      string
-	CollectionShortName string
-	ModelID_2           int32
-	ModelName           string
-	ModelShortName      string
-	BackdropID_2        int32
-	BackdropName        string
-	BackdropShortName   string
-	SymbolID_2          int32
-	SymbolName          string
-	SymbolShortName     string
-}
-
-func (q *Queries) GetUserGifts(ctx context.Context, arg GetUserGiftsParams) ([]GetUserGiftsRow, error) {
+func (q *Queries) GetUserGifts(ctx context.Context, arg GetUserGiftsParams) ([]Gift, error) {
 	rows, err := q.db.Query(ctx, getUserGifts, arg.OwnerTelegramID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetUserGiftsRow
+	var items []Gift
 	for rows.Next() {
-		var i GetUserGiftsRow
+		var i Gift
 		if err := rows.Scan(
 			&i.ID,
 			&i.TelegramGiftID,
@@ -936,18 +803,6 @@ func (q *Queries) GetUserGifts(ctx context.Context, arg GetUserGiftsParams) ([]G
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.WithdrawnAt,
-			&i.CollectionID_2,
-			&i.CollectionName,
-			&i.CollectionShortName,
-			&i.ModelID_2,
-			&i.ModelName,
-			&i.ModelShortName,
-			&i.BackdropID_2,
-			&i.BackdropName,
-			&i.BackdropShortName,
-			&i.SymbolID_2,
-			&i.SymbolName,
-			&i.SymbolShortName,
 		); err != nil {
 			return nil, err
 		}
@@ -1012,7 +867,7 @@ RETURNING id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_messa
 
 type SaveGiftWithPriceParams struct {
 	ID    pgtype.UUID
-	Price float64
+	Price pgtype.Numeric
 }
 
 func (q *Queries) SaveGiftWithPrice(ctx context.Context, arg SaveGiftWithPriceParams) (Gift, error) {

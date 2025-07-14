@@ -12,9 +12,9 @@ func TelegramIDCtxInterceptor() grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
 		req interface{},
-		info *grpc.UnaryServerInfo,
+		_ *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
-	) (resp interface{}, err error) {
+	) (interface{}, error) {
 		if md, ok := metadata.FromIncomingContext(ctx); ok {
 			if vals := md.Get("x-telegram-user-id"); len(vals) == 1 {
 				if id, errConv := strconv.ParseInt(vals[0], 10, 64); errConv == nil {

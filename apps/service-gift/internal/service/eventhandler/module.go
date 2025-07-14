@@ -11,10 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	amqputil "github.com/peterparker2005/giftduels/apps/service-gift/internal/adapter/amqp"
-	"github.com/peterparker2005/giftduels/apps/service-gift/internal/app"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/config"
-	"github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
-	giftService "github.com/peterparker2005/giftduels/apps/service-gift/internal/service/gift"
 	giftEvents "github.com/peterparker2005/giftduels/packages/events/gift"
 	"github.com/peterparker2005/giftduels/packages/events/telegram"
 	"github.com/peterparker2005/giftduels/packages/events/telegrambot"
@@ -23,8 +20,8 @@ import (
 	"go.uber.org/zap"
 )
 
+//nolint:gochecknoglobals // fx module pattern
 var Module = fx.Options(
-	app.CommonModule,
 	//-------------------------------- AMQP low-level -------------------------------
 	fx.Provide(
 		amqputil.ProvideConnection,
@@ -37,27 +34,17 @@ var Module = fx.Options(
 	),
 
 	//-------------------------------- бизнес-логика --------------------------------
-	fx.Provide(func(
-		repo gift.GiftRepository,
-		publisher message.Publisher,
-		l *logger.Logger,
-	) *TelegramGiftReceivedHandler {
-		return NewTelegramGiftReceivedHandler(repo, publisher, l)
-	}),
+	fx.Provide(
+		NewTelegramGiftReceivedHandler,
+	),
 
-	fx.Provide(func(
-		repo gift.GiftRepository,
-		l *logger.Logger,
-	) *GiftWithdrawFailedHandler {
-		return NewGiftWithdrawFailedHandler(repo, l)
-	}),
+	fx.Provide(
+		NewGiftWithdrawFailedHandler,
+	),
 
-	fx.Provide(func(
-		giftSvc *giftService.Service,
-		l *logger.Logger,
-	) *InvoicePaymentHandler {
-		return NewInvoicePaymentHandler(giftSvc, l)
-	}),
+	fx.Provide(
+		NewInvoicePaymentHandler,
+	),
 
 	//-------------------------------- router & lifecycle ---------------------------
 	fx.Invoke(func(
@@ -71,7 +58,11 @@ var Module = fx.Options(
 		invoicePaymentHandler *InvoicePaymentHandler,
 		pool *pgxpool.Pool,
 	) error {
-		router, err := ProvideRouter(log, pub, giftEvents.Config(cfg.ServiceName).Exchange+".poison")
+		router, err := ProvideRouter(
+			log,
+			pub,
+			giftEvents.Config(cfg.ServiceName).Exchange+".poison",
+		)
 		if err != nil {
 			return err
 		}
@@ -104,17 +95,37 @@ var Module = fx.Options(
 		}
 
 		// ── хендлеры ──────────────────────────────────────────────────────────
-		router.AddNoPublisherHandler("telegram_gift_received", telegram.TopicTelegramGiftReceived.String(), telegramSub, giftReceivedHandler.Handle)
-		router.AddNoPublisherHandler("gift_withdraw_failed", giftEvents.TopicGiftWithdrawFailed.String(), telegramSub, withdrawFailedHandler.Handle)
-		router.AddNoPublisherHandler("invoice_payment_completed", telegrambot.TopicInvoicePaymentCompleted.String(), telegramBotSub, invoicePaymentHandler.Handle)
+		router.AddNoPublisherHandler(
+			"telegram_gift_received",
+			telegram.TopicTelegramGiftReceived.String(),
+			telegramSub,
+			giftReceivedHandler.Handle,
+		)
+		router.AddNoPublisherHandler(
+			"gift_withdraw_failed",
+			giftEvents.TopicGiftWithdrawFailed.String(),
+			telegramSub,
+			withdrawFailedHandler.Handle,
+		)
+		router.AddNoPublisherHandler(
+			"invoice_payment_completed",
+			telegrambot.TopicInvoicePaymentCompleted.String(),
+			telegramBotSub,
+			invoicePaymentHandler.Handle,
+		)
 		// router.AddNoPublisherHandler("tg_gift_poison", giftEvents.Config(cfg.ServiceName).Exchange+".poison", giftSub, func(m *message.Message) error {
 		// 	log.Warn("💀 poison", zap.String("body", string(m.Payload)))
 		// 	return nil
 		// })
 
-		fwd, err := forwarder.NewForwarder(sqlSubscriber, pub, logger.NewWatermill(log), forwarder.Config{
-			ForwarderTopic: giftEvents.SqlOutboxTopic,
-		})
+		fwd, err := forwarder.NewForwarder(
+			sqlSubscriber,
+			pub,
+			logger.NewWatermill(log),
+			forwarder.Config{
+				ForwarderTopic: giftEvents.SQLOutboxTopic,
+			},
+		)
 		if err != nil {
 			return err
 		}
@@ -122,7 +133,8 @@ var Module = fx.Options(
 		lc.Append(fx.Hook{
 			OnStart: func(_ context.Context) error {
 				go func() {
-					if err := fwd.Run(context.Background()); err != nil && !errors.Is(err, context.Canceled) {
+					if err = fwd.Run(context.Background()); err != nil &&
+						!errors.Is(err, context.Canceled) {
 						log.Fatal("forwarder stopped", zap.Error(err))
 					}
 				}()
@@ -146,7 +158,7 @@ var Module = fx.Options(
 				})
 
 				go func() {
-					if err := router.Run(runCtx); err != nil &&
+					if err = router.Run(runCtx); err != nil &&
 						!errors.Is(err, context.Canceled) {
 						log.Fatal("router stopped", zap.Error(err))
 					}

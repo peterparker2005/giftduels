@@ -1,19 +1,17 @@
 package service
 
 import (
-	"github.com/peterparker2005/giftduels/apps/service-gift/internal/adapter/pg"
-	"github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/adapter/portals"
 	giftService "github.com/peterparker2005/giftduels/apps/service-gift/internal/service/gift"
-	"github.com/peterparker2005/giftduels/packages/grpc-go/clients"
-	"github.com/peterparker2005/giftduels/packages/logger-go"
 	"go.uber.org/fx"
 )
 
 // Module предоставляет service зависимости
+//
+//nolint:gochecknoglobals // fx module pattern
 var Module = fx.Module("services",
 	fx.Provide(
-		func(repo gift.GiftRepository, txMgr pg.TxManager, log *logger.Logger, clients *clients.Clients) *giftService.Service {
-			return giftService.New(repo, txMgr, log, clients)
-		},
+		giftService.New,
+		portals.NewPortalsPriceService,
 	),
 )

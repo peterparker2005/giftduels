@@ -11,10 +11,10 @@ var _ identityv1.IdentityPrivateServiceServer = (*IdentityPrivateHandler)(nil)
 type IdentityPrivateHandler struct {
 	identityv1.UnimplementedIdentityPrivateServiceServer
 
-	tokenSvc token.TokenService
+	tokenSvc token.Service
 	logger   *logger.Logger
 }
 
-func NewIdentityPrivateHandler(ts token.TokenService, lg *logger.Logger) identityv1.IdentityPrivateServiceServer {
+func NewIdentityPrivateHandler(ts token.Service, lg *logger.Logger) identityv1.IdentityPrivateServiceServer {
 	return &IdentityPrivateHandler{tokenSvc: ts, logger: lg}
 }

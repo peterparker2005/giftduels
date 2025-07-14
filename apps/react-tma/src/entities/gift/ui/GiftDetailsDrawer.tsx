@@ -1,6 +1,12 @@
 import { GiftView } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useState } from "react";
-import { Drawer, DrawerContent, DrawerTrigger } from "@/shared/ui/Drawer";
+import {
+	Drawer,
+	DrawerContent,
+	DrawerTitle,
+	DrawerTrigger,
+} from "@/shared/ui/Drawer";
 import { GiftDetailsCard } from "./GiftDetailsCard";
 
 interface GiftDetailsDrawerProps {
@@ -26,6 +32,9 @@ export const GiftDetailsDrawer = ({
 				{children}
 			</DrawerTrigger>
 			<DrawerContent className="px-4 pt-4">
+				<VisuallyHidden>
+					<DrawerTitle>{gift.title} details</DrawerTitle>
+				</VisuallyHidden>
 				<GiftDetailsCard gift={gift} onCloseDrawer={() => setIsOpen(false)} />
 			</DrawerContent>
 		</Drawer>

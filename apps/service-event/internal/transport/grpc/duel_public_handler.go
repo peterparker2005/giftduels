@@ -11,7 +11,7 @@ type duelPublicHandler struct {
 	logger *logger.Logger
 }
 
-// NewGiftPublicHandler создает новый GRPC handler
+// NewGiftPublicHandler создает новый GRPC handler.
 func NewDuelPublicHandler(logger *logger.Logger) duelv1.DuelPublicServiceServer {
 	return &duelPublicHandler{
 		logger: logger,

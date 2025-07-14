@@ -1,12 +1,14 @@
 package migratepg
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/golang-migrate/migrate/v4"
+	// Required for registering PostgreSQL driver with golang-migrate.
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	// Required for reading migration files from disk.
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/peterparker2005/giftduels/apps/service-duel/internal/config"
 )
 
 const migrationsPath = "file://db/migrations"
@@ -15,8 +17,8 @@ type Runner struct {
 	m *migrate.Migrate
 }
 
-func New(cfg *config.Config) (*Runner, error) {
-	m, err := migrate.New(migrationsPath, cfg.Database.DSN())
+func NewWithDSN(dsn string) (*Runner, error) {
+	m, err := migrate.New(migrationsPath, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create migrator: %w", err)
 	}
@@ -29,10 +31,10 @@ func (r *Runner) Close() {
 
 func (r *Runner) Down(steps int) error {
 	if steps <= 0 {
-		return fmt.Errorf("steps must be positive")
+		return errors.New("steps must be positive")
 	}
 	err := r.m.Steps(-steps)
-	if err != nil && err != migrate.ErrNoChange {
+	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return err
 	}
 	return nil
@@ -49,7 +51,7 @@ func (r *Runner) Force(version int) error {
 func (r *Runner) Up(steps int) error {
 	if steps == 0 {
 		err := r.m.Up()
-		if err != nil && err != migrate.ErrNoChange {
+		if err != nil && !errors.Is(err, migrate.ErrNoChange) {
 			return err
 		}
 		return nil

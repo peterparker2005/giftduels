@@ -50,7 +50,7 @@ message StarsAmount {
 }
 
 message TonAmount {
-  double value = 1; // Amount in TON
+  string value = 1; // Decimal
 }
 
 // SORT ORDERS

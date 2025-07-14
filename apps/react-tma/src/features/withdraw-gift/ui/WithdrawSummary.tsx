@@ -35,6 +35,20 @@ export const WithdrawSummary = ({
 		);
 	}, [gifts, selectedGiftIds]);
 
+	// Create a map of gift fees for quick lookup
+	const giftFeesMap = useMemo(() => {
+		const map = new Map<string, { starsFee: number; tonFee: number }>();
+		if (previewData?.fees) {
+			previewData.fees.forEach((fee) => {
+				map.set(fee.giftId?.value || "", {
+					starsFee: Number(fee.starsFee?.value || 0),
+					tonFee: Number(fee.tonFee?.value || 0),
+				});
+			});
+		}
+		return map;
+	}, [previewData?.fees]);
+
 	// Handle success with navigation back
 	const handleWithdrawSuccess = () => {
 		if (onSuccess) {
@@ -61,7 +75,7 @@ export const WithdrawSummary = ({
 					<p>Total cost</p>
 					<TonWithdrawalCost
 						isPending={false} // Preview data is already loaded
-						fee={previewData?.totalTonFee?.value}
+						fee={Number(previewData?.totalTonFee?.value || 0)}
 					/>
 					<p>TON</p>
 				</div>
@@ -74,10 +88,12 @@ export const WithdrawSummary = ({
 			<div className="flex flex-col gap-2 flex-1 overflow-y-auto mb-4">
 				{selectedGifts.map((gift) => {
 					const giftId = gift.giftId?.value || "";
+					const giftFee = giftFeesMap.get(giftId);
 					return (
 						<WithdrawSummaryCard
 							key={giftId}
 							gift={gift}
+							fee={giftFee?.tonFee || 0}
 							onRemove={() => onRemoveGift(giftId)}
 						/>
 					);

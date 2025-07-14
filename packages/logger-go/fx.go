@@ -5,17 +5,17 @@ import (
 	"go.uber.org/zap"
 )
 
-// ToFxLogger создает fxevent.Logger из кастомного логгера
+// ToFxLogger создает fxevent.Logger из кастомного логгера.
 func (l *Logger) ToFxLogger() fxevent.Logger {
 	return &fxLogger{logger: l}
 }
 
-// FxLogger адаптер для интеграции с fx.WithLogger
+// FxLogger адаптер для интеграции с fx.WithLogger.
 type fxLogger struct {
 	logger *Logger
 }
 
-// LogEvent реализует интерфейс fxevent.Logger
+// LogEvent реализует интерфейс fxevent.Logger.
 func (f *fxLogger) LogEvent(event fxevent.Event) {
 	switch e := event.(type) {
 	case *fxevent.OnStartExecuting:

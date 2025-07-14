@@ -10,7 +10,7 @@ CREATE TYPE transaction_reason AS ENUM (
 CREATE TABLE user_balances (
 	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	telegram_user_id BIGINT NOT NULL,
-	ton_amount FLOAT NOT NULL,
+	ton_amount NUMERIC(20, 2) NOT NULL,
 	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -19,7 +19,7 @@ CREATE TABLE user_balances (
 CREATE TABLE user_transactions (
 	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	telegram_user_id BIGINT NOT NULL,
-	amount FLOAT NOT NULL,
+	amount NUMERIC(20, 2) NOT NULL,
 	reason transaction_reason NOT NULL,
 	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

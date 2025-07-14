@@ -63,7 +63,7 @@ type Gift struct {
 	UpgradeMessageID int32
 	Title            string
 	Slug             string
-	Price            float64
+	Price            pgtype.Numeric
 	CollectionID     int32
 	ModelID          int32
 	BackdropID       int32

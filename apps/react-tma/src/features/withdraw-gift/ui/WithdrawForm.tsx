@@ -74,7 +74,7 @@ export const WithdrawForm = ({
 					<p>Withdrawal cost</p>
 					<TonWithdrawalCost
 						isPending={isPreviewPending}
-						fee={previewData?.totalTonFee?.value}
+						fee={Number(previewData?.totalTonFee?.value || 0)}
 					/>
 					<p>TON</p>
 				</div>

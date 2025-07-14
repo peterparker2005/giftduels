@@ -20,16 +20,22 @@ type giftPublicHandler struct {
 	logger      *logger.Logger
 }
 
-// NewGiftPublicHandler создает новый GRPC handler
-func NewGiftPublicHandler(giftService *gift.Service, logger *logger.Logger) giftv1.GiftPublicServiceServer {
+// NewGiftPublicHandler создает новый GRPC handler.
+func NewGiftPublicHandler(
+	giftService *gift.Service,
+	logger *logger.Logger,
+) giftv1.GiftPublicServiceServer {
 	return &giftPublicHandler{
 		giftService: giftService,
 		logger:      logger,
 	}
 }
 
-func (h *giftPublicHandler) GetGift(ctx context.Context, req *giftv1.GetGiftRequest) (*giftv1.GetGiftResponse, error) {
-	g, err := h.giftService.GetGiftByID(ctx, req.GetGiftId().Value)
+func (h *giftPublicHandler) GetGift(
+	ctx context.Context,
+	req *giftv1.GetGiftRequest,
+) (*giftv1.GetGiftResponse, error) {
+	g, err := h.giftService.GetGiftByID(ctx, req.GetGiftId().GetValue())
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +45,10 @@ func (h *giftPublicHandler) GetGift(ctx context.Context, req *giftv1.GetGiftRequ
 	}, nil
 }
 
-func (h *giftPublicHandler) GetGifts(ctx context.Context, req *giftv1.GetGiftsRequest) (*giftv1.GetGiftsResponse, error) {
+func (h *giftPublicHandler) GetGifts(
+	ctx context.Context,
+	req *giftv1.GetGiftsRequest,
+) (*giftv1.GetGiftsResponse, error) {
 	telegramUserID, err := authctx.TelegramUserID(ctx)
 	if err != nil {
 		return nil, err
@@ -47,7 +56,10 @@ func (h *giftPublicHandler) GetGifts(ctx context.Context, req *giftv1.GetGiftsRe
 
 	log := h.logger.With(zap.Int64("telegramUserID", telegramUserID))
 
-	pagination := shared.NewPageRequest(req.GetPagination().GetPage(), req.GetPagination().GetPageSize())
+	pagination := shared.NewPageRequest(
+		req.GetPagination().GetPage(),
+		req.GetPagination().GetPageSize(),
+	)
 	domainGifts, err := h.giftService.GetUserActiveGifts(ctx, telegramUserID, pagination)
 	if err != nil {
 		log.Error("Failed to get user active gifts", zap.Error(err))
@@ -60,8 +72,10 @@ func (h *giftPublicHandler) GetGifts(ctx context.Context, req *giftv1.GetGiftsRe
 	}
 
 	return &giftv1.GetGiftsResponse{
-		Gifts:      giftViews,
-		TotalValue: domainGifts.TotalValue,
+		Gifts: giftViews,
+		TotalValue: &sharedv1.TonAmount{
+			Value: domainGifts.TotalValue.String(),
+		},
 		Pagination: &sharedv1.PageResponse{
 			Page:       pagination.Page(),
 			PageSize:   pagination.PageSize(),
@@ -71,7 +85,10 @@ func (h *giftPublicHandler) GetGifts(ctx context.Context, req *giftv1.GetGiftsRe
 	}, nil
 }
 
-func (h *giftPublicHandler) ExecuteWithdraw(ctx context.Context, req *giftv1.ExecuteWithdrawRequest) (*giftv1.ExecuteWithdrawResponse, error) {
+func (h *giftPublicHandler) ExecuteWithdraw(
+	ctx context.Context,
+	req *giftv1.ExecuteWithdrawRequest,
+) (*giftv1.ExecuteWithdrawResponse, error) {
 	telegramUserID, err := authctx.TelegramUserID(ctx)
 	if err != nil {
 		return nil, err
@@ -79,10 +96,15 @@ func (h *giftPublicHandler) ExecuteWithdraw(ctx context.Context, req *giftv1.Exe
 
 	ids := make([]string, len(req.GetGiftIds()))
 	for i, id := range req.GetGiftIds() {
-		ids[i] = id.Value
+		ids[i] = id.GetValue()
 	}
 
-	result, err := h.giftService.ExecuteWithdraw(ctx, telegramUserID, ids, req.GetCommissionCurrency())
+	result, err := h.giftService.ExecuteWithdraw(
+		ctx,
+		telegramUserID,
+		ids,
+		req.GetCommissionCurrency(),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -94,15 +116,14 @@ func (h *giftPublicHandler) ExecuteWithdraw(ctx context.Context, req *giftv1.Exe
 				StarsInvoiceUrl: result.StarsInvoiceURL,
 			},
 		}, nil
-	} else {
-		// Возвращаем успешный ответ для TON
-		return &giftv1.ExecuteWithdrawResponse{
-			Response: &giftv1.ExecuteWithdrawResponse_TonSuccess{
-				TonSuccess: &sharedv1.SuccessResponse{
-					Success: true,
-					Message: "Withdrawal request received",
-				},
-			},
-		}, nil
 	}
+	// Возвращаем успешный ответ для TON
+	return &giftv1.ExecuteWithdrawResponse{
+		Response: &giftv1.ExecuteWithdrawResponse_TonSuccess{
+			TonSuccess: &sharedv1.SuccessResponse{
+				Success: true,
+				Message: "Withdrawal request received",
+			},
+		},
+	}, nil
 }

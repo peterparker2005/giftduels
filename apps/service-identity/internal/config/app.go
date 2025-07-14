@@ -12,12 +12,13 @@ type TelegramConfig struct {
 }
 
 type JWTConfig struct {
-	Secret     string        `yaml:"secret" env:"JWT_SECRET" env-default:"supersecret"`
+	Secret     string        `yaml:"secret"     env:"JWT_SECRET"     env-default:"supersecret"`
 	Expiration time.Duration `yaml:"expiration" env:"JWT_EXPIRATION" env-default:"24h"`
 }
 
 type Config struct {
 	configs.ServiceBaseConfig
+
 	Database configs.DatabaseConfig `yaml:"database"`
 	Logger   configs.LoggerConfig   `yaml:"logger"`
 	Telegram TelegramConfig         `yaml:"telegram"`

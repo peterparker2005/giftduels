@@ -1,7 +1,6 @@
 package grpc
 
 import (
-	"context"
 	"net"
 
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/config"
@@ -25,7 +24,7 @@ type Server struct {
 func NewGRPCServer(
 	cfg *config.Config,
 	listener net.Listener,
-	recover grpc.UnaryServerInterceptor,
+	recoverInterceptor grpc.UnaryServerInterceptor,
 	versionUnary []grpc.UnaryServerInterceptor,
 	versionStream []grpc.StreamServerInterceptor,
 	publicHandler paymentv1.PaymentPublicServiceServer,
@@ -33,7 +32,7 @@ func NewGRPCServer(
 	log *logger.Logger,
 ) *Server {
 	opts := []grpc.ServerOption{
-		grpc.ChainUnaryInterceptor(append(versionUnary, recover, authctx.TelegramIDCtxInterceptor())...),
+		grpc.ChainUnaryInterceptor(append(versionUnary, recoverInterceptor, authctx.TelegramIDCtxInterceptor())...),
 		grpc.ChainStreamInterceptor(versionStream...),
 	}
 
@@ -57,7 +56,7 @@ func NewGRPCServer(
 	}
 }
 
-func (s *Server) Start(ctx context.Context) error {
+func (s *Server) Start() error {
 	go func() {
 		s.log.Info("Starting gRPC server", zap.String("addr", s.listener.Addr().String()))
 		if err := s.grpcServer.Serve(s.listener); err != nil {
@@ -67,7 +66,7 @@ func (s *Server) Start(ctx context.Context) error {
 	return nil
 }
 
-func (s *Server) Stop(ctx context.Context) error {
+func (s *Server) Stop() error {
 	s.log.Info("Stopping gRPC server")
 	s.grpcServer.GracefulStop()
 	return nil
