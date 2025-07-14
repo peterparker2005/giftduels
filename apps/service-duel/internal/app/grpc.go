@@ -32,7 +32,7 @@ var CommonModule = fx.Options(
 	fx.Provide(
 		amqputil.ProvideConnection,
 		func(cfg *config.Config, c *amqp.ConnectionWrapper, l *logger.Logger) (message.Publisher, error) {
-			return amqputil.ProvidePublisher(c, l, duelEvents.Config(cfg.ServiceName))
+			return amqputil.ProvidePublisher(c, l, duelEvents.Config(cfg.ServiceName.String()))
 		},
 	),
 )

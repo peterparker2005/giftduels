@@ -8,7 +8,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	amqputil "github.com/peterparker2005/giftduels/apps/service-payment/internal/adapter/amqp"
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/config"
-	giftEvents "github.com/peterparker2005/giftduels/packages/events/gift"
 	"github.com/peterparker2005/giftduels/packages/events/identity"
 	paymentEvents "github.com/peterparker2005/giftduels/packages/events/payment"
 	telegramEvents "github.com/peterparker2005/giftduels/packages/events/telegram"
@@ -25,7 +24,7 @@ var Module = fx.Options(
 		amqputil.ProvideSubFactory,
 
 		func(cfg *config.Config, c *amqp.ConnectionWrapper, l *logger.Logger) (message.Publisher, error) {
-			return amqputil.ProvidePublisher(c, l, paymentEvents.Config(cfg.ServiceName))
+			return amqputil.ProvidePublisher(c, l, paymentEvents.Config(cfg.ServiceName.String()))
 		},
 	),
 
@@ -45,18 +44,18 @@ var Module = fx.Options(
 		router, err := ProvideRouter(
 			log,
 			pub,
-			paymentEvents.Config(cfg.ServiceName).Exchange+".poison",
+			paymentEvents.Config(cfg.ServiceName.String()).Exchange+".poison",
 		)
 		if err != nil {
 			return err
 		}
 
-		identitySub, err := subFac(identity.Config(cfg.ServiceName))
+		identitySub, err := subFac(identity.Config(cfg.ServiceName.String()))
 		if err != nil {
 			return err
 		}
 
-		telegramSub, err := subFac(telegramEvents.Config(cfg.ServiceName))
+		telegramSub, err := subFac(telegramEvents.Config(cfg.ServiceName.String()))
 		if err != nil {
 			return err
 		}
@@ -69,7 +68,7 @@ var Module = fx.Options(
 		)
 		router.AddNoPublisherHandler(
 			"telegram_gift_withdraw_fail",
-			giftEvents.TopicGiftWithdrawFailed.String(),
+			telegramEvents.TopicTelegramGiftWithdrawFailed.String(),
 			telegramSub,
 			telegramGiftWithdrawFailHandler.Handle,
 		)

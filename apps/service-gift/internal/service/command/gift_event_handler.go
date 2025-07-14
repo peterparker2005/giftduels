@@ -5,19 +5,19 @@ import (
 	"fmt"
 
 	giftDomain "github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
+	"github.com/peterparker2005/giftduels/packages/logger-go"
 	giftv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1"
 	"github.com/peterparker2005/giftduels/packages/tonamount-go"
-	"go.uber.org/zap"
 )
 
 type GiftEventHandler struct {
 	repo giftDomain.Repository
-	log  *zap.Logger
+	log  *logger.Logger
 }
 
 func NewGiftEventHandler(
 	repo giftDomain.Repository,
-	log *zap.Logger,
+	log *logger.Logger,
 ) *GiftEventHandler {
 	return &GiftEventHandler{
 		repo: repo,

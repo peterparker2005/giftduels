@@ -5,6 +5,7 @@ import (
 
 	giftDomain "github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
 	"github.com/peterparker2005/giftduels/packages/grpc-go/clients"
+	"github.com/peterparker2005/giftduels/packages/logger-go"
 	duelv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/duel/v1"
 	sharedv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/shared/v1"
 	"go.uber.org/zap"
@@ -12,13 +13,13 @@ import (
 
 type GiftReadService struct {
 	repo              giftDomain.Repository
-	log               *zap.Logger
+	log               *logger.Logger
 	duelPrivateClient duelv1.DuelPrivateServiceClient
 }
 
 func NewGiftReadService(
 	repo giftDomain.Repository,
-	log *zap.Logger,
+	log *logger.Logger,
 	clients *clients.Clients,
 ) *GiftReadService {
 	return &GiftReadService{

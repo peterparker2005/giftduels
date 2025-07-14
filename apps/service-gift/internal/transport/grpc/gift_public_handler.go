@@ -3,7 +3,8 @@ package grpc
 import (
 	"context"
 
-	"github.com/peterparker2005/giftduels/apps/service-gift/internal/service/gift"
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/service/query"
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/service/saga"
 	"github.com/peterparker2005/giftduels/packages/grpc-go/authctx"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	giftv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1"
@@ -16,18 +17,24 @@ type giftPublicHandler struct {
 	giftv1.GiftPublicServiceServer
 
 	// зависимость от сервисного слоя
-	giftService *gift.Service
-	logger      *logger.Logger
+	withdrawalSaga   *saga.WithdrawalSaga
+	giftReadService  *query.GiftReadService
+	userGiftsService *query.UserGiftsService
+	logger           *logger.Logger
 }
 
 // NewGiftPublicHandler создает новый GRPC handler.
 func NewGiftPublicHandler(
-	giftService *gift.Service,
+	withdrawalSaga *saga.WithdrawalSaga,
+	giftReadService *query.GiftReadService,
+	userGiftsService *query.UserGiftsService,
 	logger *logger.Logger,
 ) giftv1.GiftPublicServiceServer {
 	return &giftPublicHandler{
-		giftService: giftService,
-		logger:      logger,
+		withdrawalSaga:   withdrawalSaga,
+		giftReadService:  giftReadService,
+		userGiftsService: userGiftsService,
+		logger:           logger,
 	}
 }
 
@@ -35,7 +42,7 @@ func (h *giftPublicHandler) GetGift(
 	ctx context.Context,
 	req *giftv1.GetGiftRequest,
 ) (*giftv1.GetGiftResponse, error) {
-	g, err := h.giftService.GetGiftByID(ctx, req.GetGiftId().GetValue())
+	g, err := h.giftReadService.GetGiftByID(ctx, req.GetGiftId().GetValue())
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +67,7 @@ func (h *giftPublicHandler) GetGifts(
 		req.GetPagination().GetPage(),
 		req.GetPagination().GetPageSize(),
 	)
-	domainGifts, err := h.giftService.GetUserActiveGifts(ctx, telegramUserID, pagination)
+	domainGifts, err := h.userGiftsService.GetUserActiveGifts(ctx, telegramUserID, pagination)
 	if err != nil {
 		log.Error("Failed to get user active gifts", zap.Error(err))
 		return nil, err
@@ -99,7 +106,7 @@ func (h *giftPublicHandler) ExecuteWithdraw(
 		ids[i] = id.GetValue()
 	}
 
-	result, err := h.giftService.ExecuteWithdraw(
+	result, err := h.withdrawalSaga.ExecuteWithdraw(
 		ctx,
 		telegramUserID,
 		ids,

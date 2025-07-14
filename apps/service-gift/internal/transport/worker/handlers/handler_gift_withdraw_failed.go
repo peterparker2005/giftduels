@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/ThreeDotsLabs/watermill/message"
-	giftdomain "github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/service/saga"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	giftv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1"
 	"go.uber.org/zap"
@@ -14,16 +14,16 @@ import (
 )
 
 type GiftWithdrawFailedHandler struct {
-	repo   giftdomain.Repository
+	saga   *saga.WithdrawalSaga
 	logger *logger.Logger
 }
 
 func NewGiftWithdrawFailedHandler(
-	repo giftdomain.Repository,
+	saga *saga.WithdrawalSaga,
 	logger *logger.Logger,
 ) *GiftWithdrawFailedHandler {
 	return &GiftWithdrawFailedHandler{
-		repo:   repo,
+		saga:   saga,
 		logger: logger,
 	}
 }
@@ -63,7 +63,7 @@ func (h *GiftWithdrawFailedHandler) Handle(msg *message.Message) error {
 	log.Info("Processing gift withdrawal failure, rolling back status")
 
 	// Отменяем вывод подарка - возвращаем статус с withdraw_pending на owned
-	gift, err := h.repo.CancelGiftWithdrawal(ctx, ev.GetGiftId().GetValue())
+	gift, err := h.saga.CancelGiftWithdrawal(ctx, ev.GetGiftId().GetValue())
 	if err != nil {
 		log.Error("Failed to cancel gift withdrawal", zap.Error(err))
 

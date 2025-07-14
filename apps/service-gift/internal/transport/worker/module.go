@@ -7,7 +7,10 @@ import (
 	"github.com/ThreeDotsLabs/watermill/components/forwarder"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/adapter/amqp"
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/config"
 	workerhandlers "github.com/peterparker2005/giftduels/apps/service-gift/internal/transport/worker/handlers"
+	telegramEvents "github.com/peterparker2005/giftduels/packages/events/telegram"
+	telegrambotEvents "github.com/peterparker2005/giftduels/packages/events/telegrambot"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -31,33 +34,50 @@ var Module = fx.Options(
 
 func registerHandlers(
 	lc fx.Lifecycle,
-	sub message.Subscriber,
+	cfg *config.Config,
+	subFac amqp.SubFactory,
 	fwd *forwarder.Forwarder,
-	tgHandler workerhandlers.TelegramGiftReceivedHandler,
-	failHandler workerhandlers.GiftWithdrawFailedHandler,
-	invHandler workerhandlers.InvoicePaymentHandler,
+	tgHandler *workerhandlers.TelegramGiftReceivedHandler,
+	failHandler *workerhandlers.GiftWithdrawFailedHandler,
+	invHandler *workerhandlers.InvoicePaymentHandler,
 	router *message.Router,
 	log *logger.Logger,
-) {
+) error {
+	// Создаем подписчиков для разных топиков
+	telegramSub, err := subFac(telegramEvents.Config(cfg.ServiceName.String()))
+	if err != nil {
+		return err
+	}
+
+	telegrambotSub, err := subFac(telegrambotEvents.Config(cfg.ServiceName.String()))
+	if err != nil {
+		return err
+	}
+
 	// регистрируем каждый
-	router.AddNoPublisherHandler("tg_gift_recv", "telegram.gift.received", sub, tgHandler.Handle)
+	router.AddNoPublisherHandler(
+		"tg_gift_recv",
+		telegramEvents.TopicTelegramGiftReceived.String(),
+		telegramSub,
+		tgHandler.Handle,
+	)
 	router.AddNoPublisherHandler(
 		"gift_withdraw_fail",
-		"gift.withdraw.failed",
-		sub,
+		telegramEvents.TopicTelegramGiftWithdrawFailed.String(),
+		telegramSub,
 		failHandler.Handle,
 	)
 	router.AddNoPublisherHandler(
 		"invoice_paid",
-		"invoice.payment.completed",
-		sub,
+		telegrambotEvents.TopicInvoicePaymentCompleted.String(),
+		telegrambotSub,
 		invHandler.Handle,
 	)
 
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
 			go func() {
-				if err := fwd.Run(context.Background()); err != nil &&
+				if err = fwd.Run(context.Background()); err != nil &&
 					!errors.Is(err, context.Canceled) {
 					log.Fatal("forwarder stopped", zap.Error(err))
 				}
@@ -82,7 +102,7 @@ func registerHandlers(
 			})
 
 			go func() {
-				if err := router.Run(runCtx); err != nil &&
+				if err = router.Run(runCtx); err != nil &&
 					!errors.Is(err, context.Canceled) {
 					log.Fatal("router stopped", zap.Error(err))
 				}
@@ -90,4 +110,6 @@ func registerHandlers(
 			return nil
 		},
 	})
+
+	return nil
 }

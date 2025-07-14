@@ -19,7 +19,6 @@ const (
 func ProvideRouter(
 	log *logger.Logger,
 	pub message.Publisher,
-	poisonKey string, // ?.events.poison and etc.
 ) (*message.Router, error) {
 	r, err := message.NewRouter(message.RouterConfig{}, logger.NewWatermill(log))
 	if err != nil {
@@ -32,7 +31,8 @@ func ProvideRouter(
 		InitialInterval: defaultInitialInterval,
 		Multiplier:      defaultMultiplier,
 	}
-	poison, err := middleware.PoisonQueue(pub, poisonKey)
+	// TODO: add poison key to config?
+	poison, err := middleware.PoisonQueue(pub, "gift.events.poison")
 	if err != nil {
 		return nil, err
 	}

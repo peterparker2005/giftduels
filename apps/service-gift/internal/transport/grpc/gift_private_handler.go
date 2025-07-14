@@ -3,7 +3,9 @@ package grpc
 import (
 	"context"
 
-	"github.com/peterparker2005/giftduels/apps/service-gift/internal/service/gift"
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/service/command"
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/service/query"
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/service/saga"
 	giftv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1"
 	sharedv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/shared/v1"
 	"github.com/peterparker2005/giftduels/packages/shared"
@@ -12,12 +14,16 @@ import (
 type giftPrivateHandler struct {
 	giftv1.GiftPrivateServiceServer
 
-	giftService *gift.Service
+	withdrawalSaga      *saga.WithdrawalSaga
+	giftStakeCommand    *command.GiftStakeCommand
+	giftWithdrawCommand *command.GiftWithdrawCommand
+	giftReadService     *query.GiftReadService
+	userGiftsService    *query.UserGiftsService
 }
 
-func NewGiftPrivateHandler(giftService *gift.Service) giftv1.GiftPrivateServiceServer {
+func NewGiftPrivateHandler(withdrawalSaga *saga.WithdrawalSaga) giftv1.GiftPrivateServiceServer {
 	return &giftPrivateHandler{
-		giftService: giftService,
+		withdrawalSaga: withdrawalSaga,
 	}
 }
 
@@ -29,7 +35,7 @@ func (h *giftPrivateHandler) PrivateGetGifts(
 	for i, giftID := range req.GetGiftIds() {
 		giftIDs[i] = giftID.GetValue()
 	}
-	gifts, err := h.giftService.GetGiftsByIDs(ctx, giftIDs)
+	gifts, err := h.giftReadService.GetGiftsByIDs(ctx, giftIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +59,7 @@ func (h *giftPrivateHandler) GetUserGifts(
 		req.GetPagination().GetPageSize(),
 	)
 
-	domainGifts, err := h.giftService.GetUserGifts(
+	domainGifts, err := h.userGiftsService.GetUserGifts(
 		ctx,
 		req.GetTelegramUserId().GetValue(),
 		pagination,
@@ -83,7 +89,7 @@ func (h *giftPrivateHandler) StakeGift(
 	ctx context.Context,
 	req *giftv1.StakeGiftRequest,
 ) (*giftv1.StakeGiftResponse, error) {
-	g, err := h.giftService.StakeGift(ctx, gift.StakeGiftParams{
+	g, err := h.giftStakeCommand.StakeGift(ctx, command.StakeGiftParams{
 		GiftID:         req.GetGiftId().GetValue(),
 		TelegramUserID: req.GetTelegramUserId().GetValue(),
 		GameMetadata:   req.GetGameMetadata(),
@@ -112,7 +118,7 @@ func (h *giftPrivateHandler) PrivateGetGift(
 	ctx context.Context,
 	req *giftv1.PrivateGetGiftRequest,
 ) (*giftv1.PrivateGetGiftResponse, error) {
-	g, err := h.giftService.GetGiftByID(ctx, req.GetGiftId().GetValue())
+	g, err := h.giftReadService.GetGiftByID(ctx, req.GetGiftId().GetValue())
 	if err != nil {
 		return nil, err
 	}

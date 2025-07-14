@@ -117,7 +117,7 @@ export class GiftTransferer {
 		});
 
 		await this.publisher.publishProto({
-			routingKey: "telegram.gift.withdraw.user.not.found",
+			routingKey: "gift.withdraw.user-not-found",
 			schema: GiftWithdrawUserNotFoundEventSchema,
 			msg: evt,
 			opts: { messageId: uuidv4() },

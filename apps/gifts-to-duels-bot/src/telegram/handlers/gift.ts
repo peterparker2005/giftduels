@@ -59,7 +59,7 @@ export async function nftGiftHandler(client: TelegramClient) {
 			logger.debug({ gift }, "📦 Parsed NFT gift");
 
 			await publisher.publishProto({
-				routingKey: "telegram.gift.received",
+				routingKey: "gift.received",
 				schema: TelegramGiftReceivedEventSchema,
 				msg: gift,
 			});

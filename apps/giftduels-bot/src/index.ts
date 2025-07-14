@@ -4,6 +4,7 @@ import { Consumer } from "./amqp/consumer";
 import { GiftDepositedHandler } from "./amqp/handlers/GiftDepositedHandler";
 import { GiftWithdrawFailedHandler } from "./amqp/handlers/GiftWithdrawFailedHandler";
 import { GiftWithdrawnHandler } from "./amqp/handlers/GiftWithdrawnHandler";
+import { GiftWithdrawUserNotFoundHandler } from "./amqp/handlers/GiftWithdrawUserNotFoundHandler";
 import { getContainer } from "./container";
 import { grpcServerPlugin } from "./grpc/plugin";
 import { logger } from "./logger";
@@ -45,7 +46,7 @@ async function main() {
 					name: "telegram.events",
 					type: "topic",
 				},
-				routingKey: "telegram.gift.withdraw.failed",
+				routingKey: "gift.withdraw.failed",
 				maxRetries: 3,
 			},
 			async (message, properties, ctrl) => {
@@ -62,11 +63,28 @@ async function main() {
 					name: "telegram.events",
 					type: "topic",
 				},
-				routingKey: "telegram.gift.withdrawn",
+				routingKey: "gift.withdrawn",
 				maxRetries: 3,
 			},
 			async (message, properties, ctrl) => {
 				new GiftWithdrawnHandler(notificationService).handle(
+					message,
+					properties,
+					ctrl,
+				);
+			},
+		),
+		new Consumer(
+			{
+				exchange: {
+					name: "telegram.events",
+					type: "topic",
+				},
+				routingKey: "gift.withdraw.user-not-found",
+				maxRetries: 3,
+			},
+			async (message, properties, ctrl) => {
+				new GiftWithdrawUserNotFoundHandler(notificationService).handle(
 					message,
 					properties,
 					ctrl,

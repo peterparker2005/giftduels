@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/peterparker2005/giftduels/apps/service-gift/internal/service/gift"
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/service/saga"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	telegrambotv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/telegrambot/v1"
 	"go.uber.org/zap"
@@ -14,17 +14,17 @@ import (
 )
 
 type InvoicePaymentHandler struct {
-	giftService *gift.Service
-	logger      *logger.Logger
+	withdrawalSaga *saga.WithdrawalSaga
+	logger         *logger.Logger
 }
 
 func NewInvoicePaymentHandler(
-	giftService *gift.Service,
+	withdrawalSaga *saga.WithdrawalSaga,
 	logger *logger.Logger,
 ) *InvoicePaymentHandler {
 	return &InvoicePaymentHandler{
-		giftService: giftService,
-		logger:      logger,
+		withdrawalSaga: withdrawalSaga,
+		logger:         logger,
 	}
 }
 
@@ -89,7 +89,7 @@ func (h *InvoicePaymentHandler) Handle(msg *message.Message) error {
 	log.Info("completing stars withdrawal", zap.Strings("gift_ids", giftIDs))
 
 	// Завершаем Stars withdrawal
-	gifts, err := h.giftService.CompleteStarsWithdrawal(ctx, giftIDs)
+	gifts, err := h.withdrawalSaga.CompleteStarsWithdrawal(ctx, giftIDs)
 	if err != nil {
 		log.Error("failed to complete stars withdrawal", zap.Error(err))
 		return fmt.Errorf("complete stars withdrawal: %w", err)

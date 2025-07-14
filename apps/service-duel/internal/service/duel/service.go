@@ -88,11 +88,14 @@ func (s *Service) GetDuelList(
 				)
 			}
 		}
-		userResp, err := s.identityPrivateClient.GetUsersByIDs(ctx, &identityv1.GetUsersByIDsRequest{
-			TelegramUserIds: []*sharedv1.TelegramUserId{
-				{Value: duel.Participants[0].TelegramUserID.Int64()},
+		userResp, err := s.identityPrivateClient.GetUsersByIDs(
+			ctx,
+			&identityv1.GetUsersByIDsRequest{
+				TelegramUserIds: []*sharedv1.TelegramUserId{
+					{Value: duel.Participants[0].TelegramUserID.Int64()},
+				},
 			},
-		})
+		)
 		for i, user := range userResp.GetUsers() {
 			duel.Participants[i].PhotoURL = user.GetPhotoUrl()
 		}

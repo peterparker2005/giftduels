@@ -571,3 +571,10 @@ func (s *WithdrawalSaga) createWithdrawEvent(
 	}
 	return message.NewMessage(watermill.NewUUID(), payload), nil
 }
+
+func (s *WithdrawalSaga) CancelGiftWithdrawal(
+	ctx context.Context,
+	giftID string,
+) (*giftDomain.Gift, error) {
+	return s.repo.CancelGiftWithdrawal(ctx, giftID)
+}

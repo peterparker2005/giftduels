@@ -1,6 +1,7 @@
 import type { Bot } from "grammy";
 import { InlineKeyboard } from "grammy";
 import { config } from "@/config";
+import { container } from "@/container";
 import { logger } from "@/logger";
 import { ExtendedContext } from "@/types/context";
 
@@ -11,7 +12,11 @@ type NotificationMessage = {
 };
 
 export class NotificationService {
-	constructor(private bot: Bot<ExtendedContext>) {}
+	private bot: Bot<ExtendedContext>;
+
+	constructor() {
+		this.bot = container.resolve("bot");
+	}
 
 	private async send(telegramUserId: number, msg: NotificationMessage) {
 		try {
@@ -64,6 +69,14 @@ Find game or create your own`;
 It might be technical issue or temporary Telegram API limitation.
 
 Please try again later or contact support if the issue persists 👉 @GiftDuelsHelp`;
+
+		await this.send(telegramUserId, { text, parseMode: "HTML" });
+	}
+
+	async sendGiftWithdrawUserNotFoundNotification(telegramUserId: number) {
+		const text = `⚠️ Warning! It seems you haven't interacted with our bot for a while, so we can't send you the gift.
+
+Please send a sticker and try withdrawing your gift again.`;
 
 		await this.send(telegramUserId, { text, parseMode: "HTML" });
 	}

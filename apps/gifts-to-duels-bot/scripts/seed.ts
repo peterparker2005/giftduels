@@ -18,7 +18,7 @@ async function seed() {
 		const event = parseSavedStarGiftToEvent(savedGift, ownerTelegramId);
 
 		await publisher.publishProto({
-			routingKey: "telegram.gift.received",
+			routingKey: "gift.received",
 			schema: TelegramGiftReceivedEventSchema,
 			msg: event,
 		});

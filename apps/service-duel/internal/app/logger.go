@@ -15,10 +15,10 @@ var LoggerModule = fx.Module("logger",
 	fx.Provide(
 		func(cfg *config.Config) (*logger.Logger, error) {
 			return logger.NewLogger(logger.Config{
-				Service:     cfg.ServiceName,
+				Service:     cfg.ServiceName.String(),
 				Level:       cfg.Logger.LogLevel,
 				Pretty:      cfg.Logger.Pretty,
-				Environment: cfg.Environment,
+				Environment: cfg.Environment.String(),
 				Version:     version.Version,
 			})
 		},

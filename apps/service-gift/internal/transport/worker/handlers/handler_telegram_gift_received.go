@@ -10,7 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/pricing"
-	giftService "github.com/peterparker2005/giftduels/apps/service-gift/internal/service/gift"
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/service/command"
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/service/saga"
 	giftEvents "github.com/peterparker2005/giftduels/packages/events/gift"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	giftv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1"
@@ -21,23 +22,26 @@ import (
 )
 
 type TelegramGiftReceivedHandler struct {
-	giftService  *giftService.Service
-	priceService pricing.PriceService
-	publisher    message.Publisher
-	logger       *logger.Logger
+	withdrawalSaga   *saga.WithdrawalSaga
+	giftEventHandler *command.GiftEventHandler
+	priceService     pricing.PriceService
+	publisher        message.Publisher
+	logger           *logger.Logger
 }
 
 func NewTelegramGiftReceivedHandler(
-	giftService *giftService.Service,
+	withdrawalSaga *saga.WithdrawalSaga,
+	giftEventHandler *command.GiftEventHandler,
 	priceService pricing.PriceService,
 	publisher message.Publisher,
 	logger *logger.Logger,
 ) *TelegramGiftReceivedHandler {
 	return &TelegramGiftReceivedHandler{
-		giftService:  giftService,
-		priceService: priceService,
-		publisher:    publisher,
-		logger:       logger,
+		withdrawalSaga:   withdrawalSaga,
+		giftEventHandler: giftEventHandler,
+		priceService:     priceService,
+		publisher:        publisher,
+		logger:           logger,
 	}
 }
 
@@ -66,7 +70,7 @@ func (h *TelegramGiftReceivedHandler) Handle(msg *message.Message) error {
 	}
 
 	// Process attributes
-	attrs, err := h.giftService.ProcessAttributesFromEvent(ctx, ev)
+	attrs, err := h.giftEventHandler.ProcessAttributesFromEvent(ctx, ev)
 	if err != nil {
 		return fmt.Errorf("process attributes: %w", err)
 	}
@@ -140,7 +144,7 @@ func (h *TelegramGiftReceivedHandler) createGift(
 	price *tonamount.TonAmount,
 	attrs *gift.AttributeData,
 ) error {
-	_, err := h.giftService.CreateGiftFromEvent(ctx, giftID, ev, price, attrs)
+	_, err := h.giftEventHandler.CreateGiftFromEvent(ctx, giftID, ev, price, attrs)
 	if err != nil {
 		h.logger.Error("Failed to save gift", zap.Error(err))
 		return fmt.Errorf("save gift: %w", err)

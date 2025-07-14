@@ -3,16 +3,20 @@ package amqp
 import (
 	"github.com/ThreeDotsLabs/watermill-amqp/v3/pkg/amqp"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/peterparker2005/giftduels/packages/events"
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/config"
+	giftevents "github.com/peterparker2005/giftduels/packages/events/gift"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 )
 
 func ProvidePublisher(
 	conn *amqp.ConnectionWrapper,
 	log *logger.Logger,
-	cfg events.AMQPConfig,
+	cfg *config.Config,
 ) (message.Publisher, error) {
+	amqpCfg := giftevents.Config(cfg.ServiceName.String())
 	return amqp.NewPublisherWithConnection(
-		cfg.Build(), logger.NewWatermill(log), conn,
+		amqpCfg.Build(),
+		logger.NewWatermill(log),
+		conn,
 	)
 }

@@ -17,7 +17,7 @@ var Module = fx.Options(
 		amqputil.ProvideConnection,
 
 		func(cfg *config.Config, c *amqp.ConnectionWrapper, l *logger.Logger) (message.Publisher, error) {
-			return amqputil.ProvidePublisher(c, l, identityEvents.Config(cfg.ServiceName))
+			return amqputil.ProvidePublisher(c, l, identityEvents.Config(cfg.ServiceName.String()))
 		},
 	),
 )

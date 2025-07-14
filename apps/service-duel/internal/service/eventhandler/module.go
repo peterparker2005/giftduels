@@ -25,7 +25,7 @@ var Module = fx.Options(
 		amqputil.ProvideSubFactory,
 
 		func(cfg *config.Config, c *amqp.ConnectionWrapper, l *logger.Logger) (message.Publisher, error) {
-			return amqputil.ProvidePublisher(c, l, duelEvents.Config(cfg.ServiceName))
+			return amqputil.ProvidePublisher(c, l, duelEvents.Config(cfg.ServiceName.String()))
 		},
 	),
 
@@ -40,7 +40,7 @@ var Module = fx.Options(
 		router, err := ProvideRouter(
 			log,
 			pub,
-			duelEvents.Config(cfg.ServiceName).Exchange+".poison",
+			duelEvents.Config(cfg.ServiceName.String()).Exchange+".poison",
 		)
 		if err != nil {
 			return err

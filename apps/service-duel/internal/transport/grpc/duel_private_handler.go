@@ -19,7 +19,10 @@ func NewDuelPrivateHandler(duelService *duelService.Service) duelv1.DuelPrivateS
 	return &DuelPrivateHandler{duelService: duelService}
 }
 
-func (h *DuelPrivateHandler) FindDuelByGiftID(ctx context.Context, req *duelv1.FindDuelByGiftIDRequest) (*duelv1.FindDuelByGiftIDResponse, error) {
+func (h *DuelPrivateHandler) FindDuelByGiftID(
+	ctx context.Context,
+	req *duelv1.FindDuelByGiftIDRequest,
+) (*duelv1.FindDuelByGiftIDResponse, error) {
 	duelID, err := h.duelService.FindDuelByGiftID(ctx, req.GetGiftId().GetValue())
 	if err != nil {
 		return nil, errors.NewInternalError("failed to find duel by gift id")

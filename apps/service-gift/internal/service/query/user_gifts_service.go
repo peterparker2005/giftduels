@@ -6,6 +6,7 @@ import (
 	"github.com/ccoveille/go-safecast"
 	giftDomain "github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
 	"github.com/peterparker2005/giftduels/packages/grpc-go/clients"
+	"github.com/peterparker2005/giftduels/packages/logger-go"
 	duelv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/duel/v1"
 	sharedv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/shared/v1"
 	"github.com/peterparker2005/giftduels/packages/shared"
@@ -15,13 +16,13 @@ import (
 
 type UserGiftsService struct {
 	repo              giftDomain.Repository
-	log               *zap.Logger
+	log               *logger.Logger
 	duelPrivateClient duelv1.DuelPrivateServiceClient
 }
 
 func NewUserGiftsService(
 	repo giftDomain.Repository,
-	log *zap.Logger,
+	log *logger.Logger,
 	clients *clients.Clients,
 ) *UserGiftsService {
 	return &UserGiftsService{

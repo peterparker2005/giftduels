@@ -132,7 +132,7 @@ export async function handleGiftWithdrawRequested(
 		});
 
 		await publisher.publishProto({
-			routingKey: "telegram.gift.withdrawn",
+			routingKey: "gift.withdrawn",
 			schema: GiftWithdrawnEventSchema,
 			msg: withdrawnEvent,
 			opts: {
