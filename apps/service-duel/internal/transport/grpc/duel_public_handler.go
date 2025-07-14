@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 
+	"github.com/ccoveille/go-safecast"
 	duelDomain "github.com/peterparker2005/giftduels/apps/service-duel/internal/domain/duel"
 	duelService "github.com/peterparker2005/giftduels/apps/service-duel/internal/service/duel"
 	"github.com/peterparker2005/giftduels/packages/errors/pkg/errors"
@@ -11,17 +12,21 @@ import (
 	duelv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/duel/v1"
 	sharedv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/shared/v1"
 	"github.com/peterparker2005/giftduels/packages/shared"
+	"go.uber.org/zap"
 )
 
 type duelPublicHandler struct {
 	duelv1.UnimplementedDuelPublicServiceServer
 
 	logger      *logger.Logger
-	duelService *duelService.DuelService
+	duelService *duelService.Service
 }
 
 // NewDuelPublicHandler создает новый GRPC handler.
-func NewDuelPublicHandler(logger *logger.Logger, duelService *duelService.DuelService) duelv1.DuelPublicServiceServer {
+func NewDuelPublicHandler(
+	logger *logger.Logger,
+	duelService *duelService.Service,
+) duelv1.DuelPublicServiceServer {
 	return &duelPublicHandler{
 		logger:      logger,
 		duelService: duelService,
@@ -32,10 +37,14 @@ func (h *duelPublicHandler) GetDuelList(
 	ctx context.Context,
 	req *duelv1.GetDuelListRequest,
 ) (*duelv1.GetDuelListResponse, error) {
-	pageRequest := shared.NewPageRequest(req.GetPageRequest().GetPage(), req.GetPageRequest().GetPageSize())
+	pageRequest := shared.NewPageRequest(
+		req.GetPageRequest().GetPage(),
+		req.GetPageRequest().GetPageSize(),
+	)
 
 	response, err := h.duelService.GetDuelList(ctx, pageRequest)
 	if err != nil {
+		h.logger.Error("failed to get duel list", zap.Error(err))
 		return nil, errors.NewInternalError("failed to get duel list")
 	}
 
@@ -48,8 +57,19 @@ func (h *duelPublicHandler) GetDuelList(
 		}
 	}
 
+	total, err := safecast.ToInt32(response.Total)
+	if err != nil {
+		return nil, errors.NewInternalError("failed to cast total")
+	}
+
 	return &duelv1.GetDuelListResponse{
 		Duels: protoDuels,
+		Pagination: &sharedv1.PageResponse{
+			TotalPages: pageRequest.TotalPages(total),
+			Total:      total,
+			Page:       pageRequest.Page(),
+			PageSize:   pageRequest.PageSize(),
+		},
 	}, nil
 }
 
@@ -70,29 +90,58 @@ func (h *duelPublicHandler) CreateDuel(
 	// Map stakes
 	stakes := make([]duelDomain.Stake, len(req.GetStakes()))
 	for i, stake := range req.GetStakes() {
+		giftID := stake.GetGiftId().GetValue()
+		h.logger.Info("processing stake",
+			zap.String("giftID", giftID),
+			zap.Int("stakeIndex", i))
+
 		stakes[i] = duelDomain.Stake{
-			GiftID: stake.GetGiftId().GetValue(),
+			Gift: duelDomain.NewStakedGift(
+				giftID,
+				"",
+				"",
+				nil,
+			),
 		}
 	}
 
 	createParams := duelService.CreateDuelParams{
 		Params: params,
-		Participants: []duelDomain.Participant{
-			{
-				// FIXME: map correctly
-				TelegramUserID: duelDomain.TelegramUserID(telegramUserID),
-				IsCreator:      true,
-			},
-		},
 		Stakes: stakes,
 	}
 
 	duelID, err := h.duelService.CreateDuel(ctx, telegramUserID, createParams)
 	if err != nil {
+		h.logger.Error("failed to create duel",
+			zap.Int64("telegramUserID", telegramUserID),
+			zap.Int("stakesCount", len(req.GetStakes())),
+			zap.Error(err))
 		return nil, err
 	}
 
 	return &duelv1.CreateDuelResponse{
 		DuelId: &sharedv1.DuelId{Value: duelID.String()},
 	}, nil
+}
+
+func (h *duelPublicHandler) GetDuel(
+	ctx context.Context,
+	req *duelv1.GetDuelRequest,
+) (*duelv1.GetDuelResponse, error) {
+	duelIDStr := req.GetId().GetValue()
+	duelID, err := duelDomain.NewID(duelIDStr)
+	if err != nil {
+		return nil, errors.NewInternalError("failed to create duel ID")
+	}
+	duel, err := h.duelService.GetDuelByID(ctx, duelID)
+	if err != nil {
+		return nil, errors.NewInternalError("failed to get duel")
+	}
+
+	protoDuel, err := mapDuel(duel)
+	if err != nil {
+		return nil, errors.NewInternalError("failed to map duel")
+	}
+
+	return &duelv1.GetDuelResponse{Duel: protoDuel}, nil
 }

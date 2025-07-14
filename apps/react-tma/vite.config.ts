@@ -28,14 +28,14 @@ export default defineConfig(({ mode }) => {
 	const tailscaleServerConfig: ServerOptions = {
 		https: {
 			key: fs.readFileSync(
-				"/Users/szn/Library/Containers/io.tailscale.ipn.macos/Data/setter.alpaca-wahoo.ts.net.key",
+				"/Users/szn/.tailscale/pp.alpaca-wahoo.ts.net.key",
 			),
 			cert: fs.readFileSync(
-				"/Users/szn/Library/Containers/io.tailscale.ipn.macos/Data/setter.alpaca-wahoo.ts.net.crt",
+				"/Users/szn/.tailscale/pp.alpaca-wahoo.ts.net.crt",
 			),
 		},
 		hmr: {
-			host: "setter.alpaca-wahoo.ts.net",
+			host: "pp.alpaca-wahoo.ts.net",
 			port: 3443,
 		},
 		host: "0.0.0.0",

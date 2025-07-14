@@ -25,6 +25,9 @@ type Gift struct {
 	Model      Model
 	Backdrop   Backdrop
 	Symbol     Symbol
+
+	// metadata for game
+	RelatedDuelID string
 }
 
 type Collection struct {
@@ -57,19 +60,6 @@ type Backdrop struct {
 	EdgeColor      *string
 	PatternColor   *string
 	TextColor      *string
-}
-
-type Event struct {
-	ID            string
-	GiftID        string
-	FromUserID    *int64
-	ToUserID      *int64
-	Action        string
-	GameMode      *string
-	RelatedGameID *string
-	Description   *string
-	Payload       []byte
-	OccurredAt    time.Time
 }
 
 type Status string
@@ -136,6 +126,18 @@ func NewGift(p NewGiftParams) (*Gift, error) {
 	}, nil
 }
 
+func (g *Gift) Stake(telegramUserID int64) error {
+	if !g.IsOwnedBy(telegramUserID) {
+		return ErrGiftNotOwned
+	}
+	if g.Status != StatusOwned {
+		return ErrGiftCannotStake
+	}
+	g.Status = StatusInGame
+	g.OwnerTelegramID = telegramUserID
+	return nil
+}
+
 // ChangeOwner is a method to change the owner of a gift.
 func (g *Gift) ChangeOwner(ownerTelegramID int64) error {
 	if g.Status != StatusOwned {
@@ -189,6 +191,11 @@ func (g *Gift) CanBeWithdrawn() bool {
 // CanBeWithdrawnBy checks if the gift can be withdrawn by the specified user.
 func (g *Gift) CanBeWithdrawnBy(telegramUserID int64) bool {
 	return g.IsOwnedBy(telegramUserID) && g.CanBeWithdrawn()
+}
+
+// SetRelatedDuelID sets the related duel ID for a gift.
+func (g *Gift) SetRelatedDuelID(duelID string) {
+	g.RelatedDuelID = duelID
 }
 
 // AttributeData represents the attribute data for a gift.

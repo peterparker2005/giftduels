@@ -19,6 +19,9 @@ service DuelPublicService {
 
   // RollDice
   rpc RollDice(RollDiceRequest) returns (RollDiceResponse);
+
+  // JoinDuel
+  rpc JoinDuel(JoinDuelRequest) returns (JoinDuelResponse);
 }
 
 message GetDuelRequest {
@@ -35,6 +38,7 @@ message GetDuelListRequest {
 
 message GetDuelListResponse {
   repeated Duel duels = 1;
+  shared.v1.PageResponse pagination = 2;
 }
 
 message CreateDuelRequest {
@@ -47,6 +51,14 @@ message CreateDuelRequest {
 
 message CreateDuelResponse {
   shared.v1.DuelId duel_id = 1;
+}
+
+message JoinDuelRequest {
+  shared.v1.DuelId duel_id = 1;
+}
+
+message JoinDuelResponse {
+  shared.v1.SuccessResponse success = 1;
 }
 
 message RollDiceRequest {

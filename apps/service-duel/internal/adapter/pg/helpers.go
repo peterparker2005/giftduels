@@ -3,6 +3,7 @@ package pg
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -15,14 +16,6 @@ func pgUUID(id string) (pgtype.UUID, error) {
 		return pgtype.UUID{}, err
 	}
 	return pgtype.UUID{Bytes: u, Valid: true}, nil
-}
-
-func mustPgUUID(id string) pgtype.UUID {
-	v, err := pgUUID(id)
-	if err != nil {
-		panic(err)
-	}
-	return v
 }
 
 func pgNumeric(amount string) (pgtype.Numeric, error) {
@@ -57,4 +50,12 @@ func fromPgNumeric(n pgtype.Numeric) (string, error) {
 		// just in case
 		return fmt.Sprint(v), nil
 	}
+}
+
+func pgTimestamptz(t time.Time) pgtype.Timestamptz {
+	return pgtype.Timestamptz{Time: t, Valid: true}
+}
+
+func pgInt64(i int64) pgtype.Int8 {
+	return pgtype.Int8{Int64: i, Valid: true}
 }

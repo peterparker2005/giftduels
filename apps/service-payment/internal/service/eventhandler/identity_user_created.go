@@ -19,7 +19,10 @@ type IdentityNewUserHandler struct {
 	logger *logger.Logger
 }
 
-func NewIdentityNewUserHandler(repo payment.Repository, logger *logger.Logger) *IdentityNewUserHandler {
+func NewIdentityNewUserHandler(
+	repo payment.Repository,
+	logger *logger.Logger,
+) *IdentityNewUserHandler {
 	return &IdentityNewUserHandler{
 		repo:   repo,
 		logger: logger,
@@ -32,7 +35,11 @@ func (h *IdentityNewUserHandler) Handle(msg *message.Message) error {
 
 	var ev identityv1.NewUserEvent
 	if err := proto.Unmarshal(msg.Payload, &ev); err != nil {
-		h.logger.Error("Failed to unmarshal event", zap.Error(err), zap.String("message_id", msg.UUID))
+		h.logger.Error(
+			"Failed to unmarshal event",
+			zap.Error(err),
+			zap.String("message_id", msg.UUID),
+		)
 		return fmt.Errorf("unmarshal event: %w", err)
 	}
 
@@ -43,7 +50,10 @@ func (h *IdentityNewUserHandler) Handle(msg *message.Message) error {
 	}
 
 	if userBalance != nil {
-		h.logger.Info("Balance already exists", zap.Int64("telegram_user_id", ev.GetTelegramId().GetValue()))
+		h.logger.Info(
+			"Balance already exists",
+			zap.Int64("telegram_user_id", ev.GetTelegramId().GetValue()),
+		)
 		return nil
 	}
 
@@ -52,7 +62,11 @@ func (h *IdentityNewUserHandler) Handle(msg *message.Message) error {
 	}
 
 	if err := h.repo.Create(ctx, newBalance); err != nil {
-		h.logger.Error("Failed to create balance", zap.Error(err), zap.String("message_id", msg.UUID))
+		h.logger.Error(
+			"Failed to create balance",
+			zap.Error(err),
+			zap.String("message_id", msg.UUID),
+		)
 		return fmt.Errorf("create balance: %w", err)
 	}
 

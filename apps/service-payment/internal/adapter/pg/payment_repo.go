@@ -72,7 +72,10 @@ func (r *repo) GetUserBalance(ctx context.Context, telegramUserID int64) (*payme
 	}, nil
 }
 
-func (r *repo) CreateTransaction(ctx context.Context, params *payment.CreateTransactionParams) error {
+func (r *repo) CreateTransaction(
+	ctx context.Context,
+	params *payment.CreateTransactionParams,
+) error {
 	amount, err := pgNumeric(params.Amount.String())
 	if err != nil {
 		return err
@@ -90,7 +93,10 @@ func (r *repo) CreateTransaction(ctx context.Context, params *payment.CreateTran
 	return nil
 }
 
-func (r *repo) AddUserBalance(ctx context.Context, params *payment.AddUserBalanceParams) (*payment.Balance, error) {
+func (r *repo) AddUserBalance(
+	ctx context.Context,
+	params *payment.AddUserBalanceParams,
+) (*payment.Balance, error) {
 	amount, err := pgNumeric(params.Amount.String())
 	if err != nil {
 		return nil, err
@@ -107,7 +113,10 @@ func (r *repo) AddUserBalance(ctx context.Context, params *payment.AddUserBalanc
 	return ToBalanceDomain(balance), nil
 }
 
-func (r *repo) SpendUserBalance(ctx context.Context, params *payment.SpendUserBalanceParams) (*payment.Balance, error) {
+func (r *repo) SpendUserBalance(
+	ctx context.Context,
+	params *payment.SpendUserBalanceParams,
+) (*payment.Balance, error) {
 	amount, err := pgNumeric(params.Amount.String())
 	if err != nil {
 		return nil, err

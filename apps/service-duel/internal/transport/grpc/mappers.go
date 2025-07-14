@@ -106,6 +106,7 @@ func mapDuelParticipant(participant duelDomain.Participant) *duelv1.DuelParticip
 		TelegramUserId: &sharedv1.TelegramUserId{
 			Value: int64(participant.TelegramUserID),
 		},
+		PhotoUrl:  participant.PhotoURL,
 		IsCreator: participant.IsCreator,
 	}
 }
@@ -115,9 +116,16 @@ func mapDuelStake(stake duelDomain.Stake) *duelv1.DuelStake {
 		ParticipantTelegramUserId: &sharedv1.TelegramUserId{
 			Value: int64(stake.TelegramUserID),
 		},
-		// TODO: Map Gift field using stake.GiftID
-		// This requires fetching gift data from gift service
-		Gift: nil,
+		Gift: &duelv1.StakedGift{
+			GiftId: &sharedv1.GiftId{
+				Value: stake.Gift.ID,
+			},
+			Title: stake.Gift.Title,
+			Slug:  stake.Gift.Slug,
+			Price: &sharedv1.TonAmount{
+				Value: stake.Gift.Price.String(),
+			},
+		},
 		StakeValue: &sharedv1.TonAmount{
 			Value: stake.StakeValue.String(),
 		},
@@ -176,7 +184,9 @@ func mapDuelFromProto(protoDuel *duelv1.Duel) (*duelDomain.Duel, error) {
 		return nil, err
 	}
 
-	totalStakeValue, err := tonamount.NewTonAmountFromString(protoDuel.GetTotalStakeValue().GetValue())
+	totalStakeValue, err := tonamount.NewTonAmountFromString(
+		protoDuel.GetTotalStakeValue().GetValue(),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +207,9 @@ func mapDuelFromProto(protoDuel *duelv1.Duel) (*duelDomain.Duel, error) {
 
 	// Optional fields
 	if protoDuel.GetWinnerTelegramUserId() != nil {
-		winnerID, idErr := duelDomain.NewTelegramUserID(protoDuel.GetWinnerTelegramUserId().GetValue())
+		winnerID, idErr := duelDomain.NewTelegramUserID(
+			protoDuel.GetWinnerTelegramUserId().GetValue(),
+		)
 		if idErr != nil {
 			return nil, idErr
 		}
@@ -292,8 +304,12 @@ func mapDuelStatusFromProto(protoStatus duelv1.DuelStatus) (duelDomain.Status, e
 	}
 }
 
-func mapDuelParticipantFromProto(protoParticipant *duelv1.DuelParticipant) (duelDomain.Participant, error) {
-	telegramUserID, err := duelDomain.NewTelegramUserID(protoParticipant.GetTelegramUserId().GetValue())
+func mapDuelParticipantFromProto(
+	protoParticipant *duelv1.DuelParticipant,
+) (duelDomain.Participant, error) {
+	telegramUserID, err := duelDomain.NewTelegramUserID(
+		protoParticipant.GetTelegramUserId().GetValue(),
+	)
 	if err != nil {
 		return duelDomain.Participant{}, err
 	}
@@ -305,7 +321,9 @@ func mapDuelParticipantFromProto(protoParticipant *duelv1.DuelParticipant) (duel
 }
 
 func mapDuelStakeFromProto(protoStake *duelv1.DuelStake) (duelDomain.Stake, error) {
-	telegramUserID, err := duelDomain.NewTelegramUserID(protoStake.GetParticipantTelegramUserId().GetValue())
+	telegramUserID, err := duelDomain.NewTelegramUserID(
+		protoStake.GetParticipantTelegramUserId().GetValue(),
+	)
 	if err != nil {
 		return duelDomain.Stake{}, err
 	}
@@ -317,8 +335,12 @@ func mapDuelStakeFromProto(protoStake *duelv1.DuelStake) (duelDomain.Stake, erro
 
 	return duelDomain.Stake{
 		TelegramUserID: telegramUserID,
-		// TODO: Extract GiftID from protobuf Gift if available
-		GiftID:     "", // For now, empty - would need to map from protobuf gift
+		Gift: duelDomain.NewStakedGift(
+			protoStake.GetGift().GetGiftId().GetValue(),
+			protoStake.GetGift().GetTitle(),
+			protoStake.GetGift().GetSlug(),
+			nil,
+		),
 		StakeValue: stakeValue,
 	}, nil
 }
@@ -340,14 +362,16 @@ func mapDuelRoundFromProto(protoRound *duelv1.DuelRound) (duelDomain.Round, erro
 }
 
 func mapDuelRollFromProto(protoRoll *duelv1.DuelRoll) (duelDomain.Roll, error) {
-	telegramUserID, err := duelDomain.NewTelegramUserID(protoRoll.GetParticipantTelegramUserId().GetValue())
+	telegramUserID, err := duelDomain.NewTelegramUserID(
+		protoRoll.GetParticipantTelegramUserId().GetValue(),
+	)
 	if err != nil {
 		return duelDomain.Roll{}, err
 	}
 
 	return duelDomain.Roll{
 		TelegramUserID: telegramUserID,
-		DiceValue:      int(protoRoll.GetDiceValue()),
+		DiceValue:      protoRoll.GetDiceValue(),
 		RolledAt:       protoRoll.GetRolledAt().AsTime(),
 		IsAutoRolled:   protoRoll.GetIsAutoRolled(),
 	}, nil

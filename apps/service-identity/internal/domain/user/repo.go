@@ -2,7 +2,8 @@ package user
 
 import "context"
 
-type UserRepository interface {
-	GetByTelegramID(ctx context.Context, telegramID int64) (*User, error)
-	CreateOrUpdate(ctx context.Context, user *CreateUserParams) (*User, bool, error)
+type Repository interface {
+	GetUserByTelegramID(ctx context.Context, telegramID int64) (*User, error)
+	GetUsersByTelegramIDs(ctx context.Context, telegramUserIDs []int64) ([]*User, error)
+	UpsertUser(ctx context.Context, user *CreateUserParams) (*User, bool, error)
 }

@@ -1,7 +1,6 @@
 syntax = "proto3";
 package giftduels.duel.v1;
 
-import "giftduels/gift/v1/gift.proto";
 import "giftduels/shared/v1/common.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -37,7 +36,8 @@ message DuelParams {
 
 message DuelParticipant {
   shared.v1.TelegramUserId telegram_user_id = 1;
-  bool is_creator = 2;
+  string photo_url = 2;
+  bool is_creator = 3;
 }
 
 message DuelRound {
@@ -62,6 +62,13 @@ enum DuelStatus {
 
 message DuelStake {
   shared.v1.TelegramUserId participant_telegram_user_id = 1;
-  gift.v1.GiftView gift = 2;
+  StakedGift gift = 2;
   shared.v1.TonAmount stake_value = 3;
+}
+
+message StakedGift {
+  shared.v1.GiftId gift_id = 1;
+  string title = 2;
+  string slug = 3;
+  shared.v1.TonAmount price = 4;
 }

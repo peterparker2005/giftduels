@@ -34,6 +34,42 @@ func (q *Queries) GetUserByTelegramID(ctx context.Context, telegramID int64) (Us
 	return i, err
 }
 
+const getUsersByTelegramIDs = `-- name: GetUsersByTelegramIDs :many
+SELECT id, telegram_id, username, first_name, last_name, photo_url, language_code, allows_write_to_pm, is_premium, created_at, updated_at FROM users WHERE telegram_id = ANY($1::bigint[])
+`
+
+func (q *Queries) GetUsersByTelegramIDs(ctx context.Context, dollar_1 []int64) ([]User, error) {
+	rows, err := q.db.Query(ctx, getUsersByTelegramIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.TelegramID,
+			&i.Username,
+			&i.FirstName,
+			&i.LastName,
+			&i.PhotoUrl,
+			&i.LanguageCode,
+			&i.AllowsWriteToPm,
+			&i.IsPremium,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertUser = `-- name: UpsertUser :one
 INSERT INTO users (
     telegram_id,

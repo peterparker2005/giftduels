@@ -23,6 +23,7 @@ func DomainGiftToProto(domainGift *gift.Gift) *giftv1.Gift {
 		Backdrop:          DomainBackdropToProto(domainGift.Backdrop),
 		Model:             DomainModelToProto(domainGift.Model),
 		Symbol:            DomainSymbolToProto(domainGift.Symbol),
+		RelatedDuelId:     &sharedv1.DuelId{Value: domainGift.RelatedDuelID},
 	}
 
 	if domainGift.WithdrawnAt != nil {
@@ -71,6 +72,7 @@ func DomainGiftToProtoView(domainGift *gift.Gift) *giftv1.GiftView {
 		Price:          &sharedv1.TonAmount{Value: domainGift.Price.String()},
 		TelegramGiftId: &sharedv1.GiftTelegramId{Value: domainGift.TelegramGiftID},
 		CollectibleId:  domainGift.CollectibleID,
+		RelatedDuelId:  &sharedv1.DuelId{Value: domainGift.RelatedDuelID},
 	}
 
 	protoView.Attributes = append(protoView.Attributes, &giftv1.GiftAttribute{

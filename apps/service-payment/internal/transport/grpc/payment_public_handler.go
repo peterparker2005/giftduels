@@ -22,7 +22,10 @@ type PaymentPublicHandler struct {
 	cfg     *config.Config
 }
 
-func NewPaymentPublicHandler(service *payment.Service, cfg *config.Config) paymentv1.PaymentPublicServiceServer {
+func NewPaymentPublicHandler(
+	service *payment.Service,
+	cfg *config.Config,
+) paymentv1.PaymentPublicServiceServer {
 	return &PaymentPublicHandler{
 		service: service,
 		cfg:     cfg,
@@ -99,7 +102,10 @@ func (h *PaymentPublicHandler) GetTransactionHistory(
 		return nil, err
 	}
 
-	pagination := shared.NewPageRequest(req.GetPagination().GetPage(), req.GetPagination().GetPageSize())
+	pagination := shared.NewPageRequest(
+		req.GetPagination().GetPage(),
+		req.GetPagination().GetPageSize(),
+	)
 	transactions, count, err := h.service.GetTransactionHistory(ctx, userID, pagination)
 	if err != nil {
 		return nil, err

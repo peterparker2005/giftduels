@@ -216,49 +216,36 @@ func (q *Queries) CreateGift(ctx context.Context, arg CreateGiftParams) (Gift, e
 const createGiftEvent = `-- name: CreateGiftEvent :one
 INSERT INTO gift_events (
     gift_id,
-    from_user_id,
-    to_user_id,
-    related_game_id,
-    game_mode,
-    description,
-    payload
+    event_type,
+    telegram_user_id,
+    related_game_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    $1, $2, $3, $4
 )
-RETURNING id, gift_id, from_user_id, to_user_id, action, game_mode, related_game_id, description, payload, occurred_at
+RETURNING id, gift_id, event_type, telegram_user_id, related_game_id, occurred_at
 `
 
 type CreateGiftEventParams struct {
-	GiftID        pgtype.UUID
-	FromUserID    pgtype.Int8
-	ToUserID      pgtype.Int8
-	RelatedGameID pgtype.Text
-	GameMode      pgtype.Text
-	Description   pgtype.Text
-	Payload       []byte
+	GiftID         pgtype.UUID
+	EventType      GiftEventType
+	TelegramUserID pgtype.Int8
+	RelatedGameID  pgtype.UUID
 }
 
 func (q *Queries) CreateGiftEvent(ctx context.Context, arg CreateGiftEventParams) (GiftEvent, error) {
 	row := q.db.QueryRow(ctx, createGiftEvent,
 		arg.GiftID,
-		arg.FromUserID,
-		arg.ToUserID,
+		arg.EventType,
+		arg.TelegramUserID,
 		arg.RelatedGameID,
-		arg.GameMode,
-		arg.Description,
-		arg.Payload,
 	)
 	var i GiftEvent
 	err := row.Scan(
 		&i.ID,
 		&i.GiftID,
-		&i.FromUserID,
-		&i.ToUserID,
-		&i.Action,
-		&i.GameMode,
+		&i.EventType,
+		&i.TelegramUserID,
 		&i.RelatedGameID,
-		&i.Description,
-		&i.Payload,
 		&i.OccurredAt,
 	)
 	return i, err
@@ -512,7 +499,7 @@ func (q *Queries) GetGiftCollectionsByIDs(ctx context.Context, dollar_1 []int32)
 }
 
 const getGiftEvents = `-- name: GetGiftEvents :many
-SELECT id, gift_id, from_user_id, to_user_id, action, game_mode, related_game_id, description, payload, occurred_at FROM gift_events
+SELECT id, gift_id, event_type, telegram_user_id, related_game_id, occurred_at FROM gift_events
 WHERE gift_id = $1
 ORDER BY occurred_at DESC
 LIMIT $2
@@ -537,13 +524,9 @@ func (q *Queries) GetGiftEvents(ctx context.Context, arg GetGiftEventsParams) ([
 		if err := rows.Scan(
 			&i.ID,
 			&i.GiftID,
-			&i.FromUserID,
-			&i.ToUserID,
-			&i.Action,
-			&i.GameMode,
+			&i.EventType,
+			&i.TelegramUserID,
 			&i.RelatedGameID,
-			&i.Description,
-			&i.Payload,
 			&i.OccurredAt,
 		); err != nil {
 			return nil, err
@@ -701,8 +684,11 @@ const getUserActiveGifts = `-- name: GetUserActiveGifts :many
 SELECT id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, collection_id, model_id, backdrop_id, symbol_id, status, created_at, updated_at, withdrawn_at
 FROM gifts
 WHERE owner_telegram_id = $1
-  AND status NOT IN ('withdrawn', 'withdraw_pending')
-ORDER BY created_at DESC
+  AND status IN ('owned', 'in_game')
+ORDER BY
+  created_at DESC,
+  (status = 'owned') DESC,
+  price DESC
 LIMIT $2 OFFSET $3
 `
 
@@ -753,7 +739,7 @@ const getUserActiveGiftsCount = `-- name: GetUserActiveGiftsCount :one
 SELECT COUNT(*)
 FROM gifts
 WHERE owner_telegram_id = $1
-  AND status NOT IN ('withdrawn', 'withdraw_pending')
+  AND status IN ('owned', 'in_game')
 `
 
 func (q *Queries) GetUserActiveGiftsCount(ctx context.Context, ownerTelegramID int64) (int64, error) {
@@ -836,6 +822,37 @@ RETURNING id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_messa
 
 func (q *Queries) MarkGiftForWithdrawal(ctx context.Context, id pgtype.UUID) (Gift, error) {
 	row := q.db.QueryRow(ctx, markGiftForWithdrawal, id)
+	var i Gift
+	err := row.Scan(
+		&i.ID,
+		&i.TelegramGiftID,
+		&i.CollectibleID,
+		&i.OwnerTelegramID,
+		&i.UpgradeMessageID,
+		&i.Title,
+		&i.Slug,
+		&i.Price,
+		&i.CollectionID,
+		&i.ModelID,
+		&i.BackdropID,
+		&i.SymbolID,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.WithdrawnAt,
+	)
+	return i, err
+}
+
+const returnGiftFromGame = `-- name: ReturnGiftFromGame :one
+UPDATE gifts 
+SET status = 'owned', updated_at = NOW()
+WHERE id = $1 AND status = 'in_game'
+RETURNING id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, collection_id, model_id, backdrop_id, symbol_id, status, created_at, updated_at, withdrawn_at
+`
+
+func (q *Queries) ReturnGiftFromGame(ctx context.Context, id pgtype.UUID) (Gift, error) {
+	row := q.db.QueryRow(ctx, returnGiftFromGame, id)
 	var i Gift
 	err := row.Scan(
 		&i.ID,

@@ -4,6 +4,7 @@ sql:
     engine: 'postgresql'
     schema:
       - db/migrations/20250713001850_init.up.sql
+      - db/migrations/20250714000000_fix_duel_stakes_pkey.up.sql
     queries:
       - db/queries.sql
     gen:

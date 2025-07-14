@@ -8,6 +8,8 @@ import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { DefaultLayout } from "@/layouts/DefaultLayout";
 import { RootLayout } from "@/layouts/RootLayout";
 import Balance from "@/pages/Balance";
+import Duel from "@/pages/Duel";
+import Duels from "@/pages/Duels";
 import Home from "@/pages/Home";
 import Profile from "@/pages/Profile";
 import { useMobile } from "@/shared/hooks/useMobile";
@@ -39,6 +41,18 @@ const defaultLayoutRoute = createRoute({
 	},
 });
 
+const duelsRoute = createRoute({
+	getParentRoute: () => defaultLayoutRoute,
+	path: "/duels",
+	component: Duels,
+});
+
+const duelRoute = createRoute({
+	getParentRoute: () => defaultLayoutRoute,
+	path: "/duel/$duelId",
+	component: Duel,
+});
+
 const indexRoute = createRoute({
 	getParentRoute: () => defaultLayoutRoute,
 	path: "/",
@@ -60,6 +74,8 @@ const balanceRoute = createRoute({
 const defaultLayoutWithChildren = defaultLayoutRoute.addChildren([
 	indexRoute,
 	profileRoute,
+	duelsRoute,
+	duelRoute,
 ]);
 
 const routeTree = rootRoute.addChildren([

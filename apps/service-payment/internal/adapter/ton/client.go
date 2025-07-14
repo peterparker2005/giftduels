@@ -113,7 +113,11 @@ func (a *adapter) SubscribeTransactions(
 			sender := ti.SrcAddr.String()
 			amount, err := tonamount.NewTonAmountFromNano(ti.Amount.Nano().Uint64())
 			if err != nil {
-				a.logger.Warn("invalid amount", zap.String("amount", ti.Amount.Nano().String()), zap.Error(err))
+				a.logger.Warn(
+					"invalid amount",
+					zap.String("amount", ti.Amount.Nano().String()),
+					zap.Error(err),
+				)
 				continue
 			}
 			currency := "TON"
@@ -123,7 +127,9 @@ func (a *adapter) SubscribeTransactions(
 			if ti.Body != nil {
 				// Convert entire body to BOC base64 (this is what tonworker expects)
 				bocBytes := ti.Body.ToBOC()
-				if len(bocBytes) > bocMinDocBytes { // Skip empty BOC (usually 2 bytes for empty cell)
+				if len(
+					bocBytes,
+				) > bocMinDocBytes { // Skip empty BOC (usually 2 bytes for empty cell)
 					payload = boc.EncodeBOCAsBase64(bocBytes)
 					a.logger.Debug("📦 Extracted BOC payload",
 						zap.String("payload", payload),

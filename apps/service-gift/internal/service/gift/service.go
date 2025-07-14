@@ -17,6 +17,7 @@ import (
 	giftEvents "github.com/peterparker2005/giftduels/packages/events/gift"
 	"github.com/peterparker2005/giftduels/packages/grpc-go/clients"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
+	duelv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/duel/v1"
 	giftv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1"
 	paymentv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/payment/v1"
 	sharedv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/shared/v1"
@@ -33,6 +34,7 @@ type Service struct {
 	log                      *logger.Logger
 	paymentPrivateClient     paymentv1.PaymentPrivateServiceClient
 	telegramBotPrivateClient telegrambotv1.TelegramBotPrivateServiceClient
+	duelPrivateClient        duelv1.DuelPrivateServiceClient
 }
 
 func New(
@@ -47,6 +49,7 @@ func New(
 		log:                      log,
 		paymentPrivateClient:     clients.Payment.Private,
 		telegramBotPrivateClient: clients.TelegramBot.Private,
+		duelPrivateClient:        clients.Duel.Private,
 	}
 }
 
@@ -56,7 +59,10 @@ func (s *Service) GetGiftByID(ctx context.Context, id string) (*giftDomain.Gift,
 		return nil, err
 	}
 
-	collection, err := s.repo.FindCollectionByName(ctx, gift.Title) // Using title as collection name
+	collection, err := s.repo.FindCollectionByName(
+		ctx,
+		gift.Title,
+	) // Using title as collection name
 	if err != nil {
 		// If collection not found, create a default one
 		collection, err = s.repo.CreateCollection(ctx, &giftDomain.CreateCollectionParams{
@@ -94,6 +100,12 @@ func (s *Service) GetGiftByID(ctx context.Context, id string) (*giftDomain.Gift,
 	if symbol != nil {
 		gift.Symbol = *symbol
 	}
+
+	duelID, err := s.findDuelByGiftID(ctx, gift.ID)
+	if err != nil {
+		return nil, err
+	}
+	gift.SetRelatedDuelID(duelID)
 
 	return gift, nil
 }
@@ -140,6 +152,14 @@ func (s *Service) GetUserGifts(
 		return nil, err
 	}
 
+	for _, g := range res.Gifts {
+		duelID, err := s.findDuelByGiftID(ctx, g.ID)
+		if err != nil {
+			return nil, err
+		}
+		g.SetRelatedDuelID(duelID)
+	}
+
 	return &GetUserGiftsResult{
 		Gifts:      res.Gifts,
 		Total:      total,
@@ -183,6 +203,14 @@ func (s *Service) GetUserActiveGifts(
 		return nil, err
 	}
 
+	for _, g := range res.Gifts {
+		duelID, err := s.findDuelByGiftID(ctx, g.ID)
+		if err != nil {
+			return nil, err
+		}
+		g.SetRelatedDuelID(duelID)
+	}
+
 	return &GetUserGiftsResult{
 		Gifts:      res.Gifts,
 		Total:      total,
@@ -196,7 +224,12 @@ func (s *Service) populateGiftAttributes(ctx context.Context, gifts []*giftDomai
 	modelIDs, backdropIDs, symbolIDs := s.collectAttributeIDs(gifts)
 
 	// Fetch all models, backdrops, and symbols in parallel
-	models, backdrops, symbols, err := s.fetchAttributesInParallel(ctx, modelIDs, backdropIDs, symbolIDs)
+	models, backdrops, symbols, err := s.fetchAttributesInParallel(
+		ctx,
+		modelIDs,
+		backdropIDs,
+		symbolIDs,
+	)
 	if err != nil {
 		return err
 	}
@@ -207,7 +240,9 @@ func (s *Service) populateGiftAttributes(ctx context.Context, gifts []*giftDomai
 	return nil
 }
 
-func (s *Service) collectAttributeIDs(gifts []*giftDomain.Gift) (map[int32]bool, map[int32]bool, map[int32]bool) {
+func (s *Service) collectAttributeIDs(
+	gifts []*giftDomain.Gift,
+) (map[int32]bool, map[int32]bool, map[int32]bool) {
 	modelIDs := make(map[int32]bool)
 	backdropIDs := make(map[int32]bool)
 	symbolIDs := make(map[int32]bool)
@@ -344,8 +379,9 @@ func (s *Service) populateSingleGiftAttributes(
 }
 
 type StakeGiftParams struct {
-	GiftID       string
-	GameMetadata *giftv1.StakeGiftRequest_GameMetadata
+	GiftID         string
+	TelegramUserID int64
+	GameMetadata   *giftv1.StakeGiftRequest_GameMetadata
 }
 
 type GameMetadata struct {
@@ -354,11 +390,104 @@ type GameMetadata struct {
 }
 
 func (s *Service) StakeGift(ctx context.Context, params StakeGiftParams) (*giftDomain.Gift, error) {
-	gift, err := s.repo.StakeGiftForGame(ctx, params.GiftID)
+	tx, err := s.txMgr.BeginTx(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return gift, nil
+	defer func() {
+		if err != nil {
+			if rbErr := tx.Rollback(ctx); rbErr != nil {
+				s.log.Error("rollback failed", zap.Error(rbErr))
+			}
+		}
+	}()
+
+	repo := s.repo.WithTx(tx)
+
+	// First, try to get the gift to check if it exists and its current status
+	gift, err := repo.GetGiftByID(ctx, params.GiftID)
+	if err != nil {
+		s.log.Error("failed to get gift for staking",
+			zap.String("giftID", params.GiftID),
+			zap.Error(err))
+		return nil, errors.NewNotFoundError("gift not found: " + params.GiftID)
+	}
+
+	// Check if the gift can be staked by the user
+	if !gift.IsOwnedBy(params.TelegramUserID) {
+		s.log.Error("gift cannot be staked - not owned by user",
+			zap.String("giftID", params.GiftID),
+			zap.Int64("requestedByUser", params.TelegramUserID),
+			zap.Int64("actualOwner", gift.OwnerTelegramID))
+		return nil, errors.NewGiftNotOwnedError("gift not owned by user")
+	}
+
+	// Check if the gift can be staked (status check)
+	if gift.Status != giftDomain.StatusOwned {
+		s.log.Error("gift cannot be staked - wrong status",
+			zap.String("giftID", params.GiftID),
+			zap.String("currentStatus", string(gift.Status)),
+			zap.String("requiredStatus", string(giftDomain.StatusOwned)))
+		return nil, errors.NewGiftNotOwnedError(
+			"gift cannot be staked - current status: " + string(gift.Status),
+		)
+	}
+
+	// Now try to stake the gift
+	stakedGift, err := repo.StakeGiftForGame(ctx, params.GiftID)
+	if err != nil {
+		s.log.Error("failed to stake gift for game",
+			zap.String("giftID", params.GiftID),
+			zap.Error(err))
+		return nil, err
+	}
+
+	repo.CreateGiftEvent(ctx, giftDomain.CreateGiftEventParams{
+		GiftID:         stakedGift.ID,
+		RelatedGameID:  &params.GameMetadata.GameId,
+		EventType:      giftDomain.EventTypeStake,
+		TelegramUserID: params.TelegramUserID,
+	})
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		s.log.Error("transaction commit failed", zap.Error(err))
+		return nil, err
+	}
+	return stakedGift, nil
+}
+
+// ReturnGiftFromGame returns a gift from in_game status back to owned status.
+func (s *Service) ReturnGiftFromGame(ctx context.Context, giftID string) (*giftDomain.Gift, error) {
+	// First, try to get the gift to check if it exists and its current status
+	gift, err := s.repo.GetGiftByID(ctx, giftID)
+	if err != nil {
+		s.log.Error("failed to get gift for returning from game",
+			zap.String("giftID", giftID),
+			zap.Error(err))
+		return nil, errors.NewNotFoundError("gift not found: " + giftID)
+	}
+
+	// Check if the gift is in game status
+	if gift.Status != giftDomain.StatusInGame {
+		s.log.Error("gift cannot be returned from game - wrong status",
+			zap.String("giftID", giftID),
+			zap.String("currentStatus", string(gift.Status)),
+			zap.String("requiredStatus", string(giftDomain.StatusInGame)))
+		return nil, errors.NewGiftNotOwnedError(
+			"gift cannot be returned from game - current status: " + string(gift.Status),
+		)
+	}
+
+	// Return the gift to owned status
+	returnedGift, err := s.repo.ReturnGiftFromGame(ctx, giftID)
+	if err != nil {
+		s.log.Error("failed to return gift from game",
+			zap.String("giftID", giftID),
+			zap.Error(err))
+		return nil, err
+	}
+	return returnedGift, nil
 }
 
 func (s *Service) ExecuteWithdraw(
@@ -996,4 +1125,14 @@ func (s *Service) CreateGiftFromEvent(
 		attrs.BackdropID,
 		attrs.SymbolID,
 	)
+}
+
+func (s *Service) findDuelByGiftID(ctx context.Context, giftID string) (string, error) {
+	duelID, err := s.duelPrivateClient.FindDuelByGiftID(ctx, &duelv1.FindDuelByGiftIDRequest{
+		GiftId: &sharedv1.GiftId{Value: giftID},
+	})
+	if err != nil {
+		return "", err
+	}
+	return duelID.GetDuelId().GetValue(), nil
 }

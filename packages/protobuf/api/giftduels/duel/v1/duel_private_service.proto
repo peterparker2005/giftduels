@@ -2,6 +2,18 @@ syntax = "proto3";
 
 package giftduels.duel.v1;
 
+import "giftduels/shared/v1/common.proto";
+
 option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/duel/v1;duelv1";
 
-service DuelPrivateService {}
+service DuelPrivateService {
+  rpc FindDuelByGiftID(FindDuelByGiftIDRequest) returns (FindDuelByGiftIDResponse);
+}
+
+message FindDuelByGiftIDRequest {
+  shared.v1.GiftId gift_id = 1;
+}
+
+message FindDuelByGiftIDResponse {
+  shared.v1.DuelId duel_id = 1;
+}

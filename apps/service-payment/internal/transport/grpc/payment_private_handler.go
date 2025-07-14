@@ -14,7 +14,9 @@ type PaymentPrivateHandler struct {
 	paymentService *payment.Service
 }
 
-func NewPaymentPrivateHandler(paymentService *payment.Service) paymentv1.PaymentPrivateServiceServer {
+func NewPaymentPrivateHandler(
+	paymentService *payment.Service,
+) paymentv1.PaymentPrivateServiceServer {
 	return &PaymentPrivateHandler{paymentService: paymentService}
 }
 

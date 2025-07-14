@@ -34,7 +34,8 @@ func NewGRPCServer(
 	log *logger.Logger,
 ) *Server {
 	opts := []grpc.ServerOption{
-		grpc.ChainUnaryInterceptor(append(versionUnary, recoverInterceptor, authctx.TelegramIDCtxInterceptor())...),
+		grpc.ChainUnaryInterceptor(
+			append(versionUnary, recoverInterceptor, authctx.TelegramIDCtxInterceptor())...),
 		grpc.ChainStreamInterceptor(versionStream...),
 	}
 

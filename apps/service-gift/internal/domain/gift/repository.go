@@ -2,7 +2,6 @@ package gift
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -57,14 +56,10 @@ type GetUserGiftsResult struct {
 }
 
 type CreateGiftEventParams struct {
-	GiftID        string
-	FromUserID    *int64
-	ToUserID      *int64
-	Action        string
-	GameMode      *string
-	RelatedGameID *string
-	Description   *string
-	Payload       json.RawMessage
+	GiftID         string
+	TelegramUserID int64
+	EventType      EventType
+	RelatedGameID  *string
 }
 
 type Repository interface {
@@ -83,6 +78,7 @@ type Repository interface {
 		ownerTelegramID int64,
 	) (*GetUserGiftsResult, error)
 	StakeGiftForGame(ctx context.Context, id string) (*Gift, error)
+	ReturnGiftFromGame(ctx context.Context, id string) (*Gift, error)
 	UpdateGiftOwner(ctx context.Context, id string, ownerTelegramID int64) (*Gift, error)
 	MarkGiftForWithdrawal(ctx context.Context, id string) (*Gift, error)
 	CancelGiftWithdrawal(ctx context.Context, id string) (*Gift, error)

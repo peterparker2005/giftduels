@@ -1,7 +1,13 @@
-import { GiftView } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
+import {
+	GiftStatus,
+	GiftView,
+} from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
+import { useNavigate } from "@tanstack/react-router";
 import { BiLogoTelegram } from "react-icons/bi";
+import { IoLogoGameControllerB } from "react-icons/io";
 import { Button } from "@/shared/ui/Button";
 import { Icon } from "@/shared/ui/Icon/Icon";
+import { cn } from "@/shared/utils/cn";
 import { getFragmentUrl } from "@/shared/utils/getFragmentUrl";
 import { GiftDetailsDrawer } from "./GiftDetailsDrawer";
 
@@ -10,11 +16,15 @@ interface GiftCardProps {
 }
 
 export const GiftCard = ({ gift }: GiftCardProps) => {
+	const navigate = useNavigate();
+
 	return (
 		<GiftDetailsDrawer gift={gift}>
 			<div
 				key={gift.giftId?.value}
-				className="p-2.5 rounded-3xl bg-card cursor-pointer hover:bg-card/80 transition-colors"
+				className={cn(
+					"p-2.5 rounded-3xl bg-card cursor-pointer hover:bg-card/80 transition-colors relative",
+				)}
 			>
 				<div className="relative w-full h-40 rounded-2xl">
 					<img
@@ -48,8 +58,19 @@ export const GiftCard = ({ gift }: GiftCardProps) => {
 					<Button
 						variant={"secondary"}
 						className="rounded-full bg-card-accent w-9 h-9 flex items-center justify-center"
+						onClick={() => {
+							if (!gift.relatedDuelId?.value) return;
+							navigate({
+								to: "/duel/$duelId",
+								params: { duelId: gift.relatedDuelId?.value },
+							});
+						}}
 					>
-						<BiLogoTelegram className="w-4 h-4 shrink-0" />
+						{gift.status === GiftStatus.IN_GAME ? (
+							<IoLogoGameControllerB className="w-4 h-4 shrink-0" />
+						) : (
+							<BiLogoTelegram className="w-4 h-4 shrink-0" />
+						)}
 					</Button>
 				</div>
 			</div>

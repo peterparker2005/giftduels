@@ -24,5 +24,10 @@ type Transaction struct {
 type API interface {
 	CurrentMasterchainInfo(ctx context.Context) (MasterchainInfo, error)
 	GetAccountLastLT(ctx context.Context, addr string) (uint64, error)
-	SubscribeTransactions(ctx context.Context, addr string, fromLT uint64, out chan<- Transaction) error
+	SubscribeTransactions(
+		ctx context.Context,
+		addr string,
+		fromLT uint64,
+		out chan<- Transaction,
+	) error
 }

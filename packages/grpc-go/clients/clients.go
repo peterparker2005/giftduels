@@ -16,6 +16,7 @@ type Clients struct {
 	Gift        *GiftClient
 	Payment     *PaymentClient
 	TelegramBot *TelegramBotClient
+	Duel        *DuelClient
 }
 
 // CreateDialOptions returns the base set of options for dial.
@@ -29,7 +30,11 @@ func CreateDialOptions() []grpc.DialOption {
 
 // NewClients constructs all clients from the config addresses.
 // If you need some custom options, you just add them to opts...
-func NewClients(_ context.Context, cfg configs.GRPCConfig, opts ...grpc.DialOption) (*Clients, error) {
+func NewClients(
+	_ context.Context,
+	cfg configs.GRPCConfig,
+	opts ...grpc.DialOption,
+) (*Clients, error) {
 	dialOpts := CreateDialOptions()
 	if len(opts) > 0 {
 		dialOpts = append(dialOpts, opts...)
@@ -53,14 +58,17 @@ func NewClients(_ context.Context, cfg configs.GRPCConfig, opts ...grpc.DialOpti
 		c.Close()
 		return nil, fmt.Errorf("telegram bot client: %w", err)
 	}
-
+	if c.Duel, err = NewDuelClient(cfg.Duel.Address(), dialOpts...); err != nil {
+		c.Close()
+		return nil, fmt.Errorf("duel client: %w", err)
+	}
 	return c, nil
 }
 
 // Close closes all clients.
 func (c *Clients) Close() {
 	for _, cl := range []io.Closer{
-		c.Identity, c.Gift, c.Payment, c.TelegramBot,
+		c.Identity, c.Gift, c.Payment, c.TelegramBot, c.Duel,
 	} {
 		if cl != nil {
 			_ = cl.Close()

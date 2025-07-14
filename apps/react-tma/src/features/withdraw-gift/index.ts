@@ -4,6 +4,5 @@ export { TonWithdrawalCost } from "./ui/TonWithdrawalCost";
 export { WithdrawActions } from "./ui/WithdrawActions";
 export { WithdrawDrawer } from "./ui/WithdrawDrawer";
 export { WithdrawForm } from "./ui/WithdrawForm";
-export { WithdrawGiftCard } from "./ui/WithdrawGiftCard";
 export { WithdrawSummary } from "./ui/WithdrawSummary";
 export { WithdrawSummaryCard } from "./ui/WithdrawSummaryCard";

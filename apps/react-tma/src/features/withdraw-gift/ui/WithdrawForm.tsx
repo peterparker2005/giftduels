@@ -1,11 +1,11 @@
 import { GiftView } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
 import { PreviewWithdrawResponse } from "@giftduels/protobuf-js/giftduels/payment/v1/public_service_pb";
+import { SelectGiftCard } from "@/entities/gift/ui/SelectGiftCard";
+import { SelectGiftCardSkeleton } from "@/entities/gift/ui/SelectGiftCardSkeleton";
 import { useIntersectionObserver } from "@/shared/hooks/useIntersectionObserver";
 import { Button } from "@/shared/ui/Button";
 import { useWithdrawForm } from "../hooks/useWithdrawForm";
 import { TonWithdrawalCost } from "./TonWithdrawalCost";
-import { WithdrawGiftCard } from "./WithdrawGiftCard";
-import { WithdrawGiftCardSkeleton } from "./WithdrawGiftCardSkeleton";
 
 interface WithdrawFormProps {
 	gifts: GiftView[];
@@ -91,7 +91,7 @@ export const WithdrawForm = ({
 				{gifts.map((gift) => {
 					const giftId = gift.giftId?.value || "";
 					return (
-						<WithdrawGiftCard
+						<SelectGiftCard
 							key={giftId}
 							gift={gift}
 							selected={form.isGiftSelected(giftId)}
@@ -103,10 +103,10 @@ export const WithdrawForm = ({
 				{/* Loading skeletons for next page */}
 				{isLoadingMore && (
 					<>
-						<WithdrawGiftCardSkeleton />
-						<WithdrawGiftCardSkeleton />
-						<WithdrawGiftCardSkeleton />
-						<WithdrawGiftCardSkeleton />
+						<SelectGiftCardSkeleton />
+						<SelectGiftCardSkeleton />
+						<SelectGiftCardSkeleton />
+						<SelectGiftCardSkeleton />
 					</>
 				)}
 
@@ -114,7 +114,7 @@ export const WithdrawForm = ({
 				{hasNextPage && <div ref={observerRef} className="h-4" />}
 			</div>
 
-			<div className="flex-shrink-0 pb-[calc(var(--tg-viewport-safe-area-inset-bottom)+16px)]">
+			<div className="shrink-0 pb-[calc(var(--tg-viewport-safe-area-inset-bottom)+16px)]">
 				<Button
 					type="submit"
 					disabled={!form.hasSelection}

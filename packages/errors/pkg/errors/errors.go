@@ -9,12 +9,20 @@ import (
 )
 
 func NewValidationError(field, message string) error {
-	return builder.BuildValidationError(field, message, errorsv1.ErrorCode_ERROR_CODE_VALIDATION_GENERAL)
+	return builder.BuildValidationError(
+		field,
+		message,
+		errorsv1.ErrorCode_ERROR_CODE_VALIDATION_GENERAL,
+	)
 }
 
 // NewRequiredFieldError создает ошибку валидации для указанного поля.
 func NewRequiredFieldError(field, message string) error {
-	return builder.BuildValidationError(field, message, errorsv1.ErrorCode_ERROR_CODE_REQUIRED_FIELD)
+	return builder.BuildValidationError(
+		field,
+		message,
+		errorsv1.ErrorCode_ERROR_CODE_REQUIRED_FIELD,
+	)
 }
 
 // NewUnauthorizedError возвращает ошибку, сигнализирующую об отсутствии аутентификации.

@@ -38,6 +38,9 @@ message Gift {
   // Gift status tracking
   GiftStatus status = 13;
   google.protobuf.Timestamp withdrawn_at = 14;
+
+  // metadata for game
+  optional shared.v1.DuelId related_duel_id = 15;
 }
 
 message GiftView {
@@ -50,6 +53,9 @@ message GiftView {
   GiftStatus status = 7;
   google.protobuf.Timestamp withdrawn_at = 8;
   repeated GiftAttribute attributes = 9;
+
+  // metadata for game
+  optional shared.v1.DuelId related_duel_id = 10;
 }
 
 message GiftAttribute {

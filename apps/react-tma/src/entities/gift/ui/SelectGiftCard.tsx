@@ -3,17 +3,17 @@ import { Checkbox } from "@/shared/ui/Checkbox";
 import { Icon } from "@/shared/ui/Icon/Icon";
 import { getFragmentUrl } from "@/shared/utils/getFragmentUrl";
 
-interface WithdrawGiftCardProps {
+interface SelectGiftCardProps {
 	gift: GiftView;
 	selected?: boolean;
 	onSelectionChange: (selected: boolean) => void;
 }
 
-export const WithdrawGiftCard = ({
+export const SelectGiftCard = ({
 	gift,
 	selected = false,
 	onSelectionChange,
-}: WithdrawGiftCardProps) => {
+}: SelectGiftCardProps) => {
 	const handleClick = () => {
 		onSelectionChange(!selected);
 	};
@@ -47,7 +47,10 @@ export const WithdrawGiftCard = ({
 					<span className="text-xs font-medium">{gift.price?.value}</span>
 				</div>
 			</div>
-			<div className="absolute top-1/2 -translate-y-1/2 right-4 p-1">
+			<div
+				className="absolute top-1/2 -translate-y-1/2 right-4 p-1"
+				onClick={(e) => e.stopPropagation()}
+			>
 				<Checkbox
 					selected={selected}
 					onChange={() => handleCheckboxChange(!selected)}

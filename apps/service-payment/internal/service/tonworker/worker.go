@@ -73,7 +73,11 @@ func (p *Processor) run(ctx context.Context) {
 	}
 }
 
-func (p *Processor) subscribeAndProcess(ctx context.Context, fromLT uint64, retryDelay time.Duration) {
+func (p *Processor) subscribeAndProcess(
+	ctx context.Context,
+	fromLT uint64,
+	retryDelay time.Duration,
+) {
 	p.logger.Info("🔍 TON Worker", zap.Uint64("fromLT", fromLT))
 
 	txCh := make(chan ton.Transaction)
@@ -87,7 +91,11 @@ func (p *Processor) subscribeAndProcess(ctx context.Context, fromLT uint64, retr
 	p.readLoop(ctx, txCh, retryDelay)
 }
 
-func (p *Processor) readLoop(ctx context.Context, txCh chan ton.Transaction, retryDelay time.Duration) {
+func (p *Processor) readLoop(
+	ctx context.Context,
+	txCh chan ton.Transaction,
+	retryDelay time.Duration,
+) {
 	for {
 		select {
 		case <-ctx.Done():

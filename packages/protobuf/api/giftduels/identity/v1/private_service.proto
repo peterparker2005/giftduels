@@ -2,6 +2,28 @@ syntax = "proto3";
 
 package giftduels.identity.v1;
 
+import "giftduels/identity/v1/user.proto";
+import "giftduels/shared/v1/common.proto";
+
 option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/identity/v1;identityv1";
 
-service IdentityPrivateService {}
+service IdentityPrivateService {
+  rpc GetUserByID(GetUserByIDRequest) returns (GetUserByIDResponse);
+  rpc GetUsersByIDs(GetUsersByIDsRequest) returns (GetUsersByIDsResponse);
+}
+
+message GetUserByIDRequest {
+  shared.v1.TelegramUserId telegram_user_id = 1;
+}
+
+message GetUserByIDResponse {
+  User user = 1;
+}
+
+message GetUsersByIDsRequest {
+  repeated shared.v1.TelegramUserId telegram_user_ids = 1;
+}
+
+message GetUsersByIDsResponse {
+  repeated User users = 1;
+}

@@ -1,19 +1,23 @@
 import { create } from "@bufbuild/protobuf";
+import { GiftStatus } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
 import { ExecuteWithdrawRequest_CommissionCurrency } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_public_service_pb";
 import { GiftWithdrawRequestSchema } from "@giftduels/protobuf-js/giftduels/payment/v1/public_service_pb";
 import {
 	GiftIdSchema,
 	TonAmountSchema,
 } from "@giftduels/protobuf-js/giftduels/shared/v1/common_pb";
+import { openTelegramLink } from "@telegram-apps/sdk";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useGiftsQuery } from "@/shared/api/queries/useGiftsQuery";
 import { usePreviewWithdraw } from "@/shared/api/queries/usePreviewWithdraw";
+import { Button } from "@/shared/ui/Button";
 import {
 	Drawer,
 	DrawerContent,
 	DrawerTitle,
 	DrawerTrigger,
 } from "@/shared/ui/Drawer";
+import { LottiePlayer } from "@/shared/ui/LottiePlayer";
 import { WithdrawForm } from "./WithdrawForm";
 import { WithdrawSummary } from "./WithdrawSummary";
 
@@ -37,7 +41,10 @@ export const WithdrawDrawer = ({ children, disabled }: WithdrawDrawerProps) => {
 
 	// Flatten all pages into a single array of gifts
 	const allGifts = useMemo(
-		() => data?.pages.flatMap((page) => page.gifts) || [],
+		() =>
+			data?.pages
+				.flatMap((page) => page.gifts)
+				.filter((gift) => gift.status !== GiftStatus.IN_GAME) || [],
 		[data?.pages],
 	);
 
@@ -46,6 +53,7 @@ export const WithdrawDrawer = ({ children, disabled }: WithdrawDrawerProps) => {
 		mutate: previewWithdraw,
 		data: previewWithdrawData,
 		isPending: isPreviewPending,
+		reset: resetPreviewWithdraw,
 	} = usePreviewWithdraw();
 
 	// Create a stable reference for gift data
@@ -61,6 +69,12 @@ export const WithdrawDrawer = ({ children, disabled }: WithdrawDrawerProps) => {
 
 	// Preview withdraw when selected gifts change
 	useEffect(() => {
+		// Не делать preview запрос для пустого массива
+		if (selectedGifts.length === 0) {
+			resetPreviewWithdraw();
+			return;
+		}
+
 		const gifts = selectedGifts.map((giftId) => {
 			const gift = giftDataMap.get(giftId);
 			return create(GiftWithdrawRequestSchema, {
@@ -71,7 +85,7 @@ export const WithdrawDrawer = ({ children, disabled }: WithdrawDrawerProps) => {
 			});
 		});
 		previewWithdraw(gifts);
-	}, [previewWithdraw, selectedGifts, giftDataMap]);
+	}, [previewWithdraw, selectedGifts, giftDataMap, resetPreviewWithdraw]);
 
 	const handleProceedToConfirm = useCallback((giftIds: string[]) => {
 		setSelectedGifts(giftIds);
@@ -110,7 +124,8 @@ export const WithdrawDrawer = ({ children, disabled }: WithdrawDrawerProps) => {
 	const handleWithdrawSuccess = useCallback(() => {
 		// Close the drawer and reset state
 		setIsOpen(false);
-	}, []);
+		resetPreviewWithdraw();
+	}, [resetPreviewWithdraw]);
 
 	const handleCommissionCurrencyChange = useCallback(
 		(currency: ExecuteWithdrawRequest_CommissionCurrency) => {
@@ -160,10 +175,26 @@ export const WithdrawDrawer = ({ children, disabled }: WithdrawDrawerProps) => {
 
 		if (!allGifts || allGifts.length === 0) {
 			return (
-				<div className="flex items-center justify-center flex-1">
-					<p className="text-muted-foreground">
-						No gifts available for withdrawal
-					</p>
+				<div className="flex items-center justify-center flex-1 h-[calc(100%-28px-20px)]">
+					<div className="flex flex-col items-center gap-4">
+						<LottiePlayer
+							src={"/lottie/plushdog.json"}
+							loop={true}
+							className="w-40 h-40"
+						/>
+						<p className="text-muted-foreground text-center font-medium text-base">
+							No gifts available for withdrawal
+						</p>
+						<Button
+							variant="default"
+							className=""
+							onClick={() => {
+								openTelegramLink("https://t.me/devpp2_bot");
+							}}
+						>
+							Add gifts
+						</Button>
+					</div>
 				</div>
 			);
 		}

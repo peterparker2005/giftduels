@@ -2,6 +2,11 @@
 @import 'tw-animate-css';
 
 @theme {
+	@keyframes shimmer {
+		100% {
+			transform: translateX(200%);
+		}
+	}
 	--color-background: hsl(0, 0%, 8%);
 	--color-foreground: hsl(0, 0%, 100%);
 	--color-muted-foreground: hsl(0, 0%, 45%);
@@ -20,6 +25,8 @@
 	--color-error: hsla(348, 100%, 61%, 1);
 
 	--radius: 16px;
+
+	--animate-shimmer: shimmer 1.5s infinite;
 
 	--font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
 		'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',

@@ -36,7 +36,10 @@ func (r *DepositRepository) WithTx(tx pgx.Tx) ton.DepositRepository {
 	}
 }
 
-func (r *DepositRepository) CreateDeposit(ctx context.Context, params *ton.CreateDepositParams) (*ton.Deposit, error) {
+func (r *DepositRepository) CreateDeposit(
+	ctx context.Context,
+	params *ton.CreateDepositParams,
+) (*ton.Deposit, error) {
 	amountNano, err := safecast.ToInt64(params.AmountNano)
 	if err != nil {
 		return nil, err
@@ -53,7 +56,10 @@ func (r *DepositRepository) CreateDeposit(ctx context.Context, params *ton.Creat
 	return ToDepositDomain(deposit), nil
 }
 
-func (r *DepositRepository) GetDepositByPayload(ctx context.Context, payload string) (*ton.Deposit, error) {
+func (r *DepositRepository) GetDepositByPayload(
+	ctx context.Context,
+	payload string,
+) (*ton.Deposit, error) {
 	deposit, err := r.q.GetDepositByPayload(ctx, payload)
 	if err != nil {
 		return nil, err
@@ -85,7 +91,10 @@ func (r *DepositRepository) SetDepositTransaction(
 	return ToDepositDomain(deposit), nil
 }
 
-func (r *DepositRepository) GetCursor(ctx context.Context, network, walletAddress string) (uint64, error) {
+func (r *DepositRepository) GetCursor(
+	ctx context.Context,
+	network, walletAddress string,
+) (uint64, error) {
 	net, err := ToDBTonNetwork(network)
 	if err != nil {
 		return 0, fmt.Errorf("ton cursor get: %w", err)
@@ -107,7 +116,11 @@ func (r *DepositRepository) GetCursor(ctx context.Context, network, walletAddres
 	return lastLtUint, nil
 }
 
-func (r *DepositRepository) UpsertCursor(ctx context.Context, network, walletAddress string, lastLT uint64) error {
+func (r *DepositRepository) UpsertCursor(
+	ctx context.Context,
+	network, walletAddress string,
+	lastLT uint64,
+) error {
 	net, err := ToDBTonNetwork(network)
 	if err != nil {
 		return fmt.Errorf("ton cursor upsert: %w", err)

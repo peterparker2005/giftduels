@@ -10,4 +10,5 @@ var (
 	ErrSlugRequired           = errors.New("slug is required")
 	ErrGiftNotWithdrawPending = errors.New("gift is not in withdraw pending status")
 	ErrGiftCannotBeWithdrawn  = errors.New("gift cannot be withdrawn")
+	ErrGiftCannotStake        = errors.New("gift cannot be staked")
 )

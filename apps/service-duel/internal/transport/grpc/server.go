@@ -28,18 +28,19 @@ func NewGRPCServer(
 	versionUnary []grpc.UnaryServerInterceptor,
 	versionStream []grpc.StreamServerInterceptor,
 	publicHandler duelv1.DuelPublicServiceServer,
-	// privateHandler duelv1.DuelPrivateServiceServer,
+	privateHandler duelv1.DuelPrivateServiceServer,
 	log *logger.Logger,
 ) *Server {
 	opts := []grpc.ServerOption{
-		grpc.ChainUnaryInterceptor(append(versionUnary, recoverInterceptor, authctx.TelegramIDCtxInterceptor())...),
+		grpc.ChainUnaryInterceptor(
+			append(versionUnary, recoverInterceptor, authctx.TelegramIDCtxInterceptor())...),
 		grpc.ChainStreamInterceptor(versionStream...),
 	}
 
 	s := grpc.NewServer(opts...)
 
 	duelv1.RegisterDuelPublicServiceServer(s, publicHandler)
-	// duelv1.RegisterDuelPrivateServiceServer(s, privateHandler)
+	duelv1.RegisterDuelPrivateServiceServer(s, privateHandler)
 
 	hs := health.NewServer()
 	hs.SetServingStatus("duel", healthpb.HealthCheckResponse_SERVING)

@@ -84,8 +84,9 @@ func (h *giftPrivateHandler) StakeGift(
 	req *giftv1.StakeGiftRequest,
 ) (*giftv1.StakeGiftResponse, error) {
 	g, err := h.giftService.StakeGift(ctx, gift.StakeGiftParams{
-		GiftID:       req.GetGiftId().GetValue(),
-		GameMetadata: req.GetGameMetadata(),
+		GiftID:         req.GetGiftId().GetValue(),
+		TelegramUserID: req.GetTelegramUserId().GetValue(),
+		GameMetadata:   req.GetGameMetadata(),
 	})
 	if err != nil {
 		return nil, err

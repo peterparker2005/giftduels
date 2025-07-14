@@ -1,4 +1,4 @@
-package eventhandler
+package workerhandlers
 
 import (
 	"context"
@@ -90,7 +90,9 @@ func (h *TelegramGiftReceivedHandler) Handle(msg *message.Message) error {
 	return nil
 }
 
-func (h *TelegramGiftReceivedHandler) parseEvent(msg *message.Message) (*giftv1.TelegramGiftReceivedEvent, error) {
+func (h *TelegramGiftReceivedHandler) parseEvent(
+	msg *message.Message,
+) (*giftv1.TelegramGiftReceivedEvent, error) {
 	var ev giftv1.TelegramGiftReceivedEvent
 	if err := proto.Unmarshal(msg.Payload, &ev); err != nil {
 		h.logger.Error(

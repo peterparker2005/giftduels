@@ -9,7 +9,7 @@ import (
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/adapter/pg"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/config"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/service"
-	"github.com/peterparker2005/giftduels/apps/service-gift/internal/transport"
+	"github.com/peterparker2005/giftduels/apps/service-gift/internal/transport/grpc"
 	"github.com/peterparker2005/giftduels/packages/grpc-go/clients"
 
 	"github.com/peterparker2005/giftduels/packages/logger-go"
@@ -32,6 +32,6 @@ var CommonModule = fx.Options(
 func NewGRPCApp() *fx.App {
 	return fx.New(
 		CommonModule,
-		transport.Module,
+		grpc.Module,
 	)
 }

@@ -75,7 +75,11 @@ func (h *IdentityPublicHandler) Authorize(
 
 	_, err = h.userSvc.UpsertUser(ctx, userParams)
 	if err != nil {
-		h.logger.Error("failed to upsert user", zap.Error(err), zap.Int64("telegram_id", telegramID))
+		h.logger.Error(
+			"failed to upsert user",
+			zap.Error(err),
+			zap.Int64("telegram_id", telegramID),
+		)
 		return nil, errors.NewInternalError("failed to process user data")
 	}
 

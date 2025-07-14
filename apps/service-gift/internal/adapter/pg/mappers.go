@@ -1,6 +1,9 @@
 package pg
 
 import (
+	"errors"
+
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/adapter/pg/sqlc"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
 	"github.com/peterparker2005/giftduels/packages/tonamount-go"
@@ -8,14 +11,18 @@ import (
 
 // GiftToDomain converts sqlc.Gift to domain.Gift.
 func GiftToDomain(dbGift sqlc.Gift) (*gift.Gift, error) {
-	price, err := fromPgNumeric(dbGift.Price)
-	if err != nil {
-		return nil, err
+	var tonAmount *tonamount.TonAmount
+	if dbGift.Price.Valid {
+		price, err := fromPgNumeric(dbGift.Price)
+		if err != nil {
+			return nil, err
+		}
+		tonAmount, err = tonamount.NewTonAmountFromString(price)
+		if err != nil {
+			return nil, err
+		}
 	}
-	tonAmount, err := tonamount.NewTonAmountFromString(price)
-	if err != nil {
-		return nil, err
-	}
+
 	return &gift.Gift{
 		ID:               pgUUIDToString(dbGift.ID),
 		OwnerTelegramID:  dbGift.OwnerTelegramID,
@@ -54,19 +61,26 @@ func GiftToDomainFromGiftsByIDsRow(dbGift sqlc.Gift) (*gift.Gift, error) {
 }
 
 // GiftEventToDomain converts sqlc.GiftEvent to domain.Event.
-func GiftEventToDomain(dbEvent sqlc.GiftEvent) *gift.Event {
-	return &gift.Event{
-		ID:            pgUUIDToString(dbEvent.ID),
-		GiftID:        pgUUIDToString(dbEvent.GiftID),
-		FromUserID:    pgInt8ToInt64(dbEvent.FromUserID),
-		ToUserID:      pgInt8ToInt64(dbEvent.ToUserID),
-		Action:        dbEvent.Action,
-		GameMode:      pgTextToString(dbEvent.GameMode),
-		RelatedGameID: pgTextToString(dbEvent.RelatedGameID),
-		Description:   pgTextToString(dbEvent.Description),
-		Payload:       dbEvent.Payload,
-		OccurredAt:    pgTimestampToTimeRequired(dbEvent.OccurredAt),
+func GiftEventToDomain(dbEvent sqlc.GiftEvent) (*gift.Event, error) {
+	var relatedGameID *string
+	if dbEvent.RelatedGameID.Valid {
+		gameID := pgUUIDToString(dbEvent.RelatedGameID)
+		relatedGameID = &gameID
 	}
+
+	telegramUserID, err := pgInt8ToInt64(dbEvent.TelegramUserID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &gift.Event{
+		ID:             pgUUIDToString(dbEvent.ID),
+		GiftID:         pgUUIDToString(dbEvent.GiftID),
+		TelegramUserID: telegramUserID,
+		EventType:      gift.EventType(dbEvent.EventType),
+		RelatedGameID:  relatedGameID,
+		OccurredAt:     pgTimestampToTimeRequired(dbEvent.OccurredAt),
+	}, nil
 }
 
 // CollectionToDomain converts sqlc.GiftCollection to domain.Collection.
@@ -117,10 +131,19 @@ func SymbolToDomain(dbSymbol sqlc.GiftSymbol) *gift.Symbol {
 
 // CreateGiftParamsToDB converts domain.CreateGiftParams to sqlc.CreateGiftParams.
 func CreateGiftParamsToDB(params *gift.CreateGiftParams) (sqlc.CreateGiftParams, error) {
-	pgPrice, err := pgNumeric(params.Price.String())
-	if err != nil {
-		return sqlc.CreateGiftParams{}, err
+	if params == nil {
+		return sqlc.CreateGiftParams{}, errors.New("params cannot be nil")
 	}
+
+	var pgPrice pgtype.Numeric
+	if params.Price != nil {
+		var err error
+		pgPrice, err = pgNumeric(params.Price.String())
+		if err != nil {
+			return sqlc.CreateGiftParams{}, err
+		}
+	}
+
 	return sqlc.CreateGiftParams{
 		ID:               mustPgUUID(params.GiftID),
 		TelegramGiftID:   params.TelegramGiftID,
@@ -137,20 +160,31 @@ func CreateGiftParamsToDB(params *gift.CreateGiftParams) (sqlc.CreateGiftParams,
 }
 
 // CreateGiftEventParamsToDB converts domain.CreateGiftEventParams to sqlc.CreateGiftEventParams.
-func CreateGiftEventParamsToDB(params gift.CreateGiftEventParams) sqlc.CreateGiftEventParams {
-	return sqlc.CreateGiftEventParams{
-		GiftID:        mustPgUUID(params.GiftID),
-		FromUserID:    int64PtrToPgInt8(params.FromUserID),
-		ToUserID:      int64PtrToPgInt8(params.ToUserID),
-		RelatedGameID: stringPtrToPgText(params.RelatedGameID),
-		GameMode:      stringPtrToPgText(params.GameMode),
-		Description:   stringPtrToPgText(params.Description),
-		Payload:       params.Payload,
+func CreateGiftEventParamsToDB(
+	params gift.CreateGiftEventParams,
+) (sqlc.CreateGiftEventParams, error) {
+	telegramUserID := int64PtrToPgInt8(&params.TelegramUserID)
+	var relatedGameID pgtype.UUID
+	if params.RelatedGameID != nil {
+		var err error
+		relatedGameID, err = pgUUID(*params.RelatedGameID)
+		if err != nil {
+			return sqlc.CreateGiftEventParams{}, err
+		}
 	}
+	return sqlc.CreateGiftEventParams{
+		GiftID:         mustPgUUID(params.GiftID),
+		TelegramUserID: telegramUserID,
+		EventType:      sqlc.GiftEventType(params.EventType),
+		RelatedGameID:  relatedGameID,
+	}, nil
 }
 
 // CreateCollectionParamsToDB converts domain.CreateCollectionParams to sqlc.CreateCollectionParams.
 func CreateCollectionParamsToDB(params *gift.CreateCollectionParams) sqlc.CreateCollectionParams {
+	if params == nil {
+		return sqlc.CreateCollectionParams{}
+	}
 	return sqlc.CreateCollectionParams{
 		Name:      params.Name,
 		ShortName: params.ShortName,
@@ -159,6 +193,9 @@ func CreateCollectionParamsToDB(params *gift.CreateCollectionParams) sqlc.Create
 
 // CreateModelParamsToDB converts domain.CreateModelParams to sqlc.CreateModelParams.
 func CreateModelParamsToDB(params *gift.CreateModelParams) sqlc.CreateModelParams {
+	if params == nil {
+		return sqlc.CreateModelParams{}
+	}
 	return sqlc.CreateModelParams{
 		CollectionID:   params.CollectionID,
 		Name:           params.Name,
@@ -169,6 +206,9 @@ func CreateModelParamsToDB(params *gift.CreateModelParams) sqlc.CreateModelParam
 
 // CreateBackdropParamsToDB converts domain.CreateBackdropParams to sqlc.CreateBackdropParams.
 func CreateBackdropParamsToDB(params *gift.CreateBackdropParams) sqlc.CreateBackdropParams {
+	if params == nil {
+		return sqlc.CreateBackdropParams{}
+	}
 	return sqlc.CreateBackdropParams{
 		Name:           params.Name,
 		ShortName:      params.ShortName,
@@ -182,6 +222,9 @@ func CreateBackdropParamsToDB(params *gift.CreateBackdropParams) sqlc.CreateBack
 
 // CreateSymbolParamsToDB converts domain.CreateSymbolParams to sqlc.CreateSymbolParams.
 func CreateSymbolParamsToDB(params *gift.CreateSymbolParams) sqlc.CreateSymbolParams {
+	if params == nil {
+		return sqlc.CreateSymbolParams{}
+	}
 	return sqlc.CreateSymbolParams{
 		Name:           params.Name,
 		ShortName:      params.ShortName,
@@ -203,7 +246,8 @@ func giftStatusToDomain(status sqlc.GiftStatus) gift.Status {
 	case sqlc.GiftStatusWithdrawn:
 		return gift.StatusWithdrawn
 	default:
-		return gift.StatusOwned // fallback.
+		// Log unknown status and return default
+		return gift.StatusOwned // fallback to safe default
 	}
 }
 
@@ -219,6 +263,7 @@ func giftStatusToSQLC(status gift.Status) sqlc.GiftStatus {
 	case gift.StatusWithdrawn:
 		return sqlc.GiftStatusWithdrawn
 	default:
-		return sqlc.GiftStatusOwned // fallback.
+		// Log unknown status and return default
+		return sqlc.GiftStatusOwned // fallback to safe default
 	}
 }

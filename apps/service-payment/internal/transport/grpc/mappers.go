@@ -10,7 +10,9 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func TransactionReasonToDomain(reason paymentv1.TransactionReason) (payment.TransactionReason, error) {
+func TransactionReasonToDomain(
+	reason paymentv1.TransactionReason,
+) (payment.TransactionReason, error) {
 	switch reason {
 	case paymentv1.TransactionReason_TRANSACTION_REASON_WITHDRAW:
 		return payment.TransactionReasonWithdraw, nil
@@ -25,7 +27,9 @@ func TransactionReasonToDomain(reason paymentv1.TransactionReason) (payment.Tran
 	}
 }
 
-func TransactionReasonToProto(reason payment.TransactionReason) (paymentv1.TransactionReason, error) {
+func TransactionReasonToProto(
+	reason payment.TransactionReason,
+) (paymentv1.TransactionReason, error) {
 	switch reason {
 	case payment.TransactionReasonWithdraw:
 		return paymentv1.TransactionReason_TRANSACTION_REASON_WITHDRAW, nil
@@ -61,7 +65,9 @@ func TransactionToProto(t *payment.Transaction) (*paymentv1.TransactionView, err
 	}, nil
 }
 
-func TransactionMetadataToProto(m *payment.TransactionMetadata) (*paymentv1.TransactionMetadata, error) {
+func TransactionMetadataToProto(
+	m *payment.TransactionMetadata,
+) (*paymentv1.TransactionMetadata, error) {
 	if m == nil || m.Gift == nil {
 		return nil, errors.New("transaction metadata is nil or gift is nil")
 	}
@@ -76,7 +82,9 @@ func TransactionMetadataToProto(m *payment.TransactionMetadata) (*paymentv1.Tran
 	}, nil
 }
 
-func TransactionMetadataToDomain(m *paymentv1.TransactionMetadata) (*payment.TransactionMetadata, error) {
+func TransactionMetadataToDomain(
+	m *paymentv1.TransactionMetadata,
+) (*payment.TransactionMetadata, error) {
 	if m == nil {
 		return nil, errors.New("transaction metadata is nil")
 	}

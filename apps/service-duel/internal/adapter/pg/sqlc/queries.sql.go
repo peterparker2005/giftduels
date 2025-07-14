@@ -43,32 +43,32 @@ func (q *Queries) CreateDuel(ctx context.Context, arg CreateDuelParams) (Duel, e
 	return i, err
 }
 
-const createDuelParticipant = `-- name: CreateDuelParticipant :one
+const createParticipant = `-- name: CreateParticipant :one
 INSERT INTO duel_participants (duel_id, telegram_user_id, is_creator)
 VALUES ($1, $2, $3)
 RETURNING duel_id, telegram_user_id, is_creator
 `
 
-type CreateDuelParticipantParams struct {
+type CreateParticipantParams struct {
 	DuelID         pgtype.UUID
 	TelegramUserID int64
 	IsCreator      bool
 }
 
-func (q *Queries) CreateDuelParticipant(ctx context.Context, arg CreateDuelParticipantParams) (DuelParticipant, error) {
-	row := q.db.QueryRow(ctx, createDuelParticipant, arg.DuelID, arg.TelegramUserID, arg.IsCreator)
+func (q *Queries) CreateParticipant(ctx context.Context, arg CreateParticipantParams) (DuelParticipant, error) {
+	row := q.db.QueryRow(ctx, createParticipant, arg.DuelID, arg.TelegramUserID, arg.IsCreator)
 	var i DuelParticipant
 	err := row.Scan(&i.DuelID, &i.TelegramUserID, &i.IsCreator)
 	return i, err
 }
 
-const createDuelRoll = `-- name: CreateDuelRoll :one
+const createRoll = `-- name: CreateRoll :one
 INSERT INTO duel_rolls (duel_id, round_number, telegram_user_id, dice_value, rolled_at, is_auto_rolled)
 VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING duel_id, round_number, telegram_user_id, dice_value, rolled_at, is_auto_rolled
 `
 
-type CreateDuelRollParams struct {
+type CreateRollParams struct {
 	DuelID         pgtype.UUID
 	RoundNumber    int32
 	TelegramUserID int64
@@ -77,8 +77,8 @@ type CreateDuelRollParams struct {
 	IsAutoRolled   bool
 }
 
-func (q *Queries) CreateDuelRoll(ctx context.Context, arg CreateDuelRollParams) (DuelRoll, error) {
-	row := q.db.QueryRow(ctx, createDuelRoll,
+func (q *Queries) CreateRoll(ctx context.Context, arg CreateRollParams) (DuelRoll, error) {
+	row := q.db.QueryRow(ctx, createRoll,
 		arg.DuelID,
 		arg.RoundNumber,
 		arg.TelegramUserID,
@@ -98,39 +98,39 @@ func (q *Queries) CreateDuelRoll(ctx context.Context, arg CreateDuelRollParams) 
 	return i, err
 }
 
-const createDuelRound = `-- name: CreateDuelRound :one
+const createRound = `-- name: CreateRound :one
 INSERT INTO duel_rounds (duel_id, round_number)
 VALUES ($1, $2)
 RETURNING duel_id, round_number
 `
 
-type CreateDuelRoundParams struct {
+type CreateRoundParams struct {
 	DuelID      pgtype.UUID
 	RoundNumber int32
 }
 
-func (q *Queries) CreateDuelRound(ctx context.Context, arg CreateDuelRoundParams) (DuelRound, error) {
-	row := q.db.QueryRow(ctx, createDuelRound, arg.DuelID, arg.RoundNumber)
+func (q *Queries) CreateRound(ctx context.Context, arg CreateRoundParams) (DuelRound, error) {
+	row := q.db.QueryRow(ctx, createRound, arg.DuelID, arg.RoundNumber)
 	var i DuelRound
 	err := row.Scan(&i.DuelID, &i.RoundNumber)
 	return i, err
 }
 
-const createDuelStake = `-- name: CreateDuelStake :one
+const createStake = `-- name: CreateStake :one
 INSERT INTO duel_stakes (duel_id, telegram_user_id, gift_id, stake_value)
 VALUES ($1, $2, $3, $4)
 RETURNING duel_id, telegram_user_id, gift_id, stake_value
 `
 
-type CreateDuelStakeParams struct {
+type CreateStakeParams struct {
 	DuelID         pgtype.UUID
 	TelegramUserID int64
 	GiftID         pgtype.UUID
 	StakeValue     pgtype.Numeric
 }
 
-func (q *Queries) CreateDuelStake(ctx context.Context, arg CreateDuelStakeParams) (DuelStake, error) {
-	row := q.db.QueryRow(ctx, createDuelStake,
+func (q *Queries) CreateStake(ctx context.Context, arg CreateStakeParams) (DuelStake, error) {
+	row := q.db.QueryRow(ctx, createStake,
 		arg.DuelID,
 		arg.TelegramUserID,
 		arg.GiftID,
@@ -144,6 +144,48 @@ func (q *Queries) CreateDuelStake(ctx context.Context, arg CreateDuelStakeParams
 		&i.StakeValue,
 	)
 	return i, err
+}
+
+const findDueDuels = `-- name: FindDueDuels :many
+SELECT id FROM duels
+WHERE status = 'in_progress'
+  AND next_roll_deadline <= $1
+`
+
+func (q *Queries) FindDueDuels(ctx context.Context, nextRollDeadline pgtype.Timestamptz) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, findDueDuels, nextRollDeadline)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findDuelByGiftID = `-- name: FindDuelByGiftID :one
+SELECT d.id
+FROM duels d
+JOIN duel_stakes s ON s.duel_id = d.id
+WHERE s.gift_id = $1
+ORDER BY d.created_at DESC
+LIMIT 1
+`
+
+func (q *Queries) FindDuelByGiftID(ctx context.Context, giftID pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, findDuelByGiftID, giftID)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const getDuelByID = `-- name: GetDuelByID :one
@@ -168,6 +210,114 @@ func (q *Queries) GetDuelByID(ctx context.Context, id pgtype.UUID) (Duel, error)
 		&i.CompletedAt,
 	)
 	return i, err
+}
+
+const getDuelParticipants = `-- name: GetDuelParticipants :many
+SELECT duel_id, telegram_user_id, is_creator FROM duel_participants WHERE duel_id = $1
+`
+
+func (q *Queries) GetDuelParticipants(ctx context.Context, duelID pgtype.UUID) ([]DuelParticipant, error) {
+	rows, err := q.db.Query(ctx, getDuelParticipants, duelID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DuelParticipant
+	for rows.Next() {
+		var i DuelParticipant
+		if err := rows.Scan(&i.DuelID, &i.TelegramUserID, &i.IsCreator); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getDuelRolls = `-- name: GetDuelRolls :many
+SELECT duel_id, round_number, telegram_user_id, dice_value, rolled_at, is_auto_rolled FROM duel_rolls WHERE duel_id = $1 ORDER BY round_number, rolled_at
+`
+
+func (q *Queries) GetDuelRolls(ctx context.Context, duelID pgtype.UUID) ([]DuelRoll, error) {
+	rows, err := q.db.Query(ctx, getDuelRolls, duelID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DuelRoll
+	for rows.Next() {
+		var i DuelRoll
+		if err := rows.Scan(
+			&i.DuelID,
+			&i.RoundNumber,
+			&i.TelegramUserID,
+			&i.DiceValue,
+			&i.RolledAt,
+			&i.IsAutoRolled,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getDuelRounds = `-- name: GetDuelRounds :many
+SELECT duel_id, round_number FROM duel_rounds WHERE duel_id = $1 ORDER BY round_number
+`
+
+func (q *Queries) GetDuelRounds(ctx context.Context, duelID pgtype.UUID) ([]DuelRound, error) {
+	rows, err := q.db.Query(ctx, getDuelRounds, duelID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DuelRound
+	for rows.Next() {
+		var i DuelRound
+		if err := rows.Scan(&i.DuelID, &i.RoundNumber); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getDuelStakes = `-- name: GetDuelStakes :many
+SELECT duel_id, telegram_user_id, gift_id, stake_value FROM duel_stakes WHERE duel_id = $1
+`
+
+func (q *Queries) GetDuelStakes(ctx context.Context, duelID pgtype.UUID) ([]DuelStake, error) {
+	rows, err := q.db.Query(ctx, getDuelStakes, duelID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DuelStake
+	for rows.Next() {
+		var i DuelStake
+		if err := rows.Scan(
+			&i.DuelID,
+			&i.TelegramUserID,
+			&i.GiftID,
+			&i.StakeValue,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getDuels = `-- name: GetDuels :many
@@ -314,4 +464,45 @@ func (q *Queries) GetVisibleDuelsCount(ctx context.Context) (int64, error) {
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const updateDuelStatus = `-- name: UpdateDuelStatus :exec
+UPDATE duels
+  SET status = $2,
+      winner_telegram_user_id = $3,
+      completed_at = $4
+WHERE id = $1
+`
+
+type UpdateDuelStatusParams struct {
+	ID                   pgtype.UUID
+	Status               NullDuelStatus
+	WinnerTelegramUserID pgtype.Int8
+	CompletedAt          pgtype.Timestamptz
+}
+
+func (q *Queries) UpdateDuelStatus(ctx context.Context, arg UpdateDuelStatusParams) error {
+	_, err := q.db.Exec(ctx, updateDuelStatus,
+		arg.ID,
+		arg.Status,
+		arg.WinnerTelegramUserID,
+		arg.CompletedAt,
+	)
+	return err
+}
+
+const updateNextRollDeadline = `-- name: UpdateNextRollDeadline :exec
+UPDATE duels
+  SET next_roll_deadline = $2
+WHERE id = $1
+`
+
+type UpdateNextRollDeadlineParams struct {
+	ID               pgtype.UUID
+	NextRollDeadline pgtype.Timestamptz
+}
+
+func (q *Queries) UpdateNextRollDeadline(ctx context.Context, arg UpdateNextRollDeadlineParams) error {
+	_, err := q.db.Exec(ctx, updateNextRollDeadline, arg.ID, arg.NextRollDeadline)
+	return err
 }

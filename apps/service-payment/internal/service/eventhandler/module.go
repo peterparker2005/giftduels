@@ -42,7 +42,11 @@ var Module = fx.Options(
 		newUserHandler *IdentityNewUserHandler,
 		telegramGiftWithdrawFailHandler *TelegramGiftWithdrawFailedHandler,
 	) error {
-		router, err := ProvideRouter(log, pub, paymentEvents.Config(cfg.ServiceName).Exchange+".poison")
+		router, err := ProvideRouter(
+			log,
+			pub,
+			paymentEvents.Config(cfg.ServiceName).Exchange+".poison",
+		)
 		if err != nil {
 			return err
 		}

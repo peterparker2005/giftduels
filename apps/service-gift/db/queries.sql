@@ -24,15 +24,18 @@ WHERE owner_telegram_id = $1;
 SELECT *
 FROM gifts
 WHERE owner_telegram_id = $1
-  AND status NOT IN ('withdrawn', 'withdraw_pending')
-ORDER BY created_at DESC
+  AND status IN ('owned', 'in_game')
+ORDER BY
+  created_at DESC,
+  (status = 'owned') DESC,
+  price DESC
 LIMIT $2 OFFSET $3;
 
 -- name: GetUserActiveGiftsCount :one
 SELECT COUNT(*)
 FROM gifts
 WHERE owner_telegram_id = $1
-  AND status NOT IN ('withdrawn', 'withdraw_pending');
+  AND status IN ('owned', 'in_game');
 
 -- name: UpdateGiftStatus :one
 UPDATE gifts 
@@ -70,17 +73,20 @@ SET status = 'in_game', updated_at = NOW()
 WHERE id = $1 AND status = 'owned'
 RETURNING *;
 
+-- name: ReturnGiftFromGame :one
+UPDATE gifts 
+SET status = 'owned', updated_at = NOW()
+WHERE id = $1 AND status = 'in_game'
+RETURNING *;
+
 -- name: CreateGiftEvent :one
 INSERT INTO gift_events (
     gift_id,
-    from_user_id,
-    to_user_id,
-    related_game_id,
-    game_mode,
-    description,
-    payload
+    event_type,
+    telegram_user_id,
+    related_game_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    $1, $2, $3, $4
 )
 RETURNING *;
 

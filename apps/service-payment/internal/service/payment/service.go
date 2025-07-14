@@ -387,7 +387,13 @@ func (s *Service) RollbackWithdrawalCommission(
 		return err
 	}
 
-	_, err = s.AddUserBalance(ctx, telegramUserID, tonAmount.String(), payment.TransactionReasonRefund, &metadata)
+	_, err = s.AddUserBalance(
+		ctx,
+		telegramUserID,
+		tonAmount.String(),
+		payment.TransactionReasonRefund,
+		&metadata,
+	)
 	if err != nil {
 		log.Error("failed to add user balance", zap.Error(err))
 		return err

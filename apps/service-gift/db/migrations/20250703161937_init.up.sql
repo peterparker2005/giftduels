@@ -13,6 +13,15 @@ CREATE TYPE gift_status AS ENUM (
   'withdrawn'
 );
 
+CREATE TYPE gift_event_type AS ENUM (
+  'stake',
+  'return_from_game',
+  'deposit',
+  'withdraw_request',
+  'withdraw_complete',
+  'withdraw_fail'
+);
+
 -- 2. Reference tables (must be created before gifts)
 
 -- Collections
@@ -77,13 +86,12 @@ CREATE TABLE gifts (
 CREATE TABLE gift_events (
   id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   gift_id          UUID        NOT NULL REFERENCES gifts(id) ON DELETE CASCADE,
-  from_user_id     BIGINT,
-  to_user_id       BIGINT,
-  action           TEXT        NOT NULL,
-  game_mode        TEXT,
-  related_game_id  TEXT,
-  description      TEXT,
-  payload          JSONB,
+  event_type       gift_event_type NOT NULL DEFAULT 'stake',
+
+  telegram_user_id     BIGINT NULL,
+
+  related_game_id UUID NULL,
+
   occurred_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

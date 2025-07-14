@@ -22,3 +22,6 @@ ON CONFLICT (telegram_id) DO UPDATE SET
     is_premium = EXCLUDED.is_premium,
     updated_at = CURRENT_TIMESTAMP
 RETURNING *;
+
+-- name: GetUsersByTelegramIDs :many
+SELECT * FROM users WHERE telegram_id = ANY($1::bigint[]);

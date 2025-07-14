@@ -12,9 +12,13 @@ type SessionClaims struct {
 }
 
 func ParseToken(tokenStr string, secret string) (*SessionClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenStr, &SessionClaims{}, func(_ *jwt.Token) (interface{}, error) {
-		return []byte(secret), nil
-	})
+	token, err := jwt.ParseWithClaims(
+		tokenStr,
+		&SessionClaims{},
+		func(_ *jwt.Token) (interface{}, error) {
+			return []byte(secret), nil
+		},
+	)
 	if err != nil || !token.Valid {
 		return nil, err
 	}

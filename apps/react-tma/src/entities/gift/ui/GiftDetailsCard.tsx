@@ -1,6 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import {
 	GiftAttributeType,
+	GiftStatus,
 	GiftView,
 } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
 import { GiftWithdrawRequestSchema } from "@giftduels/protobuf-js/giftduels/payment/v1/public_service_pb";
@@ -8,9 +9,11 @@ import {
 	GiftIdSchema,
 	TonAmountSchema,
 } from "@giftduels/protobuf-js/giftduels/shared/v1/common_pb";
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo } from "react";
 import { WithdrawActions } from "@/features/withdraw-gift";
 import { usePreviewWithdraw } from "@/shared/api/queries/usePreviewWithdraw";
+import { Button } from "@/shared/ui/Button";
 import { LottiePlayer } from "@/shared/ui/LottiePlayer";
 import { formatFloat } from "@/shared/utils/formatFloat";
 import { getFragmentUrl } from "@/shared/utils/getFragmentUrl";
@@ -24,6 +27,8 @@ export const GiftDetailsCard = ({
 	gift,
 	onCloseDrawer,
 }: GiftDetailsCardProps) => {
+	const navigate = useNavigate();
+
 	// Preview withdraw logic
 	const {
 		mutate: previewWithdraw,
@@ -99,14 +104,32 @@ export const GiftDetailsCard = ({
 			</div>
 
 			{/* Actions */}
-			<div className="flex flex-col gap-3 mt-auto">
-				<WithdrawActions
-					giftIds={giftIds}
-					previewData={previewData}
-					onSuccess={onCloseDrawer}
-					disabled={isPreviewPending}
-				/>
-			</div>
+			{gift.status !== GiftStatus.IN_GAME ? (
+				<div className="flex flex-col gap-3 mt-auto">
+					<WithdrawActions
+						giftIds={giftIds}
+						previewData={previewData}
+						onSuccess={onCloseDrawer}
+						disabled={isPreviewPending}
+					/>
+				</div>
+			) : (
+				<div className="flex flex-col gap-3 mt-auto mb-[calc(var(--tg-viewport-safe-area-inset-bottom)+16px)]">
+					<Button
+						variant="default"
+						className="w-full py-3 flex items-center justify-center gap-2 font-semibold"
+						onClick={() => {
+							if (!gift.relatedDuelId?.value) return;
+							navigate({
+								to: "/duel/$duelId",
+								params: { duelId: gift.relatedDuelId?.value },
+							});
+						}}
+					>
+						Open Game
+					</Button>
+				</div>
+			)}
 		</div>
 	);
 };

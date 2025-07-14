@@ -54,7 +54,12 @@ func (h *TelegramGiftWithdrawFailedHandler) Handle(msg *message.Message) error {
 		},
 	}
 
-	err := h.paymentService.RollbackWithdrawalCommission(ctx, telegramUserID, commissionAmount, metadata)
+	err := h.paymentService.RollbackWithdrawalCommission(
+		ctx,
+		telegramUserID,
+		commissionAmount,
+		metadata,
+	)
 	if err != nil {
 		h.log.Error("failed to rollback withdrawal commission",
 			zap.Error(err),

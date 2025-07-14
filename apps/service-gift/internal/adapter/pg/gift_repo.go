@@ -112,6 +112,16 @@ func (r *GiftRepository) StakeGiftForGame(ctx context.Context, id string) (*gift
 	return r.GetGiftByID(ctx, id)
 }
 
+func (r *GiftRepository) ReturnGiftFromGame(ctx context.Context, id string) (*gift.Gift, error) {
+	_, err := r.q.ReturnGiftFromGame(ctx, mustPgUUID(id))
+	if err != nil {
+		return nil, err
+	}
+
+	// Get full gift details with joins
+	return r.GetGiftByID(ctx, id)
+}
+
 func (r *GiftRepository) UpdateGiftOwner(
 	ctx context.Context,
 	id string,
@@ -166,11 +176,15 @@ func (r *GiftRepository) CreateGiftEvent(
 	ctx context.Context,
 	params gift.CreateGiftEventParams,
 ) (*gift.Event, error) {
-	dbGiftEvent, err := r.q.CreateGiftEvent(ctx, CreateGiftEventParamsToDB(params))
+	dbGiftEventParams, err := CreateGiftEventParamsToDB(params)
 	if err != nil {
 		return nil, err
 	}
-	return GiftEventToDomain(dbGiftEvent), nil
+	dbGiftEvent, err := r.q.CreateGiftEvent(ctx, dbGiftEventParams)
+	if err != nil {
+		return nil, err
+	}
+	return GiftEventToDomain(dbGiftEvent)
 }
 
 func (r *GiftRepository) GetGiftEvents(
@@ -190,7 +204,11 @@ func (r *GiftRepository) GetGiftEvents(
 
 	events := make([]*gift.Event, len(dbEvents))
 	for i, dbEvent := range dbEvents {
-		events[i] = GiftEventToDomain(dbEvent)
+		event, err := GiftEventToDomain(dbEvent)
+		if err != nil {
+			return nil, err
+		}
+		events[i] = event
 	}
 	return events, nil
 }
@@ -219,6 +237,10 @@ func (r *GiftRepository) CreateGift(
 }
 
 func (r *GiftRepository) GetGiftsByIDs(ctx context.Context, ids []string) ([]*gift.Gift, error) {
+	if len(ids) == 0 {
+		return []*gift.Gift{}, nil
+	}
+
 	pgUUIDs := make([]pgtype.UUID, len(ids))
 	for i, id := range ids {
 		pgUUIDs[i] = mustPgUUID(id)
@@ -245,11 +267,16 @@ func (r *GiftRepository) SaveGiftWithPrice(
 	id string,
 	price *tonamount.TonAmount,
 ) (*gift.Gift, error) {
-	pgPrice, err := pgNumeric(price.String())
-	if err != nil {
-		return nil, err
+	var pgPrice pgtype.Numeric
+	if price != nil {
+		var err error
+		pgPrice, err = pgNumeric(price.String())
+		if err != nil {
+			return nil, err
+		}
 	}
-	_, err = r.q.SaveGiftWithPrice(ctx, sqlc.SaveGiftWithPriceParams{
+
+	_, err := r.q.SaveGiftWithPrice(ctx, sqlc.SaveGiftWithPriceParams{
 		ID:    mustPgUUID(id),
 		Price: pgPrice,
 	})
@@ -286,7 +313,10 @@ func (r *GiftRepository) GetGiftSymbol(ctx context.Context, id int32) (*gift.Sym
 	return SymbolToDomain(dbSymbol), nil
 }
 
-func (r *GiftRepository) GetGiftCollection(ctx context.Context, id int32) (*gift.Collection, error) {
+func (r *GiftRepository) GetGiftCollection(
+	ctx context.Context,
+	id int32,
+) (*gift.Collection, error) {
 	dbCollection, err := r.q.GetGiftCollection(ctx, id)
 	if err != nil {
 		return nil, err
@@ -303,11 +333,7 @@ func (r *GiftRepository) CreateCollection(
 	if err != nil {
 		return nil, err
 	}
-	return &gift.Collection{
-		ID:        dbCollection.ID,
-		Name:      dbCollection.Name,
-		ShortName: dbCollection.ShortName,
-	}, nil
+	return CollectionToDomain(dbCollection), nil
 }
 
 func (r *GiftRepository) CreateModel(
@@ -352,11 +378,7 @@ func (r *GiftRepository) FindCollectionByName(
 	if err != nil {
 		return nil, err
 	}
-	return &gift.Collection{
-		ID:        dbCollection.ID,
-		Name:      dbCollection.Name,
-		ShortName: dbCollection.ShortName,
-	}, nil
+	return CollectionToDomain(dbCollection), nil
 }
 
 func (r *GiftRepository) FindModelByName(ctx context.Context, name string) (*gift.Model, error) {

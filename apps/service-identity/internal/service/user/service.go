@@ -17,12 +17,16 @@ import (
 )
 
 type Service struct {
-	repo      user.UserRepository
+	repo      user.Repository
 	publisher message.Publisher
 	log       *logger.Logger
 }
 
-func NewService(userRepo user.UserRepository, publisher message.Publisher, log *logger.Logger) *Service {
+func NewService(
+	userRepo user.Repository,
+	publisher message.Publisher,
+	log *logger.Logger,
+) *Service {
 	return &Service{
 		repo:      userRepo,
 		publisher: publisher,
@@ -31,7 +35,7 @@ func NewService(userRepo user.UserRepository, publisher message.Publisher, log *
 }
 
 func (s *Service) GetUserByTelegramID(ctx context.Context, telegramID int64) (*user.User, error) {
-	u, err := s.repo.GetByTelegramID(ctx, telegramID)
+	u, err := s.repo.GetUserByTelegramID(ctx, telegramID)
 	if err != nil {
 		return nil, err
 	}
@@ -39,16 +43,29 @@ func (s *Service) GetUserByTelegramID(ctx context.Context, telegramID int64) (*u
 	return u, nil
 }
 
-func (s *Service) UpsertUser(ctx context.Context, params *user.CreateUserParams) (*user.User, error) {
-	u, created, err := s.repo.CreateOrUpdate(ctx, params)
+func (s *Service) UpsertUser(
+	ctx context.Context,
+	params *user.CreateUserParams,
+) (*user.User, error) {
+	u, err := s.createOrUpdateUser(ctx, params)
 	if err != nil {
 		return nil, err
 	}
 
-	// Если пользователь был создан впервые, публикуем событие
+	return u, nil
+}
+
+func (s *Service) createOrUpdateUser(
+	ctx context.Context,
+	params *user.CreateUserParams,
+) (*user.User, error) {
+	u, created, err := s.repo.UpsertUser(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+
 	if created {
 		if err = s.publishUserCreatedEvent(u); err != nil {
-			// Логируем ошибку, но не возвращаем её, так как пользователь уже создан
 			s.log.Error("Failed to publish user created event", zap.Error(err))
 		}
 	}
@@ -85,4 +102,16 @@ func (s *Service) publishUserCreatedEvent(u *user.User) error {
 	}
 
 	return s.publisher.Publish(identityEvents.TopicUserCreated.String(), msg)
+}
+
+func (s *Service) GetUsersByTelegramIDs(
+	ctx context.Context,
+	telegramUserIDs []int64,
+) ([]*user.User, error) {
+	users, err := s.repo.GetUsersByTelegramIDs(ctx, telegramUserIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
 }

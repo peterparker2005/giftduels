@@ -3,6 +3,7 @@ package pg
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,7 +11,10 @@ import (
 )
 
 func pgUUID(id string) (pgtype.UUID, error) {
-	var u uuid.UUID
+	if id == "" {
+		return pgtype.UUID{}, errors.New("uuid cannot be empty")
+	}
+
 	u, err := uuid.Parse(id)
 	if err != nil {
 		return pgtype.UUID{}, err
@@ -19,6 +23,10 @@ func pgUUID(id string) (pgtype.UUID, error) {
 }
 
 func mustPgUUID(id string) pgtype.UUID {
+	if id == "" {
+		panic("uuid cannot be empty")
+	}
+
 	v, err := pgUUID(id)
 	if err != nil {
 		panic(err)
@@ -59,11 +67,11 @@ func pgTextToString(pgText pgtype.Text) *string {
 }
 
 // pgInt8ToInt64 converts pgtype.Int8 to *int64.
-func pgInt8ToInt64(pgInt8 pgtype.Int8) *int64 {
+func pgInt8ToInt64(pgInt8 pgtype.Int8) (int64, error) {
 	if !pgInt8.Valid {
-		return nil
+		return 0, errors.New("pgInt8ToInt64: invalid int8")
 	}
-	return &pgInt8.Int64
+	return pgInt8.Int64, nil
 }
 
 // timeToPgTimestamp converts time.Time to pgtype.Timestamptz.
@@ -93,6 +101,13 @@ func pgNumeric(amount string) (pgtype.Numeric, error) {
 		// by default n.Valid == false
 		return n, nil
 	}
+
+	// Trim whitespace to handle edge cases
+	amount = strings.TrimSpace(amount)
+	if amount == "" {
+		return n, nil
+	}
+
 	// Numeric.Scan can parse string to pgtype.Numeric
 	if err := n.Scan(amount); err != nil {
 		return n, fmt.Errorf("pgNumeric: invalid numeric %q: %w", amount, err)

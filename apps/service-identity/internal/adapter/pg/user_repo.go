@@ -14,11 +14,11 @@ type UserRepository struct {
 	db *sqlc.Queries
 }
 
-func NewUserRepo(pool *pgxpool.Pool) user.UserRepository {
+func NewUserRepo(pool *pgxpool.Pool) user.Repository {
 	return &UserRepository{db: sqlc.New(pool)}
 }
 
-func (r *UserRepository) GetByTelegramID(
+func (r *UserRepository) GetUserByTelegramID(
 	ctx context.Context,
 	telegramID int64,
 ) (*user.User, error) {
@@ -33,17 +33,33 @@ func (r *UserRepository) GetByTelegramID(
 	return UserToDomain(dbUser), nil
 }
 
-func (r *UserRepository) UpsertUser(
+func (r *UserRepository) GetUsersByTelegramIDs(
 	ctx context.Context,
-	params *user.CreateUserParams,
-) (*user.User, error) {
-	sqlcParams := UpsertUserParamsToSQLC(params)
-	dbUser, err := r.db.UpsertUser(ctx, sqlcParams)
+	telegramUserIDs []int64,
+) ([]*user.User, error) {
+	dbUsers, err := r.db.GetUsersByTelegramIDs(ctx, telegramUserIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	return UserToDomain(dbUser), nil
+	users := make([]*user.User, len(dbUsers))
+	for i, dbUser := range dbUsers {
+		users[i] = UserToDomain(dbUser)
+	}
+	return users, nil
+}
+
+func (r *UserRepository) UpsertUser(
+	ctx context.Context,
+	params *user.CreateUserParams,
+) (*user.User, bool, error) {
+	sqlcParams := UpsertUserParamsToSQLC(params)
+	dbUser, err := r.db.UpsertUser(ctx, sqlcParams)
+	if err != nil {
+		return nil, false, err
+	}
+
+	return UserToDomain(dbUser), true, nil
 }
 
 func (r *UserRepository) CreateOrUpdate(
@@ -52,14 +68,14 @@ func (r *UserRepository) CreateOrUpdate(
 ) (*user.User, bool, error) {
 	sqlcParams := UpsertUserParamsToSQLC(params)
 	// Сначала проверяем, существует ли пользователь
-	existingUser, err := r.GetByTelegramID(ctx, params.TelegramID)
+	existingUser, err := r.GetUserByTelegramID(ctx, params.TelegramID)
 	if err != nil {
 		return nil, false, err
 	}
 
 	// Если пользователь уже существует, обновляем его
 	if existingUser != nil {
-		updatedUser, upsertErr := r.UpsertUser(ctx, params)
+		updatedUser, _, upsertErr := r.UpsertUser(ctx, params)
 		if upsertErr != nil {
 			return nil, false, upsertErr
 		}
