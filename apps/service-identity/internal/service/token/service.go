@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"go.uber.org/zap"
 
 	"github.com/peterparker2005/giftduels/apps/service-identity/internal/config"
+	"github.com/peterparker2005/giftduels/packages/logger-go"
 )
 
 type SessionClaims struct {
@@ -24,10 +24,10 @@ type Service interface {
 type JWTService struct {
 	secret     []byte
 	expiration time.Duration
-	logger     *zap.Logger
+	logger     *logger.Logger
 }
 
-func NewJWTService(cfg *config.JWTConfig, logger *zap.Logger) *JWTService {
+func NewJWTService(cfg *config.JWTConfig, logger *logger.Logger) *JWTService {
 	return &JWTService{
 		secret:     []byte(cfg.Secret),
 		expiration: cfg.Expiration,

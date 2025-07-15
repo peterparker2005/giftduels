@@ -8,24 +8,32 @@ option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/g
 
 message Duel {
   shared.v1.DuelId duel_id = 1;
-  DuelParams params = 2;
-  repeated DuelParticipant participants = 3;
+  int64 display_number = 2;
+  DuelParams params = 3;
+  repeated DuelParticipant participants = 4;
 
   repeated DuelRound rounds_history = 5;
   optional shared.v1.TelegramUserId winner_telegram_user_id = 6;
 
   // Timing
-  google.protobuf.Timestamp next_roll_deadline = 7;
+  google.protobuf.Timestamp next_roll_deadline = 8;
 
   // Total stakes
-  repeated DuelStake stakes = 8;
-  shared.v1.TonAmount total_stake_value = 9;
+  repeated DuelStake stakes = 9;
+  shared.v1.TonAmount total_stake_value = 10;
 
   // Status and timestamps
-  DuelStatus status = 10;
-  google.protobuf.Timestamp created_at = 11;
-  google.protobuf.Timestamp updated_at = 12;
-  google.protobuf.Timestamp completed_at = 13;
+  DuelStatus status = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+  google.protobuf.Timestamp completed_at = 14;
+
+  EntryPriceRange entry_price_range = 15;
+}
+
+message EntryPriceRange {
+  shared.v1.TonAmount min_entry_price = 1;
+  shared.v1.TonAmount max_entry_price = 2;
 }
 
 message DuelParams {

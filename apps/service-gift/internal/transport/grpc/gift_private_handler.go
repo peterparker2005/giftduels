@@ -21,9 +21,19 @@ type giftPrivateHandler struct {
 	userGiftsService    *query.UserGiftsService
 }
 
-func NewGiftPrivateHandler(withdrawalSaga *saga.WithdrawalSaga) giftv1.GiftPrivateServiceServer {
+func NewGiftPrivateHandler(
+	withdrawalSaga *saga.WithdrawalSaga,
+	giftStakeCommand *command.GiftStakeCommand,
+	giftWithdrawCommand *command.GiftWithdrawCommand,
+	giftReadService *query.GiftReadService,
+	userGiftsService *query.UserGiftsService,
+) giftv1.GiftPrivateServiceServer {
 	return &giftPrivateHandler{
-		withdrawalSaga: withdrawalSaga,
+		withdrawalSaga:      withdrawalSaga,
+		giftStakeCommand:    giftStakeCommand,
+		giftWithdrawCommand: giftWithdrawCommand,
+		giftReadService:     giftReadService,
+		userGiftsService:    userGiftsService,
 	}
 }
 
@@ -92,7 +102,7 @@ func (h *giftPrivateHandler) StakeGift(
 	g, err := h.giftStakeCommand.StakeGift(ctx, command.StakeGiftParams{
 		GiftID:         req.GetGiftId().GetValue(),
 		TelegramUserID: req.GetTelegramUserId().GetValue(),
-		GameMetadata:   req.GetGameMetadata(),
+		GameMetadata:   req.GetDuel(),
 	})
 	if err != nil {
 		return nil, err

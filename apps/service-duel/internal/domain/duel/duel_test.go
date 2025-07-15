@@ -59,11 +59,6 @@ func TestPlaceStake(t *testing.T) {
 	if err = d.PlaceStake(stake); err != nil {
 		t.Fatalf("expected PlaceStake without error, got %v", err)
 	}
-	// TotalStakeValue выросло
-	sum := mustTon("2.0")
-	if d.TotalStakeValue.String() != sum.String() {
-		t.Errorf("expected TotalStakeValue %s, got %s", sum, d.TotalStakeValue)
-	}
 }
 
 func TestRoundFlow_ThreePlayers(t *testing.T) {

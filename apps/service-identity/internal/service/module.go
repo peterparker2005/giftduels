@@ -15,7 +15,7 @@ import (
 var Module = fx.Module("services",
 	fx.Provide(
 		func(cfg *config.Config, logger *logger.Logger) token.Service {
-			return token.NewJWTService(&cfg.JWT, logger.Zap())
+			return token.NewJWTService(&cfg.JWT, logger)
 		},
 		user.NewService,
 	),

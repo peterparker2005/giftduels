@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/peterparker2005/giftduels/apps/service-duel/internal/adapter/pg"
 	dueldomain "github.com/peterparker2005/giftduels/apps/service-duel/internal/domain/duel"
+	duelevents "github.com/peterparker2005/giftduels/packages/events/duel"
 	"github.com/peterparker2005/giftduels/packages/grpc-go/clients"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	giftv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1"
@@ -155,13 +156,24 @@ func (s *Service) CreateDuel(
 		resp, stakeErr := s.giftPrivateClient.StakeGift(ctx, &giftv1.StakeGiftRequest{
 			GiftId:         &sharedv1.GiftId{Value: stake.Gift.ID},
 			TelegramUserId: &sharedv1.TelegramUserId{Value: telegramUserID},
-			// …метаданные игры…
+			GameMetadata: &giftv1.StakeGiftRequest_Duel{
+				Duel: &giftv1.StakeGiftRequest_DuelMetadata{
+					DuelId: &sharedv1.DuelId{Value: duel.ID.String()},
+				},
+			},
 		})
 		if stakeErr != nil {
 			s.log.Error("failed to stake gift",
 				zap.String("giftID", stake.Gift.ID),
 				zap.Int64("telegramUserID", telegramUserID),
 				zap.Error(stakeErr))
+
+			// Return already staked gifts before returning error
+			if len(stakedGiftIDs) > 0 {
+				if publishErr := s.returnStakedGifts(stakedGiftIDs); publishErr != nil {
+					s.log.Error("failed to return staked gifts during error recovery", zap.Error(publishErr))
+				}
+			}
 
 			return "", stakeErr
 		}
@@ -171,6 +183,12 @@ func (s *Service) CreateDuel(
 
 		price, priceErr := tonamount.NewTonAmountFromString(resp.GetGift().GetPrice().GetValue())
 		if priceErr != nil {
+			// Return already staked gifts before returning error
+			if len(stakedGiftIDs) > 0 {
+				if publishErr := s.returnStakedGifts(stakedGiftIDs); publishErr != nil {
+					s.log.Error("failed to return staked gifts during error recovery", zap.Error(publishErr))
+				}
+			}
 			return "", priceErr
 		}
 		// 4.1 обновляем stake в срезе
@@ -178,6 +196,12 @@ func (s *Service) CreateDuel(
 		params.Stakes[i].TelegramUserID = dueldomain.TelegramUserID(telegramUserID)
 		// 4.2 доменный метод PlaceStake (валидация и обновление TotalStakeValue)
 		if stakeErr = duel.PlaceStake(params.Stakes[i]); stakeErr != nil {
+			// Return already staked gifts before returning error
+			if len(stakedGiftIDs) > 0 {
+				if publishErr := s.returnStakedGifts(stakedGiftIDs); publishErr != nil {
+					s.log.Error("failed to return staked gifts during error recovery", zap.Error(publishErr))
+				}
+			}
 			return "", stakeErr
 		}
 	}
@@ -185,17 +209,29 @@ func (s *Service) CreateDuel(
 	// 5. Сохраняем Duel
 	duelID, err := repo.CreateDuel(ctx, dueldomain.CreateDuelParams{
 		DuelID:          duel.ID,
-		TotalStakeValue: duel.TotalStakeValue,
+		TotalStakeValue: duel.TotalStakeValue(),
 		Params:          duel.Params,
 	})
 	if err != nil {
 		s.log.Error("failed to create duel", zap.Error(err))
+		// Return staked gifts before returning error
+		if len(stakedGiftIDs) > 0 {
+			if publishErr := s.returnStakedGifts(stakedGiftIDs); publishErr != nil {
+				s.log.Error("failed to return staked gifts during error recovery", zap.Error(publishErr))
+			}
+		}
 		return "", err
 	}
 
 	// 6. Сохраняем участника
 	if err = repo.CreateParticipant(ctx, duelID, creator); err != nil {
 		s.log.Error("failed to create participant", zap.Error(err))
+		// Return staked gifts before returning error
+		if len(stakedGiftIDs) > 0 {
+			if publishErr := s.returnStakedGifts(stakedGiftIDs); publishErr != nil {
+				s.log.Error("failed to return staked gifts during error recovery", zap.Error(publishErr))
+			}
+		}
 		return "", err
 	}
 
@@ -203,6 +239,12 @@ func (s *Service) CreateDuel(
 	for _, stake := range params.Stakes {
 		if err = repo.CreateStake(ctx, duelID, stake); err != nil {
 			s.log.Error("failed to create stake", zap.Error(err))
+			// Return staked gifts before returning error
+			if len(stakedGiftIDs) > 0 {
+				if publishErr := s.returnStakedGifts(stakedGiftIDs); publishErr != nil {
+					s.log.Error("failed to return staked gifts during error recovery", zap.Error(publishErr))
+				}
+			}
 			return "", err
 		}
 	}
@@ -228,7 +270,7 @@ func (s *Service) returnStakedGifts(giftIDs []string) error {
 		// The main error is already being returned
 		id := uuid.New().String()
 		msg := message.NewMessage(id, []byte(giftID))
-		err := s.publisher.Publish("gift.returned", msg)
+		err := s.publisher.Publish(duelevents.TopicDuelCreateFailed.String(), msg)
 		if err != nil {
 			s.log.Error("failed to return gift from game during cleanup",
 				zap.String("giftID", giftID),

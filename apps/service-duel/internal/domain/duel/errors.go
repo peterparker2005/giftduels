@@ -13,4 +13,8 @@ var (
 	ErrDuelNotInProgress     = errors.New("duel is not in progress")
 	ErrNoRoundStarted        = errors.New("no round started")
 	ErrAlreadyRolled         = errors.New("already rolled")
+
+	ErrCreatorNotFound     = errors.New("creator not found")
+	ErrNoStakesFromCreator = errors.New("no stakes from creator to determine range")
+	ErrStakeOutOfRange     = errors.New("stake is out of allowed entry range")
 )

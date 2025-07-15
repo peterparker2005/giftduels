@@ -44,7 +44,6 @@ type Duel struct {
 	Params           Params
 	WinnerID         *TelegramUserID
 	NextRollDeadline *time.Time
-	TotalStakeValue  *tonamount.TonAmount
 	Status           Status
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
@@ -57,15 +56,13 @@ type Duel struct {
 
 func NewDuel(params Params) *Duel {
 	now := time.Now()
-	totalStakeValue, _ := tonamount.NewTonAmountFromString("0")
 
 	return &Duel{
-		ID:              ID(uuid.New().String()),
-		Params:          params,
-		Status:          StatusWaitingForOpponent,
-		CreatedAt:       now,
-		UpdatedAt:       now,
-		TotalStakeValue: totalStakeValue,
+		ID:        ID(uuid.New().String()),
+		Params:    params,
+		Status:    StatusWaitingForOpponent,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 }
 
@@ -97,7 +94,6 @@ func (d *Duel) PlaceStake(s Stake) error {
 	if !found {
 		return ErrParticipantNotFound
 	}
-	d.TotalStakeValue = d.TotalStakeValue.Add(s.StakeValue)
 	d.Stakes = append(d.Stakes, s)
 	d.UpdatedAt = time.Now()
 	return nil
@@ -197,6 +193,14 @@ func (d *Duel) TimeoutForRound() time.Duration {
 		return TimeoutBeforeFirstRound
 	}
 	return TimeoutAfterFirstRound
+}
+
+func (d *Duel) TotalStakeValue() *tonamount.TonAmount {
+	sum := tonamount.Zero()
+	for _, s := range d.Stakes {
+		sum = sum.Add(s.StakeValue)
+	}
+	return sum
 }
 
 type Params struct {

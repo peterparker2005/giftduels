@@ -95,17 +95,20 @@ func (s *UserGiftsService) GetUserActiveGifts(
 		telegramUserID,
 	)
 	if err != nil {
+		s.log.Error("Failed to get user active gifts", zap.Error(err))
 		return nil, err
 	}
 
 	// Populate attributes for all gifts
 	if err = s.populateGiftAttributes(ctx, res.Gifts); err != nil {
+		s.log.Error("Failed to populate gift attributes", zap.Error(err))
 		return nil, err
 	}
 
 	// TODO: calculate total value in one query
 	totalValue, err := tonamount.NewTonAmountFromNano(0) // Start with zero TON amount
 	if err != nil {
+		s.log.Error("Failed to calculate total value", zap.Error(err))
 		return nil, err
 	}
 	for _, g := range res.Gifts {
@@ -116,15 +119,22 @@ func (s *UserGiftsService) GetUserActiveGifts(
 
 	total, err := safecast.ToInt32(res.Total)
 	if err != nil {
+		s.log.Error("Failed to calculate total", zap.Error(err))
 		return nil, err
 	}
 
 	for _, g := range res.Gifts {
-		duelID, err := s.findDuelByGiftID(ctx, g.ID)
-		if err != nil {
-			return nil, err
+		if g.Status == giftDomain.StatusInGame {
+			duelID, err := s.findDuelByGiftID(ctx, g.ID)
+			if err != nil {
+				s.log.Error("Failed to find duel by gift ID", zap.Error(err))
+			}
+			if duelID == "" {
+				s.log.Error("Duel not found for gift", zap.String("giftID", g.ID))
+				continue
+			}
+			g.SetRelatedDuelID(duelID)
 		}
-		g.SetRelatedDuelID(duelID)
 	}
 
 	return &GetUserGiftsResult{

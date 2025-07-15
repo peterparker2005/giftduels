@@ -5,17 +5,18 @@ import (
 
 	giftDomain "github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
 	"github.com/peterparker2005/giftduels/packages/errors/pkg/errors"
+	"github.com/peterparker2005/giftduels/packages/logger-go"
 	"go.uber.org/zap"
 )
 
 type GiftWithdrawCommand struct {
 	repo giftDomain.Repository
-	log  *zap.Logger
+	log  *logger.Logger
 }
 
 func NewGiftWithdrawCommand(
 	repo giftDomain.Repository,
-	log *zap.Logger,
+	log *logger.Logger,
 ) *GiftWithdrawCommand {
 	return &GiftWithdrawCommand{
 		repo: repo,

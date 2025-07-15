@@ -122,3 +122,7 @@ func (t *TonAmount) ToNano() (uint64, error) {
 	}
 	return bi.Uint64(), nil
 }
+
+func Zero() *TonAmount {
+	return &TonAmount{d: decimal.Zero}
+}

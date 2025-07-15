@@ -9,6 +9,7 @@ import (
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/adapter/amqp"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/config"
 	workerhandlers "github.com/peterparker2005/giftduels/apps/service-gift/internal/transport/worker/handlers"
+	duelevents "github.com/peterparker2005/giftduels/packages/events/duel"
 	telegramEvents "github.com/peterparker2005/giftduels/packages/events/telegram"
 	telegrambotEvents "github.com/peterparker2005/giftduels/packages/events/telegrambot"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
@@ -26,6 +27,7 @@ var Module = fx.Options(
 		workerhandlers.NewTelegramGiftReceivedHandler,
 		workerhandlers.NewGiftWithdrawFailedHandler,
 		workerhandlers.NewInvoicePaymentHandler,
+		workerhandlers.NewGiftReturnedHandler,
 	),
 
 	// инициализируем router + forwarder
@@ -40,6 +42,7 @@ func registerHandlers(
 	tgHandler *workerhandlers.TelegramGiftReceivedHandler,
 	failHandler *workerhandlers.GiftWithdrawFailedHandler,
 	invHandler *workerhandlers.InvoicePaymentHandler,
+	returnedHandler *workerhandlers.GiftReturnedHandler,
 	router *message.Router,
 	log *logger.Logger,
 ) error {
@@ -50,6 +53,11 @@ func registerHandlers(
 	}
 
 	telegrambotSub, err := subFac(telegrambotEvents.Config(cfg.ServiceName.String()))
+	if err != nil {
+		return err
+	}
+
+	duelSub, err := subFac(duelevents.Config(cfg.ServiceName.String()))
 	if err != nil {
 		return err
 	}
@@ -72,6 +80,12 @@ func registerHandlers(
 		telegrambotEvents.TopicInvoicePaymentCompleted.String(),
 		telegrambotSub,
 		invHandler.Handle,
+	)
+	router.AddNoPublisherHandler(
+		"create_duel_fail",
+		duelevents.TopicDuelCreateFailed.String(),
+		duelSub,
+		returnedHandler.Handle,
 	)
 
 	lc.Append(fx.Hook{

@@ -9,18 +9,21 @@ interface ButtonProps
 	asChild?: boolean;
 }
 
-const buttonVariants = cva("rounded-3xl px-4 py-2 font-medium", {
-	variants: {
-		variant: {
-			default: "bg-white text-background",
-			primary: "bg-primary text-primary-foreground",
-			secondary: "bg-card text-card-accent-foreground",
+const buttonVariants = cva(
+	"rounded-3xl px-4 py-2 font-medium disabled:cursor-default",
+	{
+		variants: {
+			variant: {
+				default: "bg-white text-background disabled:bg-white/50",
+				primary: "bg-primary text-primary-foreground",
+				secondary: "bg-card text-card-accent-foreground",
+			},
+		},
+		defaultVariants: {
+			variant: "default",
 		},
 	},
-	defaultVariants: {
-		variant: "default",
-	},
-});
+);
 
 export const Button = ({
 	children,

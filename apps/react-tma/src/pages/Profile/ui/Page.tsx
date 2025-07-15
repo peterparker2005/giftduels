@@ -24,7 +24,7 @@ export const Page = () => {
 					<InventoryStats />
 				</div>
 			)}
-			<section className="flex flex-items-center gap-2 w-full mt-4 mb-4">
+			<section className="flex flex-items-center gap-4 w-full mt-4 mb-4">
 				<AddGiftInfoDrawer>
 					<Button
 						variant="secondary"

@@ -5,36 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	"go.uber.org/zap"
+	"golang.org/x/time/rate"
 )
-
-const (
-	defaultBaseURL      = "https://portals-market.com"
-	defaultHTTPTimeout  = 5 * time.Second
-	defaultBackoffDelay = 300 * time.Millisecond
-)
-
-type HTTPClient struct {
-	baseURL    string
-	authHeader string
-	httpClient *http.Client
-	logger     *logger.Logger
-}
-
-func NewHTTPClient(authHeader string, logger *logger.Logger) *HTTPClient {
-	return &HTTPClient{
-		baseURL:    defaultBaseURL,
-		authHeader: "tma query_id=AAEdTxk2AwAAAB1PGTZXtyrZ&user=%7B%22id%22%3A7350079261%2C%22first_name%22%3A%22pp%22%2C%22last_name%22%3A%22%22%2C%22username%22%3A%22peterparkish%22%2C%22language_code%22%3A%22en%22%2C%22allows_write_to_pm%22%3Atrue%2C%22photo_url%22%3A%22https%3A%5C%2F%5C%2Ft.me%5C%2Fi%5C%2Fuserpic%5C%2F320%5C%2FjMwTE1p_IMe6se6v6t6X8uaS1ymy2hHPJ1Oqt3b13hES-84zfc1MJCUrxxLDLgap.svg%22%7D&auth_date=1752425809&signature=ZJxYc3GVBTG5a6xcx3JxpOqYtevxAju3PMQx40R42L9ZwKfkFdFGy0xk2Y5eyooby-dh-DYb3OQMDXBc0369AA&hash=451894c5ac74cc45a0c3eb75cf994f918534632239deda3946bf54b4dae78565",
-		// authHeader: authHeader,
-		httpClient: &http.Client{Timeout: defaultHTTPTimeout},
-		logger:     logger,
-	}
-}
 
 type NFTResult struct {
 	FloorPrice string `json:"floor_price"`
@@ -45,10 +25,59 @@ type NFTResponse struct {
 	Results []NFTResult `json:"results"`
 }
 
+const (
+	defaultBaseURL      = "https://portals-market.com"
+	defaultHTTPTimeout  = 5 * time.Second
+	defaultBackoffDelay = 300 * time.Millisecond
+	maxRetries          = 5
+)
+
+type HTTPClient struct {
+	baseURL     string
+	authHeader  string
+	httpClient  *http.Client
+	rateLimiter *rate.Limiter
+	logger      *logger.Logger
+}
+
+func NewHTTPClient(authHeader string, logger *logger.Logger) *HTTPClient {
+	// 3 запросa в секунду, burst = 1
+	limiter := rate.NewLimiter(rate.Every(time.Second/3), 1)
+
+	return &HTTPClient{
+		baseURL: defaultBaseURL,
+		// authHeader:  authHeader,
+		authHeader:  "tma query_id=AAEdTxk2AwAAAB1PGTZXtyrZ&user=%7B%22id%22%3A7350079261%2C%22first_name%22%3A%22pp%22%2C%22last_name%22%3A%22%22%2C%22username%22%3A%22peterparkish%22%2C%22language_code%22%3A%22en%22%2C%22allows_write_to_pm%22%3Atrue%2C%22photo_url%22%3A%22https%3A%5C%2F%5C%2Ft.me%5C%2Fi%5C%2Fuserpic%5C%2F320%5C%2FjMwTE1p_IMe6se6v6t6X8uaS1ymy2hHPJ1Oqt3b13hES-84zfc1MJCUrxxLDLgap.svg%22%7D&auth_date=1752425809&signature=ZJxYc3GVBTG5a6xcx3JxpOqYtevxAju3PMQx40R42L9ZwKfkFdFGy0xk2Y5eyooby-dh-DYb3OQMDXBc0369AA&hash=451894c5ac74cc45a0c3eb75cf994f918534632239deda3946bf54b4dae78565",
+		rateLimiter: limiter,
+		httpClient: &http.Client{
+			Timeout: defaultHTTPTimeout,
+			Transport: &limiterTransport{
+				limiter: limiter,
+				rt:      http.DefaultTransport,
+			},
+		},
+		logger: logger,
+	}
+}
+
+type limiterTransport struct {
+	limiter *rate.Limiter
+	rt      http.RoundTripper
+}
+
+func (t *limiterTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// блокируемся на token‑bucket перед каждым запросом
+	if err := t.limiter.Wait(req.Context()); err != nil {
+		return nil, err
+	}
+	return t.rt.RoundTrip(req)
+}
+
 func (c *HTTPClient) SearchNFTs(
 	ctx context.Context,
 	collection, model, symbol, backdrop string,
 ) (*NFTResponse, error) {
+	// собираем URL
 	u, _ := url.Parse(c.baseURL + "/api/nfts/search")
 	q := u.Query()
 	q.Set("offset", "0")
@@ -60,46 +89,83 @@ func (c *HTTPClient) SearchNFTs(
 	q.Set("filter_by_symbols", symbol)
 	q.Set("filter_by_backdrops", backdrop)
 	u.RawQuery = q.Encode()
-	c.logger.Info(
-		"SearchNFTs",
-		zap.String("url", u.String()),
-		zap.String("collection", collection),
-		zap.String("model", model),
-		zap.String("symbol", symbol),
-		zap.String("backdrop", backdrop),
-	)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
-	if err != nil {
-		c.logger.Error("create request", zap.Error(err))
-		return nil, fmt.Errorf("create request: %w", err)
-	}
-	req.Header.Set("Authorization", c.authHeader)
-	req.Header.Set("Accept", "application/json")
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		c.logger.Info("SearchNFTs attempt",
+			zap.Int("n", attempt),
+			zap.String("url", u.String()),
+		)
 
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		c.logger.Error("do request", zap.Error(err))
-		return nil, fmt.Errorf("do request: %w", err)
-	}
-	defer resp.Body.Close()
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+		if err != nil {
+			return nil, fmt.Errorf("create request: %w", err)
+		}
+		req.Header.Set("Authorization", c.authHeader)
+		req.Header.Set("Accept", "application/json")
 
-	if resp.StatusCode != http.StatusOK {
-		c.logger.Error("unexpected status", zap.String("status", resp.Status))
-		return nil, fmt.Errorf("unexpected status: %s", resp.Status)
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			lastErr = err
+			c.logger.Warn("http.Do failed", zap.Error(err))
+			continue
+		}
+		defer resp.Body.Close()
+
+		// если нас запоролили — ждём время из заголовков, а не просто backoff
+		if resp.StatusCode == http.StatusTooManyRequests {
+			waitSec := parseRetryAfter(resp.Header)
+			c.logger.Warn("429 получен — ждём перед новой попыткой", zap.Int("retry_after_s", waitSec))
+			select {
+			case <-time.After(time.Duration(waitSec) * time.Second):
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+			continue
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			lastErr = fmt.Errorf("unexpected status: %s", resp.Status)
+			c.logger.Error("unexpected status", zap.String("status", resp.Status))
+			break
+		}
+
+		var r NFTResponse
+		if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
+			return nil, fmt.Errorf("decode response: %w", err)
+		}
+		if len(r.Results) == 0 {
+			return nil, errors.New("no listings found")
+		}
+		return &r, nil
 	}
 
-	var r NFTResponse
-	if err = json.NewDecoder(resp.Body).Decode(&r); err != nil {
-		c.logger.Error("decode response", zap.Error(err))
-		return nil, fmt.Errorf("decode response: %w", err)
-	}
-	if len(r.Results) == 0 {
-		c.logger.Error("no listings found")
-		return nil, errors.New("no listings found")
-	}
+	return nil, fmt.Errorf("all attempts failed, last error: %w", lastErr)
+}
 
-	return &r, nil
+// parseRetryAfter: сначала смотрим Retry‑After, потом X-RateLimit-Reset, иначе базовый backoff + джиттер.
+func parseRetryAfter(h http.Header) int {
+	if ra := h.Get("Retry-After"); ra != "" {
+		if sec, err := strconv.Atoi(ra); err == nil {
+			return sec
+		}
+		if t, err := http.ParseTime(ra); err == nil {
+			secs := int(time.Until(t).Seconds()) + 1
+			if secs > 0 {
+				return secs
+			}
+		}
+	}
+	if reset := h.Get("X-RateLimit-Reset"); reset != "" {
+		if sec, err := strconv.Atoi(reset); err == nil {
+			return sec
+		}
+	}
+	// fallback: defaultBackoffDelay + jitter [0..defaultBackoffDelay)
+	baseMs := int(defaultBackoffDelay / time.Millisecond)
+	jitter := rand.Intn(baseMs)
+	// переводим в секунды и добавляем 1s buffer
+	return (baseMs+jitter)/1000 + 1
 }
 
 // URL: https://portals-market.com/api/nfts/search?offset=0&limit=20&filter_by_backdrops=Hunter+Green&filter_by_collections=Lol+Pop&filter_by_models=Angelina&filter_by_symbols=Feather&sort_by=price+asc&status=listed

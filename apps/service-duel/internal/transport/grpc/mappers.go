@@ -18,14 +18,24 @@ func mapDuel(duel *duelDomain.Duel) (*duelv1.Duel, error) {
 	}
 
 	result := &duelv1.Duel{
-		DuelId:    &sharedv1.DuelId{Value: duel.ID.String()},
-		Params:    params,
-		CreatedAt: timestamppb.New(duel.CreatedAt),
-		UpdatedAt: timestamppb.New(duel.UpdatedAt),
+		DuelId:        &sharedv1.DuelId{Value: duel.ID.String()},
+		Params:        params,
+		DisplayNumber: duel.DisplayNumber,
+		CreatedAt:     timestamppb.New(duel.CreatedAt),
+		UpdatedAt:     timestamppb.New(duel.UpdatedAt),
 		TotalStakeValue: &sharedv1.TonAmount{
-			Value: duel.TotalStakeValue.String(),
+			Value: duel.TotalStakeValue().String(),
 		},
 		Status: mapDuelStatus(duel.Status),
+	}
+
+	minEntryPrice, maxEntryPrice, err := duel.EntryPriceRange()
+	if err != nil {
+		return nil, err
+	}
+	result.EntryPriceRange = &duelv1.EntryPriceRange{
+		MinEntryPrice: &sharedv1.TonAmount{Value: minEntryPrice.String()},
+		MaxEntryPrice: &sharedv1.TonAmount{Value: maxEntryPrice.String()},
 	}
 
 	// Optional fields
@@ -184,25 +194,17 @@ func mapDuelFromProto(protoDuel *duelv1.Duel) (*duelDomain.Duel, error) {
 		return nil, err
 	}
 
-	totalStakeValue, err := tonamount.NewTonAmountFromString(
-		protoDuel.GetTotalStakeValue().GetValue(),
-	)
-	if err != nil {
-		return nil, err
-	}
-
 	status, err := mapDuelStatusFromProto(protoDuel.GetStatus())
 	if err != nil {
 		return nil, err
 	}
 
 	duel := &duelDomain.Duel{
-		ID:              id,
-		Params:          params,
-		Status:          status,
-		CreatedAt:       protoDuel.GetCreatedAt().AsTime(),
-		UpdatedAt:       protoDuel.GetUpdatedAt().AsTime(),
-		TotalStakeValue: totalStakeValue,
+		ID:        id,
+		Params:    params,
+		Status:    status,
+		CreatedAt: protoDuel.GetCreatedAt().AsTime(),
+		UpdatedAt: protoDuel.GetUpdatedAt().AsTime(),
 	}
 
 	// Optional fields
@@ -328,7 +330,9 @@ func mapDuelStakeFromProto(protoStake *duelv1.DuelStake) (duelDomain.Stake, erro
 		return duelDomain.Stake{}, err
 	}
 
-	stakeValue, err := tonamount.NewTonAmountFromString(protoStake.GetStakeValue().GetValue())
+	stakeValue, err := tonamount.NewTonAmountFromString(
+		protoStake.GetStakeValue().GetValue(),
+	)
 	if err != nil {
 		return duelDomain.Stake{}, err
 	}

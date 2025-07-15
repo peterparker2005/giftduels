@@ -5,7 +5,6 @@ import (
 
 	"github.com/peterparker2005/giftduels/apps/service-duel/internal/adapter/pg/sqlc"
 	duelDomain "github.com/peterparker2005/giftduels/apps/service-duel/internal/domain/duel"
-	"github.com/peterparker2005/giftduels/packages/tonamount-go"
 )
 
 func mapStatus(status sqlc.DuelStatus) duelDomain.Status {
@@ -48,16 +47,6 @@ func mapDuel(duel *sqlc.Duel) (*duelDomain.Duel, error) {
 		return nil, err
 	}
 
-	totalStakeValueStr, err := fromPgNumeric(duel.TotalStakeValue)
-	if err != nil {
-		return nil, err
-	}
-
-	totalStakeValue, err := tonamount.NewTonAmountFromString(totalStakeValueStr)
-	if err != nil {
-		return nil, err
-	}
-
 	var nextRollDeadline *time.Time
 	if duel.NextRollDeadline.Valid {
 		nextRollDeadline = &duel.NextRollDeadline.Time
@@ -78,7 +67,6 @@ func mapDuel(duel *sqlc.Duel) (*duelDomain.Duel, error) {
 		},
 		WinnerID:         winnerID,
 		NextRollDeadline: nextRollDeadline,
-		TotalStakeValue:  totalStakeValue,
 		Status:           mapStatus(duel.Status.DuelStatus),
 		CreatedAt:        duel.CreatedAt.Time,
 		UpdatedAt:        duel.UpdatedAt.Time,

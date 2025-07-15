@@ -22,7 +22,7 @@ export const DuelAvatars: React.FC<DuelAvatarsProps> = ({
 		<div className={cn("flex items-center gap-2", className)}>
 			{slots.map((url, idx) => (
 				// biome-ignore lint/suspicious/noArrayIndexKey: TODO: fix this?
-				<div key={idx} className="w-10 h-10">
+				<div key={idx} className="w-8 h-8">
 					{url ? (
 						<img
 							src={url}

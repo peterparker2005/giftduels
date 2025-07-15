@@ -1,0 +1,97 @@
+import {
+	Duel,
+	DuelStatus,
+} from "@giftduels/protobuf-js/giftduels/duel/v1/duel_pb";
+import { BiPlus, BiSolidGift } from "react-icons/bi";
+import { DuelAvatars } from "@/entities/duel/ui/DuelAvatars";
+import { GiftCardSmall } from "@/entities/gift/ui/GiftCardSmall";
+import { JoinDuelDrawer } from "@/features/join-duel/ui/JoinDuelDrawer";
+import { Button } from "@/shared/ui/Button";
+import { Icon } from "@/shared/ui/Icon/Icon";
+
+export function DuelCard({ duel }: { duel: Duel }) {
+	// Create a map of participants by telegram user ID for quick lookup
+	const participantsMap = new Map(
+		duel.participants.map((participant) => [
+			participant.telegramUserId?.value,
+			participant,
+		]),
+	);
+
+	return (
+		<div
+			className="bg-card rounded-3xl p-2.5 flex flex-col gap-2"
+			key={duel.duelId?.value}
+		>
+			<div className="flex items-center justify-between">
+				<DuelAvatars
+					participants={duel.participants.map((participant) => ({
+						telegramUserId: {
+							value: participant.telegramUserId?.value.toString() ?? "",
+						},
+						photoUrl: participant.photoUrl ?? undefined,
+					}))}
+					maxPlayers={duel.params?.maxPlayers ?? 0}
+				/>
+				<div className="flex items-center justify-center bg-yellow-400/15 rounded-full px-2 py-1 text-yellow-400 text-xs font-semibold">
+					{duel.status === DuelStatus.WAITING_FOR_OPPONENT &&
+						"Waiting for opponent"}
+					{duel.status === DuelStatus.IN_PROGRESS && "In progress"}
+					{duel.status === DuelStatus.COMPLETED && "Completed"}
+					{duel.status === DuelStatus.CANCELLED && "Cancelled"}
+				</div>
+			</div>
+
+			<div className="flex items-center gap-2">
+				<div className="text-sm font-semibold px-2 py-1 rounded-full bg-card-accent flex items-center gap-1">
+					<BiSolidGift className="w-3.5 h-3.5" />
+					<span>{duel.stakes.length}</span>
+				</div>
+				<div className="text-sm font-semibold px-2 py-1 rounded-full bg-card-accent flex items-center gap-1">
+					<Icon icon="TON" className="w-3.5 h-3.5" />
+					<span>{duel.totalStakeValue?.value}</span>
+				</div>
+			</div>
+
+			<section className="flex gap-2 overflow-x-auto">
+				{duel.stakes.map((stake) => {
+					const { gift } = stake;
+					// Find the participant who made this stake
+					const participant = participantsMap.get(
+						stake.participantTelegramUserId?.value,
+					);
+
+					return (
+						<GiftCardSmall
+							key={gift?.giftId?.value}
+							gift={{
+								giftId: gift?.giftId,
+								slug: gift?.slug,
+								title: gift?.title,
+								price: gift?.price,
+							}}
+							participant={participant}
+						/>
+					);
+				})}
+				<div className="rounded-3xl bg-card-muted-accent overflow-hidden w-max flex flex-col shrink-0">
+					<div className="w-24 h-24 rounded-3xl border-2 border-dashed border-card-accent bg-card flex items-center justify-center">
+						<BiPlus className="w-8 h-8 text-card-accent" />
+					</div>
+					<div className="text-center text-xs py-1" />
+				</div>
+			</section>
+			<JoinDuelDrawer
+				displayNumber={Number(duel.displayNumber.toString())}
+				duel={duel}
+			>
+				<Button
+					variant={"primary"}
+					className="w-full font-semibold text-base h-12 mt-2.5"
+				>
+					Join
+				</Button>
+			</JoinDuelDrawer>
+		</div>
+	);
+}

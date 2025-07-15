@@ -45,11 +45,12 @@ message TransferGiftToUserResponse {
 message StakeGiftRequest {
   shared.v1.TelegramUserId telegram_user_id = 1;
   shared.v1.GiftId gift_id = 2;
-  message GameMetadata {
-    shared.v1.GameMode game_mode = 1;
-    string game_id = 2;
+  message DuelMetadata {
+    shared.v1.DuelId duel_id = 1;
   }
-  GameMetadata game_metadata = 3;
+  oneof game_metadata {
+    DuelMetadata duel = 3;
+  }
 }
 
 message StakeGiftResponse {

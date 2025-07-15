@@ -77,11 +77,13 @@ func (s *GiftReadService) GetGiftByID(ctx context.Context, id string) (*giftDoma
 		gift.Symbol = *symbol
 	}
 
-	duelID, err := s.findDuelByGiftID(ctx, gift.ID)
-	if err != nil {
-		return nil, err
+	if gift.Status == giftDomain.StatusInGame {
+		duelID, err := s.findDuelByGiftID(ctx, gift.ID)
+		if err != nil {
+			return nil, err
+		}
+		gift.SetRelatedDuelID(duelID)
 	}
-	gift.SetRelatedDuelID(duelID)
 
 	return gift, nil
 }

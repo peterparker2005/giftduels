@@ -5,18 +5,19 @@ import (
 
 	giftDomain "github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
 	"github.com/peterparker2005/giftduels/packages/errors/pkg/errors"
+	"github.com/peterparker2005/giftduels/packages/logger-go"
 	giftv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1"
 	"go.uber.org/zap"
 )
 
 type GiftStakeCommand struct {
 	repo giftDomain.Repository
-	log  *zap.Logger
+	log  *logger.Logger
 }
 
 func NewGiftStakeCommand(
 	repo giftDomain.Repository,
-	log *zap.Logger,
+	log *logger.Logger,
 ) *GiftStakeCommand {
 	return &GiftStakeCommand{
 		repo: repo,
@@ -27,7 +28,7 @@ func NewGiftStakeCommand(
 type StakeGiftParams struct {
 	GiftID         string
 	TelegramUserID int64
-	GameMetadata   *giftv1.StakeGiftRequest_GameMetadata
+	GameMetadata   *giftv1.StakeGiftRequest_DuelMetadata
 }
 
 func (c *GiftStakeCommand) StakeGift(
@@ -74,7 +75,7 @@ func (c *GiftStakeCommand) StakeGift(
 
 	_, err = c.repo.CreateGiftEvent(ctx, giftDomain.CreateGiftEventParams{
 		GiftID:         stakedGift.ID,
-		RelatedGameID:  &params.GameMetadata.GameId,
+		RelatedGameID:  &params.GameMetadata.GetDuelId().Value,
 		EventType:      giftDomain.EventTypeStake,
 		TelegramUserID: params.TelegramUserID,
 	})

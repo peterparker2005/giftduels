@@ -10,7 +10,7 @@ async function seed() {
 
 	await userbot.start();
 
-	const { gifts } = await userbot.getUserGifts("@GiftsToPortals", 10);
+	const { gifts } = await userbot.getUserGifts("@GiftsToPortals", 5);
 
 	for (const savedGift of gifts) {
 		const ownerTelegramId = 7350079261;

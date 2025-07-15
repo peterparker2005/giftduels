@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
-	"time"
 
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/pricing"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
@@ -57,9 +55,7 @@ func (s *portalsPriceService) GetFloorPrice(
 			zap.String("backdrop", a.backdrop),
 		)
 
-		resp, err := retryWithBackoff(func() (*NFTResponse, error) {
-			return s.client.SearchNFTs(ctx, params.Collection, a.model, a.symbol, a.backdrop)
-		})
+		resp, err := s.client.SearchNFTs(ctx, params.Collection, a.model, a.symbol, a.backdrop)
 		if err != nil {
 			s.logger.Warn("Fallback search failed", zap.Int("attempt", i), zap.Error(err))
 			lastErr = err
@@ -84,25 +80,4 @@ func (s *portalsPriceService) GetFloorPrice(
 	}
 
 	return nil, fmt.Errorf("all attempts failed, last error: %w", lastErr)
-}
-
-func retryWithBackoff(fn func() (*NFTResponse, error)) (*NFTResponse, error) {
-	backoff := defaultBackoffDelay
-	for i := range 3 {
-		resp, err := fn()
-		if err != nil {
-			if isTooManyRequests(err) && i < 2 {
-				time.Sleep(backoff)
-				backoff *= 2
-				continue
-			}
-			return nil, err
-		}
-		return resp, nil
-	}
-	return nil, errors.New("too many retries")
-}
-
-func isTooManyRequests(err error) bool {
-	return strings.Contains(err.Error(), "429")
 }
