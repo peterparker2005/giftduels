@@ -15,8 +15,7 @@ var Module = fx.Options(
 		},
 		NewRecoveryInterceptor,
 		NewVersionInterceptors,
-		NewDuelPublicHandler,
-		NewDuelPrivateHandler,
+		NewEventPublicHandler,
 		NewGRPCServer,
 	),
 

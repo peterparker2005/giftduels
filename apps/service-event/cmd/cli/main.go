@@ -1,7 +1,9 @@
 package main
 
-import "github.com/peterparker2005/giftduels/apps/service-event/internal/app"
+import (
+	"github.com/peterparker2005/giftduels/apps/service-event/internal/cli"
+)
 
 func main() {
-	app.Run()
+	cli.Run()
 }

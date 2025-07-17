@@ -6,6 +6,7 @@ require (
 	connectrpc.com/connect v1.18.1
 	github.com/ThreeDotsLabs/watermill v1.4.7
 	github.com/ThreeDotsLabs/watermill-amqp/v3 v3.0.1
+	github.com/ThreeDotsLabs/watermill-redisstream v1.4.3
 	github.com/ThreeDotsLabs/watermill-sql/v3 v3.1.0
 	github.com/ccoveille/go-safecast v1.6.1
 	github.com/envoyproxy/go-control-plane/envoy v1.32.4
@@ -16,6 +17,7 @@ require (
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/rabbitmq/amqp091-go v1.10.0
+	github.com/redis/go-redis/v9 v9.11.0
 	github.com/shopspring/decimal v1.2.0
 	github.com/spf13/cobra v1.9.1
 	github.com/telegram-mini-apps/init-data-golang v1.5.0
@@ -30,9 +32,13 @@ require (
 
 require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
+	github.com/Rican7/retry v0.3.1 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cncf/xds/go v0.0.0-20250326154945-ae57f3c0d45f // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.2.1 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -49,6 +55,7 @@ require (
 	github.com/sigurn/crc16 v0.0.0-20211026045750-20ab5afb07e3 // indirect
 	github.com/sony/gobreaker v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
+	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
@@ -57,6 +64,7 @@ require (
 	golang.org/x/sync v0.14.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
+	google.golang.org/appengine v1.6.8 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	olympos.io/encoding/edn v0.0.0-20201019073823-d3554ca0b0a3 // indirect
 )

@@ -3,7 +3,8 @@ package grpc
 import (
 	"context"
 
-	duelService "github.com/peterparker2005/giftduels/apps/service-duel/internal/service/duel"
+	"github.com/peterparker2005/giftduels/apps/service-duel/internal/service/command"
+	"github.com/peterparker2005/giftduels/apps/service-duel/internal/service/query"
 	"github.com/peterparker2005/giftduels/packages/errors/pkg/errors"
 	duelv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/duel/v1"
 	sharedv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/shared/v1"
@@ -12,18 +13,28 @@ import (
 type DuelPrivateHandler struct {
 	duelv1.UnimplementedDuelPrivateServiceServer
 
-	duelService *duelService.Service
+	duelCreateCommand   *command.DuelCreateCommand
+	duelAutoRollCommand *command.DuelAutoRollCommand
+	duelQueryService    *query.DuelQueryService
 }
 
-func NewDuelPrivateHandler(duelService *duelService.Service) duelv1.DuelPrivateServiceServer {
-	return &DuelPrivateHandler{duelService: duelService}
+func NewDuelPrivateHandler(
+	duelCreateCommand *command.DuelCreateCommand,
+	duelAutoRollCommand *command.DuelAutoRollCommand,
+	duelQueryService *query.DuelQueryService,
+) duelv1.DuelPrivateServiceServer {
+	return &DuelPrivateHandler{
+		duelCreateCommand:   duelCreateCommand,
+		duelAutoRollCommand: duelAutoRollCommand,
+		duelQueryService:    duelQueryService,
+	}
 }
 
 func (h *DuelPrivateHandler) FindDuelByGiftID(
 	ctx context.Context,
 	req *duelv1.FindDuelByGiftIDRequest,
 ) (*duelv1.FindDuelByGiftIDResponse, error) {
-	duelID, err := h.duelService.FindDuelByGiftID(ctx, req.GetGiftId().GetValue())
+	duelID, err := h.duelQueryService.FindDuelByGiftID(ctx, req.GetGiftId().GetValue())
 	if err != nil {
 		return nil, errors.NewInternalError("failed to find duel by gift id")
 	}

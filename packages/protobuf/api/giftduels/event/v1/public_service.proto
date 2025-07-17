@@ -3,19 +3,33 @@ syntax = "proto3";
 package giftduels.event.v1;
 
 import "giftduels/duel/v1/event.proto";
-import "google/protobuf/empty.proto";
+import "giftduels/shared/v1/common.proto";
 
 option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/event/v1;eventv1";
 
-// Универсальный Event-сервис. Клиент открывает один bidi-stream,
-// а сервер шлёт туда всё подряд: баланс, онлайн, игровые и т.д.
 service EventPublicService {
+  rpc SubscribeDuels(SubscribeDuelsRequest) returns (SubscribeDuelsResponse);
+  rpc UnsubscribeDuels(UnsubscribeDuelsRequest) returns (UnsubscribeDuelsResponse);
   // buf:lint:ignore RPC_REQUEST_STANDARD_NAME
-  rpc Socket(stream google.protobuf.Empty) returns (stream SocketResponse);
+  rpc Stream(StreamRequest) returns (stream StreamResponse);
 }
 
-message SocketResponse {
+message SubscribeDuelsRequest {
+  repeated shared.v1.DuelId duel_ids = 1;
+}
+
+message SubscribeDuelsResponse {}
+
+message UnsubscribeDuelsRequest {
+  repeated shared.v1.DuelId duel_ids = 1;
+}
+
+message UnsubscribeDuelsResponse {}
+
+message StreamRequest {}
+
+message StreamResponse {
   oneof payload {
-    giftduels.duel.v1.RollDiceEvent roll_dice_event = 100;
+    giftduels.duel.v1.DuelEvent duel_event = 1;
   }
 }

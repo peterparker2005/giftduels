@@ -4,8 +4,10 @@ import (
 	"context"
 
 	"github.com/ccoveille/go-safecast"
+	"github.com/peterparker2005/giftduels/apps/service-duel/internal/adapter/proto"
 	duelDomain "github.com/peterparker2005/giftduels/apps/service-duel/internal/domain/duel"
-	duelService "github.com/peterparker2005/giftduels/apps/service-duel/internal/service/duel"
+	"github.com/peterparker2005/giftduels/apps/service-duel/internal/service/command"
+	"github.com/peterparker2005/giftduels/apps/service-duel/internal/service/query"
 	"github.com/peterparker2005/giftduels/packages/errors/pkg/errors"
 	"github.com/peterparker2005/giftduels/packages/grpc-go/authctx"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
@@ -18,18 +20,24 @@ import (
 type duelPublicHandler struct {
 	duelv1.UnimplementedDuelPublicServiceServer
 
-	logger      *logger.Logger
-	duelService *duelService.Service
+	logger              *logger.Logger
+	duelCreateCommand   *command.DuelCreateCommand
+	duelAutoRollCommand *command.DuelAutoRollCommand
+	duelQueryService    *query.DuelQueryService
 }
 
 // NewDuelPublicHandler создает новый GRPC handler.
 func NewDuelPublicHandler(
 	logger *logger.Logger,
-	duelService *duelService.Service,
+	duelCreateCommand *command.DuelCreateCommand,
+	duelAutoRollCommand *command.DuelAutoRollCommand,
+	duelQueryService *query.DuelQueryService,
 ) duelv1.DuelPublicServiceServer {
 	return &duelPublicHandler{
-		logger:      logger,
-		duelService: duelService,
+		logger:              logger,
+		duelCreateCommand:   duelCreateCommand,
+		duelAutoRollCommand: duelAutoRollCommand,
+		duelQueryService:    duelQueryService,
 	}
 }
 
@@ -42,7 +50,7 @@ func (h *duelPublicHandler) GetDuelList(
 		req.GetPageRequest().GetPageSize(),
 	)
 
-	response, err := h.duelService.GetDuelList(ctx, pageRequest)
+	response, err := h.duelQueryService.GetDuelList(ctx, pageRequest)
 	if err != nil {
 		h.logger.Error("failed to get duel list", zap.Error(err))
 		return nil, errors.NewInternalError("failed to get duel list")
@@ -51,7 +59,7 @@ func (h *duelPublicHandler) GetDuelList(
 	// Map duels to protobuf
 	protoDuels := make([]*duelv1.Duel, len(response.Duels))
 	for i, duel := range response.Duels {
-		protoDuels[i], err = mapDuel(duel)
+		protoDuels[i], err = proto.MapDuel(duel)
 		if err != nil {
 			return nil, errors.NewInternalError("failed to map duel")
 		}
@@ -82,7 +90,7 @@ func (h *duelPublicHandler) CreateDuel(
 		return nil, err
 	}
 
-	params, err := mapDuelParamsFromProto(req.GetParams())
+	params, err := proto.MapDuelParamsFromProto(req.GetParams())
 	if err != nil {
 		return nil, errors.NewInternalError("failed to create duel")
 	}
@@ -105,12 +113,12 @@ func (h *duelPublicHandler) CreateDuel(
 		}
 	}
 
-	createParams := duelService.CreateDuelParams{
+	createParams := command.CreateDuelParams{
 		Params: params,
 		Stakes: stakes,
 	}
 
-	duelID, err := h.duelService.CreateDuel(ctx, telegramUserID, createParams)
+	duelID, err := h.duelCreateCommand.Execute(ctx, telegramUserID, createParams)
 	if err != nil {
 		h.logger.Error("failed to create duel",
 			zap.Int64("telegramUserID", telegramUserID),
@@ -133,12 +141,12 @@ func (h *duelPublicHandler) GetDuel(
 	if err != nil {
 		return nil, errors.NewInternalError("failed to create duel ID")
 	}
-	duel, err := h.duelService.GetDuelByID(ctx, duelID)
+	duel, err := h.duelQueryService.GetDuelByID(ctx, duelID)
 	if err != nil {
 		return nil, errors.NewInternalError("failed to get duel")
 	}
 
-	protoDuel, err := mapDuel(duel)
+	protoDuel, err := proto.MapDuel(duel)
 	if err != nil {
 		return nil, errors.NewInternalError("failed to map duel")
 	}

@@ -3,7 +3,7 @@ version: '3'
 vars:
   BUILD_VERSION: '{{.BUILD_VERSION| default "dev-release"}}'
   BUILD_DIR: '{{.BUILD_DIR| default "bin"}}'
-  BINARY_NAME: '{{.BINARY_NAME| default "gameservice"}}'
+  BINARY_NAME: '{{.BINARY_NAME| default "app"}}'
 
 tasks:
   build:

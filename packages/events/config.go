@@ -20,7 +20,7 @@ func (c *AMQPConfig) Build() watermillAmqp.Config {
 		"x-queue-type": "quorum",
 	}
 	if c.TTL > 0 {
-		qArgs["x-message-ttl"] = int32(c.TTL.Milliseconds())
+		qArgs["x-message-ttl"] = c.TTL.Milliseconds()
 	}
 
 	if c.Pool == 0 {

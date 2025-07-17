@@ -2,10 +2,21 @@ syntax = "proto3";
 
 package giftduels.duel.v1;
 
+import "giftduels/duel/v1/duel.proto";
 import "giftduels/shared/v1/common.proto";
 import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/duel/v1;duelv1";
+
+message DuelEvent {
+  oneof event {
+    DuelCreatedEvent duel_created_event = 1;
+    DuelStartedEvent duel_started_event = 2;
+    DuelCompletedEvent duel_completed_event = 3;
+    RollDiceEvent roll_dice_event = 4;
+    DuelParticipantEvent duel_participant_event = 5;
+  }
+}
 
 message RollDiceEvent {
   shared.v1.DuelId duel_id = 1;
@@ -13,4 +24,34 @@ message RollDiceEvent {
   bool is_auto_rolled = 3;
   google.protobuf.Timestamp rolled_at = 4;
   shared.v1.TelegramUserId participant_telegram_user_id = 5;
+}
+
+message DuelParticipantEvent {
+  shared.v1.DuelId duel_id = 1;
+  giftduels.duel.v1.DuelParticipant participant = 2;
+  repeated giftduels.duel.v1.DuelStake stakes = 3;
+  shared.v1.TonAmount total_stake_value = 4;
+}
+
+message DuelCreatedEvent {
+  shared.v1.DuelId duel_id = 1;
+  google.protobuf.Timestamp created_at = 2;
+  int64 display_number = 3;
+  giftduels.duel.v1.DuelParams params = 4;
+  repeated giftduels.duel.v1.DuelParticipant participants = 5;
+  repeated giftduels.duel.v1.DuelStake stakes = 6;
+  giftduels.duel.v1.DuelStatus status = 7;
+  giftduels.duel.v1.EntryPriceRange entry_price_range = 8;
+}
+
+message DuelStartedEvent {
+  shared.v1.DuelId duel_id = 1;
+  giftduels.duel.v1.DuelStatus status = 2;
+  google.protobuf.Timestamp updated_at = 3;
+}
+
+message DuelCompletedEvent {
+  shared.v1.DuelId duel_id = 1;
+  giftduels.duel.v1.DuelStatus status = 2;
+  google.protobuf.Timestamp completed_at = 3;
 }

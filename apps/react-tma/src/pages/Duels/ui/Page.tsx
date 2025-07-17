@@ -1,14 +1,19 @@
+import { useEffect } from "react";
 import { BiPlus } from "react-icons/bi";
 import { DuelCard } from "@/entities/duel/ui/DuelCard";
 import { CreateDuelDrawer } from "@/features/create-duel/ui/CreateDuelDrawer";
+import { useStream } from "@/features/event-stream/hooks/useStream";
 import { useDuelsQuery } from "@/shared/api/queries/useDuelsQuery";
+import { useSubscribeDuelsMutation } from "@/shared/api/queries/useSubscribeDuelsMutation";
 import { useIntersectionObserver } from "@/shared/hooks/useIntersectionObserver";
 import { Button } from "@/shared/ui/Button";
 import { Skeleton } from "@/shared/ui/Skeleton";
 
 export function Page() {
 	const { data, fetchNextPage, hasNextPage, isFetching } = useDuelsQuery();
+	const { mutate: subscribeDuels } = useSubscribeDuelsMutation();
 
+	const { isConnected } = useStream();
 	const intersectionRef = useIntersectionObserver({
 		onIntersect: () => {
 			if (hasNextPage) {
@@ -18,6 +23,16 @@ export function Page() {
 		enabled: hasNextPage,
 		threshold: 1,
 	});
+
+	useEffect(() => {
+		if (!isConnected) return;
+
+		subscribeDuels(
+			data?.pages.flatMap((page) =>
+				page.duels.map((duel) => duel.duelId?.value ?? ""),
+			) ?? [],
+		);
+	}, [data?.pages, subscribeDuels, isConnected]);
 
 	return (
 		<div className="container pb-20">

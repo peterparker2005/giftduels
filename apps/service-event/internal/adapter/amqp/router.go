@@ -1,4 +1,4 @@
-package eventhandler
+package amqp
 
 import (
 	"time"
@@ -15,24 +15,24 @@ const (
 	defaultMultiplier      = 2
 )
 
-// ProvideRouter настраивает retry + poison.
+// ProvideRouter configures retry + poison.
 func ProvideRouter(
 	log *logger.Logger,
 	pub message.Publisher,
-	poisonKey string, // gift.events.poison и т.п.
 ) (*message.Router, error) {
 	r, err := message.NewRouter(message.RouterConfig{}, logger.NewWatermill(log))
 	if err != nil {
 		return nil, err
 	}
 
-	// Увеличиваем retry для критических rollback операций
+	// Increase retry for critical rollback operations
 	retry := middleware.Retry{
 		MaxRetries:      defaultMaxRetries,
 		InitialInterval: defaultInitialInterval,
 		Multiplier:      defaultMultiplier,
 	}
-	poison, err := middleware.PoisonQueue(pub, poisonKey)
+	// TODO: add poison key to config?
+	poison, err := middleware.PoisonQueue(pub, "gift.events.poison")
 	if err != nil {
 		return nil, err
 	}

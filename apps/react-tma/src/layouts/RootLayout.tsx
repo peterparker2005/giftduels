@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from "react";
+import { type PropsWithChildren } from "react";
 import { DiceBackground } from "@/shared/ui/DiceBackground";
 import { Navbar } from "@/shared/ui/Navbar";
 

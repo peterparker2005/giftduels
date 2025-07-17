@@ -3,14 +3,13 @@ package app
 import (
 	"context"
 
+	"github.com/peterparker2005/giftduels/apps/service-event/internal/adapter/amqp"
+	"github.com/peterparker2005/giftduels/apps/service-event/internal/adapter/redis"
+	"github.com/peterparker2005/giftduels/apps/service-event/internal/config"
+	"github.com/peterparker2005/giftduels/packages/grpc-go/clients"
+	"github.com/peterparker2005/giftduels/packages/logger-go"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
-
-	"github.com/peterparker2005/giftduels/apps/service-event/internal/config"
-	"github.com/peterparker2005/giftduels/apps/service-event/internal/transport"
-	"github.com/peterparker2005/giftduels/packages/grpc-go/clients"
-
-	"github.com/peterparker2005/giftduels/packages/logger-go"
 )
 
 //nolint:gochecknoglobals // fx module pattern
@@ -23,25 +22,6 @@ var CommonModule = fx.Options(
 	fx.Provide(func(cfg *config.Config) (*clients.Clients, error) {
 		return clients.NewClients(context.Background(), cfg.GRPC)
 	}),
+	amqp.Module,
+	redis.Module,
 )
-
-func Run() {
-	fx.New(
-		CommonModule,
-		transport.Module,
-
-		// Lifecycle hooks
-		fx.Invoke(registerHooks),
-	).Run()
-}
-
-func registerHooks(lc fx.Lifecycle) {
-	lc.Append(fx.Hook{
-		OnStart: func(_ context.Context) error {
-			return nil
-		},
-		OnStop: func(_ context.Context) error {
-			return nil
-		},
-	})
-}

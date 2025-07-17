@@ -3,12 +3,17 @@ package service
 import (
 	"go.uber.org/fx"
 
-	"github.com/peterparker2005/giftduels/apps/service-duel/internal/service/duel"
+	"github.com/peterparker2005/giftduels/apps/service-duel/internal/service/command"
+	"github.com/peterparker2005/giftduels/apps/service-duel/internal/service/query"
 )
 
 //nolint:gochecknoglobals // fx module pattern
 var Module = fx.Module("service",
 	fx.Provide(
-		duel.NewDuelService,
+		// Commands
+		command.NewDuelCreateCommand,
+		command.NewDuelAutoRollCommand,
+		// Queries
+		query.NewDuelQueryService,
 	),
 )

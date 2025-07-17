@@ -45,6 +45,11 @@ static_resources:
                         - match: { prefix: '/giftduels.duel.v1.' }
                           route: { cluster: duel_service }
 
+                        - match: { prefix: '/giftduels.event.v1.' }
+                          route:
+                            cluster: event_service
+                            timeout: 0s # required for server-side streaming
+
                         - match:
                             {
                               path: '/giftduels.identity.v1.IdentityPublicService/Authorize',
@@ -86,26 +91,6 @@ static_resources:
                     typed_config:
                       '@type': type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
   clusters:
-    - name: event_service
-      connect_timeout: 0.25s
-      type: STRICT_DNS
-      lb_policy: ROUND_ROBIN
-      load_assignment:
-        cluster_name: event_service
-        endpoints:
-          - lb_endpoints:
-              - endpoint:
-                  address:
-                    socket_address:
-                      address: host.docker.internal
-                      port_value: 50056
-      typed_extension_protocol_options:
-        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
-          '@type': type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
-          explicit_http_config:
-            http2_protocol_options:
-              max_concurrent_streams: 100
-
     - name: duel_service
       connect_timeout: 0.25s
       type: STRICT_DNS
@@ -179,6 +164,26 @@ static_resources:
                     socket_address:
                       address: host.docker.internal
                       port_value: 50051
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          '@type': type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            http2_protocol_options:
+              max_concurrent_streams: 100
+
+    - name: event_service
+      connect_timeout: 0.25s
+      type: STRICT_DNS
+      lb_policy: ROUND_ROBIN
+      load_assignment:
+        cluster_name: event_service
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: host.docker.internal
+                      port_value: 50056
       typed_extension_protocol_options:
         envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
           '@type': type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions

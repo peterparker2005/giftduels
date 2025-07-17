@@ -13,7 +13,8 @@ async function seed() {
 	const { gifts } = await userbot.getUserGifts("@GiftsToPortals", 5);
 
 	for (const savedGift of gifts) {
-		const ownerTelegramId = 7350079261;
+		// const ownerTelegramId = 7350079261; // @peterparker2005
+		const ownerTelegramId = 404181517; // @david
 
 		const event = parseSavedStarGiftToEvent(savedGift, ownerTelegramId);
 
