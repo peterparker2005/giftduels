@@ -22,7 +22,6 @@ CREATE TABLE duels (
   max_gifts            INTEGER          NOT NULL CHECK (max_gifts BETWEEN 1 AND 10),
   winner_telegram_user_id BIGINT        NULL,
   next_roll_deadline   TIMESTAMPTZ      NULL,
-  total_stake_value    NUMERIC(20,2)    NOT NULL DEFAULT 0,
   status               duel_status      NULL,
   created_at           TIMESTAMPTZ      NOT NULL DEFAULT now(),
   updated_at           TIMESTAMPTZ      NOT NULL DEFAULT now(),
@@ -63,7 +62,6 @@ CREATE TABLE duel_stakes (
   duel_id              UUID             NOT NULL REFERENCES duels(id) ON DELETE CASCADE,
   telegram_user_id     BIGINT           NOT NULL,
   gift_id              UUID             NOT NULL,
-  stake_value          NUMERIC(20,2)    NOT NULL CHECK (stake_value >= 0),
   PRIMARY KEY (duel_id, telegram_user_id, gift_id)
 );
 

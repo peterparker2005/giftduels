@@ -3,6 +3,7 @@ package pg
 import (
 	"time"
 
+	"github.com/ccoveille/go-safecast"
 	"github.com/peterparker2005/giftduels/apps/service-duel/internal/adapter/pg/sqlc"
 	duelDomain "github.com/peterparker2005/giftduels/apps/service-duel/internal/domain/duel"
 )
@@ -37,12 +38,21 @@ func mapDuel(duel *sqlc.Duel) (*duelDomain.Duel, error) {
 		return nil, err
 	}
 
-	maxPlayers, err := duelDomain.NewMaxPlayers(duel.MaxPlayers)
+	maxPlayersUint32, err := safecast.ToUint32(duel.MaxPlayers)
+	if err != nil {
+		return nil, err
+	}
+	maxGiftsUint32, err := safecast.ToUint32(duel.MaxGifts)
 	if err != nil {
 		return nil, err
 	}
 
-	maxGifts, err := duelDomain.NewMaxGifts(duel.MaxGifts)
+	maxPlayers, err := duelDomain.NewMaxPlayers(maxPlayersUint32)
+	if err != nil {
+		return nil, err
+	}
+
+	maxGifts, err := duelDomain.NewMaxGifts(maxGiftsUint32)
 	if err != nil {
 		return nil, err
 	}

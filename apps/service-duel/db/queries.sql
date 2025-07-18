@@ -19,7 +19,7 @@ WHERE status IN ('waiting_for_opponent', 'in_progress');
 -- name: GetTopDuels :many
 SELECT * FROM duels
 WHERE status = 'completed'
-ORDER BY created_at DESC, total_stake_value DESC
+ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
 
 -- name: GetDuelParticipants :many
@@ -45,8 +45,8 @@ VALUES ($1, $2, $3)
 RETURNING *;
 
 -- name: CreateStake :one
-INSERT INTO duel_stakes (duel_id, telegram_user_id, gift_id, stake_value)
-VALUES ($1, $2, $3, $4)
+INSERT INTO duel_stakes (duel_id, telegram_user_id, gift_id)
+VALUES ($1, $2, $3)
 RETURNING *;
 
 -- name: CreateRound :one

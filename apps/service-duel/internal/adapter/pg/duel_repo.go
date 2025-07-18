@@ -11,7 +11,6 @@ import (
 	duelDomain "github.com/peterparker2005/giftduels/apps/service-duel/internal/domain/duel"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	"github.com/peterparker2005/giftduels/packages/shared"
-	"github.com/peterparker2005/giftduels/packages/tonamount-go"
 	"go.uber.org/zap"
 )
 
@@ -34,8 +33,8 @@ func (r *duelRepository) CreateDuel(
 ) (duelDomain.ID, error) {
 	duel, err := r.q.CreateDuel(ctx, sqlc.CreateDuelParams{
 		IsPrivate:  params.Params.IsPrivate,
-		MaxPlayers: int32(params.Params.MaxPlayers),
-		MaxGifts:   int32(params.Params.MaxGifts),
+		MaxPlayers: params.Params.MaxPlayers.Int32(),
+		MaxGifts:   params.Params.MaxGifts.Int32(),
 	})
 	if err != nil {
 		return "", err
@@ -80,6 +79,7 @@ func (r *duelRepository) GetDuelList(
 ) ([]*duelDomain.Duel, int64, error) {
 	total, err := r.q.GetVisibleDuelsCount(ctx)
 	if err != nil {
+		r.logger.Error("failed to get visible duels count", zap.Error(err))
 		return nil, 0, err
 	}
 
@@ -88,6 +88,7 @@ func (r *duelRepository) GetDuelList(
 		Offset: pageRequest.Offset(),
 	})
 	if err != nil {
+		r.logger.Error("failed to get visible duels count", zap.Error(err))
 		return nil, 0, err
 	}
 
@@ -95,11 +96,13 @@ func (r *duelRepository) GetDuelList(
 	for i, sqlcDuel := range sqlcDuels {
 		duel, err := mapDuel(&sqlcDuel)
 		if err != nil {
+			r.logger.Error("failed to map duel", zap.Error(err))
 			return nil, 0, err
 		}
 
 		// Load related data
 		if err := r.loadDuelRelatedData(ctx, duel); err != nil {
+			r.logger.Error("failed to load duel related data", zap.Error(err))
 			return nil, 0, err
 		}
 
@@ -112,18 +115,21 @@ func (r *duelRepository) GetDuelList(
 func (r *duelRepository) loadDuelRelatedData(ctx context.Context, duel *duelDomain.Duel) error {
 	duelID, err := pgUUID(duel.ID.String())
 	if err != nil {
+		r.logger.Error("failed to load duel related data", zap.Error(err))
 		return err
 	}
 
 	// Load participants
 	sqlcParticipants, err := r.q.GetDuelParticipants(ctx, duelID)
 	if err != nil {
+		r.logger.Error("failed to load duel related data", zap.Error(err))
 		return err
 	}
 	duel.Participants = make([]duelDomain.Participant, len(sqlcParticipants))
 	for i, p := range sqlcParticipants {
 		telegramUserID, err := duelDomain.NewTelegramUserID(p.TelegramUserID)
 		if err != nil {
+			r.logger.Error("failed to map participant", zap.Error(err))
 			return err
 		}
 		duel.Participants[i] = duelDomain.Participant{
@@ -141,27 +147,20 @@ func (r *duelRepository) loadDuelRelatedData(ctx context.Context, duel *duelDoma
 	for i, s := range sqlcStakes {
 		telegramUserID, err := duelDomain.NewTelegramUserID(s.TelegramUserID)
 		if err != nil {
+			r.logger.Error("failed to map stake", zap.Error(err))
 			return err
 		}
 
-		stakeValueStr, err := fromPgNumeric(s.StakeValue)
+		gift, err := duelDomain.NewStakedGiftBuilder().
+			WithID(s.GiftID.String()).
+			Build()
 		if err != nil {
+			r.logger.Error("failed to map stake", zap.Error(err))
 			return err
 		}
-		stakeValue, err := tonamount.NewTonAmountFromString(stakeValueStr)
-		if err != nil {
-			return err
-		}
-
 		duel.Stakes[i] = duelDomain.Stake{
 			TelegramUserID: telegramUserID,
-			Gift: duelDomain.NewStakedGift(
-				s.GiftID.String(),
-				"",  // Title will be filled by service layer
-				"",  // Slug will be filled by service layer
-				nil, // Price will be filled by service layer
-			),
-			StakeValue: stakeValue,
+			Gift:           gift,
 		}
 	}
 
@@ -234,10 +233,6 @@ func (r *duelRepository) CreateStake(
 	duelID duelDomain.ID,
 	stake duelDomain.Stake,
 ) error {
-	stakeValue, err := pgNumeric(stake.StakeValue.String())
-	if err != nil {
-		return err
-	}
 	pgGiftID, err := pgUUID(stake.Gift.ID)
 	if err != nil {
 		return err
@@ -250,7 +245,6 @@ func (r *duelRepository) CreateStake(
 		DuelID:         pgDuelID,
 		TelegramUserID: stake.TelegramUserID.Int64(),
 		GiftID:         pgGiftID,
-		StakeValue:     stakeValue,
 	})
 	return err
 }
@@ -317,12 +311,17 @@ func (r *duelRepository) UpdateDuelStatus(
 		time = pgTimestamptz(*completedAt)
 	}
 
-	return r.q.UpdateDuelStatus(ctx, sqlc.UpdateDuelStatusParams{
-		ID:                   pgDuelID,
-		Status:               sqlc.NullDuelStatus{DuelStatus: sqlc.DuelStatus(status), Valid: true},
-		WinnerTelegramUserID: pgInt64(winnerID.Int64()),
-		CompletedAt:          time,
-	})
+	params := sqlc.UpdateDuelStatusParams{
+		ID:          pgDuelID,
+		Status:      sqlc.NullDuelStatus{DuelStatus: sqlc.DuelStatus(status), Valid: true},
+		CompletedAt: time,
+	}
+
+	if winnerID != nil {
+		params.WinnerTelegramUserID = pgInt64(winnerID.Int64())
+	}
+
+	return r.q.UpdateDuelStatus(ctx, params)
 }
 
 func (r *duelRepository) UpdateNextRollDeadline(

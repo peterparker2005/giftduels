@@ -8,9 +8,6 @@ import (
 const tolerance = 0.05 // 5%
 
 func (d *Duel) EntryPriceRange() (*tonamount.TonAmount, *tonamount.TonAmount, error) {
-	// 1. Находим ID создателя (как раньше)…
-	// 2. Складываем все его ставки в sum
-
 	var creatorID TelegramUserID
 	for _, p := range d.Participants {
 		if p.IsCreator {
@@ -22,7 +19,7 @@ func (d *Duel) EntryPriceRange() (*tonamount.TonAmount, *tonamount.TonAmount, er
 	sum := tonamount.Zero()
 	for _, s := range d.Stakes {
 		if s.TelegramUserID == creatorID {
-			sum = sum.Add(s.StakeValue)
+			sum = sum.Add(s.Gift.Price)
 		}
 	}
 	if sum.IsZero() {
@@ -66,7 +63,7 @@ func (d *Duel) ValidateEntry(userID TelegramUserID) error {
 	total, _ := tonamount.NewTonAmountFromString("0")
 	for _, s := range d.Stakes {
 		if s.TelegramUserID == userID {
-			total = total.Add(s.StakeValue)
+			total = total.Add(s.Gift.Price)
 		}
 	}
 

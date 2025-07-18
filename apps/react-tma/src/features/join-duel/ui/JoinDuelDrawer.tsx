@@ -1,8 +1,11 @@
+import { create } from "@bufbuild/protobuf";
 import { Duel } from "@giftduels/protobuf-js/giftduels/duel/v1/duel_pb";
+import { JoinDuelRequestSchema } from "@giftduels/protobuf-js/giftduels/duel/v1/duel_public_service_pb";
 import { GiftStatus } from "@giftduels/protobuf-js/giftduels/gift/v1/gift_pb";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useGiftsQuery } from "@/shared/api/queries/useGiftsQuery";
+import { useJoinDuelMutation } from "@/shared/api/queries/useJoinDuelMutation";
 import {
 	Drawer,
 	DrawerContent,
@@ -16,20 +19,18 @@ interface JoinDuelDrawerProps {
 	displayNumber: string;
 	duel: Duel;
 	children: React.ReactNode;
-	onJoinDuel?: (data: JoinDuelFormData) => Promise<void>;
 }
 
 export function JoinDuelDrawer({
 	displayNumber,
 	duel,
 	children,
-	onJoinDuel,
 }: JoinDuelDrawerProps) {
 	const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } =
 		useGiftsQuery();
+	const joinDuelMutation = useJoinDuelMutation();
 	const [selectedGifts, setSelectedGifts] = useState<string[]>([]);
 	const [isOpen, setIsOpen] = useState(false);
-	const [isPending, setIsPending] = useState(false);
 
 	// Flatten all pages into a single array of gifts
 	const allAvailableGifts = useMemo(
@@ -63,25 +64,29 @@ export function JoinDuelDrawer({
 
 	const handleJoinDuel = useCallback(
 		async (data: JoinDuelFormData) => {
-			if (!onJoinDuel) {
-				console.log("Join duel data:", data);
-				toast.success("Join duel functionality will be implemented soon!");
-				return;
-			}
-
-			setIsPending(true);
 			try {
-				await onJoinDuel(data);
+				const stakes = data.selectedGifts.map((giftId) => ({
+					giftId: {
+						value: giftId,
+					},
+				}));
+
+				const request = create(JoinDuelRequestSchema, {
+					duelId: {
+						value: duel.duelId?.value || "",
+					},
+					stakes,
+				});
+
+				await joinDuelMutation.mutateAsync(request);
 				toast.success("Successfully joined the duel!");
 				setIsOpen(false);
 			} catch (error) {
 				toast.error("Failed to join duel");
 				console.error("Join duel error:", error);
-			} finally {
-				setIsPending(false);
 			}
 		},
-		[onJoinDuel],
+		[joinDuelMutation, duel.duelId?.value],
 	);
 
 	const handleDrawerOpenChange = useCallback((open: boolean) => {
@@ -89,7 +94,6 @@ export function JoinDuelDrawer({
 		if (!open) {
 			// Reset state when drawer closes
 			setSelectedGifts([]);
-			setIsPending(false);
 		}
 	}, []);
 
@@ -126,7 +130,7 @@ export function JoinDuelDrawer({
 				isLoadingMore={isFetchingNextPage}
 				onLoadMore={fetchNextPage}
 				hasNextPage={hasNextPage}
-				isPending={isPending}
+				isPending={joinDuelMutation.isPending}
 			/>
 		);
 	};

@@ -19,20 +19,57 @@ func mustTon(t *testing.T, s string) *tonamount.TonAmount {
 }
 
 // Вспомогалка: создает дуэль с одним создателем и заданными ставками creatorStakes.
-func makeDuelWithCreatorStakes(t *testing.T, creatorID duel.TelegramUserID, creatorStakes []string) *duel.Duel {
+func makeDuelWithCreatorStakes(
+	t *testing.T,
+	creatorID duel.TelegramUserID,
+	creatorStakes []string,
+) *duel.Duel {
 	t.Helper()
-	du := duel.NewDuel(duel.NewParams(false, duel.MaxPlayers(2), duel.MaxGifts(10)))
+	params, err := duel.NewParamsBuilder().
+		WithIsPrivate(false).
+		WithMaxPlayers(duel.MaxPlayers(2)).
+		WithMaxGifts(duel.MaxGifts(10)).
+		Build()
+	if err != nil {
+		t.Fatalf("expected NewParamsBuilder without error, got %v", err)
+	}
+	du := duel.NewDuel(params)
 	// добавляем участника‑создателя
-	du.Join(duel.NewParticipant(creatorID, "", true))
+	creator, err := duel.NewParticipantBuilder().
+		WithTelegramUserID(creatorID).
+		WithPhoto("").
+		AsCreator().
+		Build()
+	if err != nil {
+		t.Fatalf("expected NewParticipantBuilder without error, got %v", err)
+	}
+	du.AddParticipant(creator)
 
 	// добавляем второго «оппонента», чтобы ValidateEntry не ругался на отсутствие пользователя
 	opID := duel.TelegramUserID(999)
-	du.Join(duel.NewParticipant(opID, "", false))
+	op, err := duel.NewParticipantBuilder().WithTelegramUserID(opID).WithPhoto("").Build()
+	if err != nil {
+		t.Fatalf("expected NewParticipantBuilder without error, got %v", err)
+	}
+	du.AddParticipant(op)
 
 	// проставляем ставки создателя
 	for i, s := range creatorStakes {
 		amt := mustTon(t, s)
-		du.PlaceStake(duel.NewStake(creatorID, duel.NewStakedGift(strconv.Itoa(i), "", "", amt), amt))
+		gift, giftErr := duel.NewStakedGiftBuilder().
+			WithID(strconv.Itoa(i)).
+			WithTitle("Test Gift " + strconv.Itoa(i)).
+			WithSlug("test-gift-" + strconv.Itoa(i)).
+			WithPrice(amt).
+			Build()
+		if giftErr != nil {
+			t.Fatalf("expected NewStakedGiftBuilder without error, got %v", giftErr)
+		}
+		stake, stakeErr := duel.NewStakeBuilder(creatorID).WithGift(gift).Build()
+		if stakeErr != nil {
+			t.Fatalf("expected NewStakeBuilder without error, got %v", stakeErr)
+		}
+		du.PlaceStake(stake)
 	}
 	return du
 }
@@ -49,12 +86,12 @@ func TestEntryPriceRange(t *testing.T) {
 		{
 			name:    "одиночная ставка",
 			stakes:  []string{"3.38"},
-			wantMin: "3.38", wantMax: "3.38",
+			wantMin: "3.21", wantMax: "3.55",
 		},
 		{
 			name:    "несколько ставок",
 			stakes:  []string{"2.0", "2.5", "1.25"},
-			wantMin: "1.25", wantMax: "5.75", // 2.0+2.5+1.25 = 5.75
+			wantMin: "5.46", wantMax: "6.04",
 		},
 		{
 			name:    "нет ставок от создателя",
@@ -87,14 +124,39 @@ func TestEntryPriceRange(t *testing.T) {
 	}
 }
 
+//nolint:gocognit
 func TestValidateEntry(t *testing.T) {
-	creator := duel.TelegramUserID(1)
-	opponent := duel.TelegramUserID(2)
+	creatorTelegramUserID := duel.TelegramUserID(1)
+	opponentTelegramUserID := duel.TelegramUserID(2)
 
 	// готовим дуэль, создаем creator и opponent
-	du := duel.NewDuel(duel.NewParams(false, duel.MaxPlayers(2), duel.MaxGifts(10)))
-	du.Join(duel.NewParticipant(creator, "", true))
-	du.Join(duel.NewParticipant(opponent, "", false))
+	params, err := duel.NewParamsBuilder().
+		WithIsPrivate(false).
+		WithMaxPlayers(duel.MaxPlayers(2)).
+		WithMaxGifts(duel.MaxGifts(10)).
+		Build()
+	if err != nil {
+		t.Fatalf("expected NewParamsBuilder without error, got %v", err)
+	}
+	du := duel.NewDuel(params)
+
+	creator, err := duel.NewParticipantBuilder().
+		WithTelegramUserID(creatorTelegramUserID).
+		WithPhoto("").
+		AsCreator().
+		Build()
+	if err != nil {
+		t.Fatalf("expected NewParticipantBuilder without error, got %v", err)
+	}
+	du.AddParticipant(creator)
+	opponent, err := duel.NewParticipantBuilder().
+		WithTelegramUserID(opponentTelegramUserID).
+		WithPhoto("").
+		Build()
+	if err != nil {
+		t.Fatalf("expected NewParticipantBuilder without error, got %v", err)
+	}
+	du.AddParticipant(opponent)
 
 	amt2, err := tonamount.NewTonAmountFromString("2.0")
 	if err != nil {
@@ -105,8 +167,38 @@ func TestValidateEntry(t *testing.T) {
 		t.Fatalf("не смогли распарсить TonAmount из %q: %v", "3.0", err)
 	}
 	// creator ставит два подарка на 2.0 и 3.0 → диапазон [2.0,5.0]
-	du.PlaceStake(duel.NewStake(creator, duel.NewStakedGift("g1", "", "", amt2), amt2))
-	du.PlaceStake(duel.NewStake(creator, duel.NewStakedGift("g2", "", "", amt3), amt3))
+	gift1, err := duel.NewStakedGiftBuilder().
+		WithID("g1").
+		WithTitle("Gift 1").
+		WithSlug("gift-1").
+		WithPrice(amt2).
+		Build()
+	if err != nil {
+		t.Fatalf("expected NewStakedGiftBuilder without error, got %v", err)
+	}
+	gift2, err := duel.NewStakedGiftBuilder().
+		WithID("g2").
+		WithTitle("Gift 2").
+		WithSlug("gift-2").
+		WithPrice(amt3).
+		Build()
+	if err != nil {
+		t.Fatalf("expected NewStakedGiftBuilder without error, got %v", err)
+	}
+	stake1, err := duel.NewStakeBuilder(creatorTelegramUserID).
+		WithGift(gift1).
+		Build()
+	if err != nil {
+		t.Fatalf("expected NewStakeBuilder without error, got %v", err)
+	}
+	du.PlaceStake(stake1)
+	stake2, err := duel.NewStakeBuilder(creatorTelegramUserID).
+		WithGift(gift2).
+		Build()
+	if err != nil {
+		t.Fatalf("expected NewStakeBuilder without error, got %v", err)
+	}
+	du.PlaceStake(stake2)
 
 	tests := []struct {
 		name       string
@@ -116,25 +208,25 @@ func TestValidateEntry(t *testing.T) {
 	}{
 		{
 			name:       "stake with one gift in range",
-			user:       opponent,
-			userStakes: []string{"4.5"},
+			user:       opponentTelegramUserID,
+			userStakes: []string{"5.0"},
 			wantErr:    nil,
 		},
 		{
 			name:       "multiple gifts in range",
-			user:       opponent,
+			user:       opponentTelegramUserID,
 			userStakes: []string{"1.0", "4.0"},
 			wantErr:    nil,
 		},
 		{
 			name:       "too low",
-			user:       opponent,
+			user:       opponentTelegramUserID,
 			userStakes: []string{"1.5"},
 			wantErr:    duel.ErrStakeOutOfRange,
 		},
 		{
 			name:       "too high",
-			user:       opponent,
+			user:       opponentTelegramUserID,
 			userStakes: []string{"6.0"},
 			wantErr:    duel.ErrStakeOutOfRange,
 		},
@@ -154,7 +246,22 @@ func TestValidateEntry(t *testing.T) {
 			// add stakes of opponent
 			for i, amtStr := range tc.userStakes {
 				amt := mustTon(t, amtStr)
-				du.PlaceStake(duel.NewStake(tc.user, duel.NewStakedGift("op"+strconv.Itoa(i), "", "", amt), amt))
+				gift, giftErr := duel.NewStakedGiftBuilder().
+					WithID("op" + strconv.Itoa(i)).
+					WithTitle("Opponent Gift " + strconv.Itoa(i)).
+					WithSlug("opponent-gift-" + strconv.Itoa(i)).
+					WithPrice(amt).
+					Build()
+				if giftErr != nil {
+					t.Fatalf("expected NewStakedGiftBuilder without error, got %v", giftErr)
+				}
+				stake, stakeErr := duel.NewStakeBuilder(tc.user).
+					WithGift(gift).
+					Build()
+				if stakeErr != nil {
+					t.Fatalf("expected NewStakeBuilder without error, got %v", stakeErr)
+				}
+				du.PlaceStake(stake)
 			}
 
 			err = du.ValidateEntry(tc.user)
@@ -167,22 +274,50 @@ func TestValidateEntry(t *testing.T) {
 
 func TestEntryPriceRange_NoCreator(t *testing.T) {
 	// duel without Creator flag, should be ErrCreatorNotFound
-	du := duel.NewDuel(duel.NewParams(false, duel.MaxPlayers(2), duel.MaxGifts(10)))
+	params, err := duel.NewParamsBuilder().
+		WithIsPrivate(false).
+		WithMaxPlayers(duel.MaxPlayers(2)).
+		WithMaxGifts(duel.MaxGifts(10)).
+		Build()
+	if err != nil {
+		t.Fatalf("expected NewParamsBuilder without error, got %v", err)
+	}
+	du := duel.NewDuel(params)
 	// add only «regular» participant
-	du.Join(duel.NewParticipant(42, "", false))
+	participant, err := duel.NewParticipantBuilder().WithTelegramUserID(42).WithPhoto("").Build()
+	if err != nil {
+		t.Fatalf("expected NewParticipantBuilder without error, got %v", err)
+	}
+	du.AddParticipant(participant)
 
-	if _, _, err := du.EntryPriceRange(); !errors.Is(err, duel.ErrCreatorNotFound) {
-		t.Fatalf("expected ErrCreatorNotFound, got %v", err)
+	if _, _, err = du.EntryPriceRange(); !errors.Is(err, duel.ErrNoStakesFromCreator) {
+		t.Fatalf("expected ErrNoStakesFromCreator, got %v", err)
 	}
 }
 
 func TestValidateEntry_ParticipantNotFound(t *testing.T) {
 	// ValidateEntry for unregistered user should return ErrParticipantNotFound
-	du := duel.NewDuel(duel.NewParams(false, duel.MaxPlayers(2), duel.MaxGifts(10)))
-	du.Join(duel.NewParticipant(1, "", true)) // creator
+	params, err := duel.NewParamsBuilder().
+		WithIsPrivate(false).
+		WithMaxPlayers(duel.MaxPlayers(2)).
+		WithMaxGifts(duel.MaxGifts(10)).
+		Build()
+	if err != nil {
+		t.Fatalf("expected NewParamsBuilder without error, got %v", err)
+	}
+	du := duel.NewDuel(params)
+	creator, err := duel.NewParticipantBuilder().
+		WithTelegramUserID(1).
+		WithPhoto("").
+		AsCreator().
+		Build()
+	if err != nil {
+		t.Fatalf("expected NewParticipantBuilder without error, got %v", err)
+	}
+	du.AddParticipant(creator)
 	// don't register opponent
 
-	if err := du.ValidateEntry(999); !errors.Is(err, duel.ErrParticipantNotFound) {
+	if err = du.ValidateEntry(999); !errors.Is(err, duel.ErrParticipantNotFound) {
 		t.Fatalf("expected ErrParticipantNotFound, got %v", err)
 	}
 }

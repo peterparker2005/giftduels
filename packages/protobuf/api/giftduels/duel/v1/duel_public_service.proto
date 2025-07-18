@@ -41,10 +41,11 @@ message GetDuelListResponse {
   shared.v1.PageResponse pagination = 2;
 }
 
+message Stake {
+  shared.v1.GiftId gift_id = 1;
+}
+
 message CreateDuelRequest {
-  message Stake {
-    shared.v1.GiftId gift_id = 1;
-  }
   DuelParams params = 2;
   repeated Stake stakes = 3;
 }
@@ -55,6 +56,7 @@ message CreateDuelResponse {
 
 message JoinDuelRequest {
   shared.v1.DuelId duel_id = 1;
+  repeated Stake stakes = 2;
 }
 
 message JoinDuelResponse {

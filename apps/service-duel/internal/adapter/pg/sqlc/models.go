@@ -63,7 +63,6 @@ type Duel struct {
 	MaxGifts             int32
 	WinnerTelegramUserID pgtype.Int8
 	NextRollDeadline     pgtype.Timestamptz
-	TotalStakeValue      pgtype.Numeric
 	Status               NullDuelStatus
 	CreatedAt            pgtype.Timestamptz
 	UpdatedAt            pgtype.Timestamptz
@@ -94,5 +93,4 @@ type DuelStake struct {
 	DuelID         pgtype.UUID
 	TelegramUserID int64
 	GiftID         pgtype.UUID
-	StakeValue     pgtype.Numeric
 }

@@ -1,33 +1,5 @@
 package duel
 
-type MaxPlayers int32
-
-const (
-	MinPlayers      = 2
-	MaxPlayersLimit = 4
-)
-
-func NewMaxPlayers(n int32) (MaxPlayers, error) {
-	if n < MinPlayers || n > MaxPlayersLimit {
-		return 0, ErrInvalidMaxPlayers
-	}
-	return MaxPlayers(n), nil
-}
-
-type MaxGifts int32
-
-const (
-	MinGifts      = 1
-	MaxGiftsLimit = 10
-)
-
-func NewMaxGifts(n int32) (MaxGifts, error) {
-	if n < MinGifts || n > MaxGiftsLimit {
-		return 0, ErrInvalidMaxGifts
-	}
-	return MaxGifts(n), nil
-}
-
 func NewID(id string) (ID, error) {
 	if id == "" {
 		return "", ErrInvalidID
@@ -40,4 +12,50 @@ func NewTelegramUserID(id int64) (TelegramUserID, error) {
 		return 0, ErrInvalidTelegramUserID
 	}
 	return TelegramUserID(id), nil
+}
+
+type Params struct {
+	IsPrivate  bool
+	MaxPlayers MaxPlayers
+	MaxGifts   MaxGifts
+}
+
+type ParamsBuilder struct {
+	Params
+}
+
+func NewParamsBuilder() *ParamsBuilder {
+	return &ParamsBuilder{}
+}
+
+func (b *ParamsBuilder) WithIsPrivate(isPrivate bool) *ParamsBuilder {
+	b.IsPrivate = isPrivate
+	return b
+}
+
+func (b *ParamsBuilder) WithMaxPlayers(maxPlayers MaxPlayers) *ParamsBuilder {
+	b.MaxPlayers = maxPlayers
+	return b
+}
+
+func (b *ParamsBuilder) WithMaxGifts(maxGifts MaxGifts) *ParamsBuilder {
+	b.MaxGifts = maxGifts
+	return b
+}
+
+func (b *ParamsBuilder) validate() error {
+	if b.MaxPlayers < MinPlayers || b.MaxPlayers > MaxPlayersLimit {
+		return ErrInvalidMaxPlayers
+	}
+	if b.MaxGifts < MinGifts || b.MaxGifts > MaxGiftsLimit {
+		return ErrInvalidMaxGifts
+	}
+	return nil
+}
+
+func (b *ParamsBuilder) Build() (Params, error) {
+	if err := b.validate(); err != nil {
+		return Params{}, err
+	}
+	return b.Params, nil
 }

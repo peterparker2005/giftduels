@@ -2,15 +2,32 @@ import {
 	Duel,
 	DuelStatus,
 } from "@giftduels/protobuf-js/giftduels/duel/v1/duel_pb";
+import { useNavigate } from "@tanstack/react-router";
+import { retrieveLaunchParams } from "@telegram-apps/sdk";
+import { useMemo } from "react";
 import { BiPlus, BiSolidGift } from "react-icons/bi";
 import { DuelAvatars } from "@/entities/duel/ui/DuelAvatars";
 import { GiftCardSmall } from "@/entities/gift/ui/GiftCardSmall";
 import { JoinDuelDrawer } from "@/features/join-duel/ui/JoinDuelDrawer";
 import { Button } from "@/shared/ui/Button";
 import { Icon } from "@/shared/ui/Icon/Icon";
+import { cn } from "@/shared/utils/cn";
 
 export function DuelCard({ duel }: { duel: Duel }) {
+	const { tgWebAppData } = retrieveLaunchParams();
+	const user = tgWebAppData?.user;
+
+	const isUserParticipant = useMemo(
+		() =>
+			duel.participants.find(
+				(participant) =>
+					participant.telegramUserId?.value.toString() === user?.id.toString(),
+			),
+		[duel.participants, user],
+	);
+
 	// Create a map of participants by telegram user ID for quick lookup
+	const navigate = useNavigate();
 	const participantsMap = new Map(
 		duel.participants.map((participant) => [
 			participant.telegramUserId?.value,
@@ -33,7 +50,19 @@ export function DuelCard({ duel }: { duel: Duel }) {
 					}))}
 					maxPlayers={duel.params?.maxPlayers ?? 0}
 				/>
-				<div className="flex items-center justify-center bg-yellow-400/15 rounded-full px-2 py-1 text-yellow-400 text-xs font-semibold">
+				<div
+					className={cn(
+						"flex items-center justify-center rounded-full px-2 py-1 text-xs font-semibold",
+						duel.status === DuelStatus.WAITING_FOR_OPPONENT &&
+							"bg-yellow-400/15 text-yellow-400",
+						duel.status === DuelStatus.IN_PROGRESS &&
+							"bg-green-400/15 text-green-400",
+						duel.status === DuelStatus.COMPLETED &&
+							"bg-green-400/15 text-green-400",
+						duel.status === DuelStatus.CANCELLED &&
+							"bg-red-400/15 text-red-400",
+					)}
+				>
 					{duel.status === DuelStatus.WAITING_FOR_OPPONENT &&
 						"Waiting for opponent"}
 					{duel.status === DuelStatus.IN_PROGRESS && "In progress"}
@@ -74,24 +103,48 @@ export function DuelCard({ duel }: { duel: Duel }) {
 						/>
 					);
 				})}
-				<div className="rounded-3xl bg-card-muted-accent overflow-hidden w-max flex flex-col shrink-0">
-					<div className="w-24 h-24 rounded-3xl border-2 border-dashed border-card-accent bg-card flex items-center justify-center">
-						<BiPlus className="w-8 h-8 text-card-accent" />
-					</div>
-					<div className="text-center text-xs py-1" />
-				</div>
+				{duel.status === DuelStatus.WAITING_FOR_OPPONENT && (
+					<JoinDuelDrawer
+						displayNumber={duel.displayNumber.toString()}
+						duel={duel}
+					>
+						<div className="rounded-3xl bg-card-muted-accent overflow-hidden w-max flex flex-col shrink-0">
+							<div className="w-24 h-24 rounded-3xl border-2 border-dashed border-card-accent bg-card flex items-center justify-center">
+								<BiPlus className="w-8 h-8 text-card-accent" />
+							</div>
+							<div className="text-center text-xs py-1" />
+						</div>
+					</JoinDuelDrawer>
+				)}
 			</section>
-			<JoinDuelDrawer
-				displayNumber={Number(duel.displayNumber.toString())}
-				duel={duel}
-			>
+			{duel.status === DuelStatus.WAITING_FOR_OPPONENT &&
+				!isUserParticipant && (
+					<JoinDuelDrawer
+						displayNumber={duel.displayNumber.toString()}
+						duel={duel}
+					>
+						<Button
+							variant={"primary"}
+							className="w-full font-semibold text-base h-12 mt-2.5"
+						>
+							Join
+						</Button>
+					</JoinDuelDrawer>
+				)}
+			{(duel.status === DuelStatus.IN_PROGRESS || isUserParticipant) && (
 				<Button
-					variant={"primary"}
-					className="w-full font-semibold text-base h-12 mt-2.5"
+					variant={"secondary"}
+					className="w-full font-semibold text-base h-12 mt-2.5 bg-card-accent"
+					onClick={() => {
+						navigate({
+							to: "/duel/$duelId",
+							params: { duelId: duel.duelId?.value ?? "" },
+						});
+					}}
 				>
-					Join
+					Watch
 				</Button>
-			</JoinDuelDrawer>
+			)}
 		</div>
 	);
 }

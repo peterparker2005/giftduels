@@ -105,7 +105,10 @@ func (h *eventPublicHandler) SubscribeDuels(
 	sessIface, ok := h.sessions.Load(userID)
 	if !ok {
 		h.logger.Warn("user session not found", zap.Int64("user_id", userID))
-		return nil, status.Error(codes.FailedPrecondition, "stream session not established. Call Stream() first")
+		return nil, status.Error(
+			codes.FailedPrecondition,
+			"stream session not established. Call Stream() first",
+		)
 	}
 	sess, ok := sessIface.(*stream.Session)
 	if !ok {
@@ -118,14 +121,27 @@ func (h *eventPublicHandler) SubscribeDuels(
 		ids[i] = v.GetValue()
 	}
 
-	h.logger.Info("subscribing to duels", zap.Int64("user_id", userID), zap.Strings("duel_ids", ids))
+	h.logger.Info(
+		"subscribing to duels",
+		zap.Int64("user_id", userID),
+		zap.Strings("duel_ids", ids),
+	)
 
 	if err = sess.SubscribeDuels(ids); err != nil {
-		h.logger.Error("subscribe error", zap.Error(err), zap.Int64("user_id", userID), zap.Strings("duel_ids", ids))
+		h.logger.Error(
+			"subscribe error",
+			zap.Error(err),
+			zap.Int64("user_id", userID),
+			zap.Strings("duel_ids", ids),
+		)
 		return nil, status.Errorf(codes.Internal, "subscribe error: %v", err)
 	}
 
-	h.logger.Info("successfully subscribed to duels", zap.Int64("user_id", userID), zap.Strings("duel_ids", ids))
+	h.logger.Info(
+		"successfully subscribed to duels",
+		zap.Int64("user_id", userID),
+		zap.Strings("duel_ids", ids),
+	)
 	return &eventv1.SubscribeDuelsResponse{}, nil
 }
 
@@ -140,7 +156,10 @@ func (h *eventPublicHandler) UnsubscribeDuels(
 	sessIface, ok := h.sessions.Load(userID)
 	if !ok {
 		h.logger.Warn("user session not found", zap.Int64("user_id", userID))
-		return nil, status.Error(codes.FailedPrecondition, "stream session not established. Call Stream() first")
+		return nil, status.Error(
+			codes.FailedPrecondition,
+			"stream session not established. Call Stream() first",
+		)
 	}
 	sess, ok := sessIface.(*stream.Session)
 	if !ok {
@@ -153,10 +172,18 @@ func (h *eventPublicHandler) UnsubscribeDuels(
 		ids[i] = v.GetValue()
 	}
 
-	h.logger.Info("unsubscribing from duels", zap.Int64("user_id", userID), zap.Strings("duel_ids", ids))
+	h.logger.Info(
+		"unsubscribing from duels",
+		zap.Int64("user_id", userID),
+		zap.Strings("duel_ids", ids),
+	)
 
 	sess.UnsubscribeDuels(ids)
 
-	h.logger.Info("successfully unsubscribed from duels", zap.Int64("user_id", userID), zap.Strings("duel_ids", ids))
+	h.logger.Info(
+		"successfully unsubscribed from duels",
+		zap.Int64("user_id", userID),
+		zap.Strings("duel_ids", ids),
+	)
 	return &eventv1.UnsubscribeDuelsResponse{}, nil
 }

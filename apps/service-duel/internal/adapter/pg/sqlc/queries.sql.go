@@ -14,7 +14,7 @@ import (
 const createDuel = `-- name: CreateDuel :one
 INSERT INTO duels (is_private, max_players, max_gifts)
 VALUES ($1, $2, $3)
-RETURNING id, display_number, is_private, max_players, max_gifts, winner_telegram_user_id, next_roll_deadline, total_stake_value, status, created_at, updated_at, completed_at
+RETURNING id, display_number, is_private, max_players, max_gifts, winner_telegram_user_id, next_roll_deadline, status, created_at, updated_at, completed_at
 `
 
 type CreateDuelParams struct {
@@ -34,7 +34,6 @@ func (q *Queries) CreateDuel(ctx context.Context, arg CreateDuelParams) (Duel, e
 		&i.MaxGifts,
 		&i.WinnerTelegramUserID,
 		&i.NextRollDeadline,
-		&i.TotalStakeValue,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -117,32 +116,21 @@ func (q *Queries) CreateRound(ctx context.Context, arg CreateRoundParams) (DuelR
 }
 
 const createStake = `-- name: CreateStake :one
-INSERT INTO duel_stakes (duel_id, telegram_user_id, gift_id, stake_value)
-VALUES ($1, $2, $3, $4)
-RETURNING duel_id, telegram_user_id, gift_id, stake_value
+INSERT INTO duel_stakes (duel_id, telegram_user_id, gift_id)
+VALUES ($1, $2, $3)
+RETURNING duel_id, telegram_user_id, gift_id
 `
 
 type CreateStakeParams struct {
 	DuelID         pgtype.UUID
 	TelegramUserID int64
 	GiftID         pgtype.UUID
-	StakeValue     pgtype.Numeric
 }
 
 func (q *Queries) CreateStake(ctx context.Context, arg CreateStakeParams) (DuelStake, error) {
-	row := q.db.QueryRow(ctx, createStake,
-		arg.DuelID,
-		arg.TelegramUserID,
-		arg.GiftID,
-		arg.StakeValue,
-	)
+	row := q.db.QueryRow(ctx, createStake, arg.DuelID, arg.TelegramUserID, arg.GiftID)
 	var i DuelStake
-	err := row.Scan(
-		&i.DuelID,
-		&i.TelegramUserID,
-		&i.GiftID,
-		&i.StakeValue,
-	)
+	err := row.Scan(&i.DuelID, &i.TelegramUserID, &i.GiftID)
 	return i, err
 }
 
@@ -189,7 +177,7 @@ func (q *Queries) FindDuelByGiftID(ctx context.Context, giftID pgtype.UUID) (pgt
 }
 
 const getDuelByID = `-- name: GetDuelByID :one
-SELECT id, display_number, is_private, max_players, max_gifts, winner_telegram_user_id, next_roll_deadline, total_stake_value, status, created_at, updated_at, completed_at FROM duels WHERE id = $1
+SELECT id, display_number, is_private, max_players, max_gifts, winner_telegram_user_id, next_roll_deadline, status, created_at, updated_at, completed_at FROM duels WHERE id = $1
 `
 
 func (q *Queries) GetDuelByID(ctx context.Context, id pgtype.UUID) (Duel, error) {
@@ -203,7 +191,6 @@ func (q *Queries) GetDuelByID(ctx context.Context, id pgtype.UUID) (Duel, error)
 		&i.MaxGifts,
 		&i.WinnerTelegramUserID,
 		&i.NextRollDeadline,
-		&i.TotalStakeValue,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -292,7 +279,7 @@ func (q *Queries) GetDuelRounds(ctx context.Context, duelID pgtype.UUID) ([]Duel
 }
 
 const getDuelStakes = `-- name: GetDuelStakes :many
-SELECT duel_id, telegram_user_id, gift_id, stake_value FROM duel_stakes WHERE duel_id = $1
+SELECT duel_id, telegram_user_id, gift_id FROM duel_stakes WHERE duel_id = $1
 `
 
 func (q *Queries) GetDuelStakes(ctx context.Context, duelID pgtype.UUID) ([]DuelStake, error) {
@@ -304,12 +291,7 @@ func (q *Queries) GetDuelStakes(ctx context.Context, duelID pgtype.UUID) ([]Duel
 	var items []DuelStake
 	for rows.Next() {
 		var i DuelStake
-		if err := rows.Scan(
-			&i.DuelID,
-			&i.TelegramUserID,
-			&i.GiftID,
-			&i.StakeValue,
-		); err != nil {
+		if err := rows.Scan(&i.DuelID, &i.TelegramUserID, &i.GiftID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -321,7 +303,7 @@ func (q *Queries) GetDuelStakes(ctx context.Context, duelID pgtype.UUID) ([]Duel
 }
 
 const getDuels = `-- name: GetDuels :many
-SELECT id, display_number, is_private, max_players, max_gifts, winner_telegram_user_id, next_roll_deadline, total_stake_value, status, created_at, updated_at, completed_at FROM duels
+SELECT id, display_number, is_private, max_players, max_gifts, winner_telegram_user_id, next_roll_deadline, status, created_at, updated_at, completed_at FROM duels
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2
 `
@@ -348,7 +330,6 @@ func (q *Queries) GetDuels(ctx context.Context, arg GetDuelsParams) ([]Duel, err
 			&i.MaxGifts,
 			&i.WinnerTelegramUserID,
 			&i.NextRollDeadline,
-			&i.TotalStakeValue,
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -365,9 +346,9 @@ func (q *Queries) GetDuels(ctx context.Context, arg GetDuelsParams) ([]Duel, err
 }
 
 const getTopDuels = `-- name: GetTopDuels :many
-SELECT id, display_number, is_private, max_players, max_gifts, winner_telegram_user_id, next_roll_deadline, total_stake_value, status, created_at, updated_at, completed_at FROM duels
+SELECT id, display_number, is_private, max_players, max_gifts, winner_telegram_user_id, next_roll_deadline, status, created_at, updated_at, completed_at FROM duels
 WHERE status = 'completed'
-ORDER BY created_at DESC, total_stake_value DESC
+ORDER BY created_at DESC
 LIMIT $1 OFFSET $2
 `
 
@@ -393,7 +374,6 @@ func (q *Queries) GetTopDuels(ctx context.Context, arg GetTopDuelsParams) ([]Due
 			&i.MaxGifts,
 			&i.WinnerTelegramUserID,
 			&i.NextRollDeadline,
-			&i.TotalStakeValue,
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -410,7 +390,7 @@ func (q *Queries) GetTopDuels(ctx context.Context, arg GetTopDuelsParams) ([]Due
 }
 
 const getVisibleDuels = `-- name: GetVisibleDuels :many
-SELECT id, display_number, is_private, max_players, max_gifts, winner_telegram_user_id, next_roll_deadline, total_stake_value, status, created_at, updated_at, completed_at FROM duels
+SELECT id, display_number, is_private, max_players, max_gifts, winner_telegram_user_id, next_roll_deadline, status, created_at, updated_at, completed_at FROM duels
 WHERE status IN ('waiting_for_opponent', 'in_progress')
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2
@@ -438,7 +418,6 @@ func (q *Queries) GetVisibleDuels(ctx context.Context, arg GetVisibleDuelsParams
 			&i.MaxGifts,
 			&i.WinnerTelegramUserID,
 			&i.NextRollDeadline,
-			&i.TotalStakeValue,
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,

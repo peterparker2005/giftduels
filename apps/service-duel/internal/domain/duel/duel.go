@@ -66,7 +66,7 @@ func NewDuel(params Params) *Duel {
 	}
 }
 
-func (d *Duel) Join(p Participant) error {
+func (d *Duel) AddParticipant(p Participant) error {
 	// check for duplicate
 	for _, ex := range d.Participants {
 		if ex.TelegramUserID == p.TelegramUserID {
@@ -99,12 +99,37 @@ func (d *Duel) PlaceStake(s Stake) error {
 	return nil
 }
 
-func (d *Duel) StartRound(players []TelegramUserID) {
-	num := len(d.Rounds) + 1
-	d.Rounds = append(d.Rounds,
-		NewRound(num, players),
-	)
+func (d *Duel) Start() error {
+	if d.Status != StatusWaitingForOpponent {
+		return ErrDuelNotInProgress
+	}
+	// меняем статус
+	d.Status = StatusInProgress
+	// собираем список игроков
+	var ids []TelegramUserID
+	for _, p := range d.Participants {
+		ids = append(ids, p.TelegramUserID)
+	}
+	// создаём первый раунд в памяти
+	if err := d.StartRound(ids); err != nil {
+		return err
+	}
+	// рассчитываем дедлайн первого хода
+	deadline := time.Now().Add(d.TimeoutForRound())
+	d.NextRollDeadline = &deadline
 	d.UpdatedAt = time.Now()
+	return nil
+}
+
+func (d *Duel) StartRound(players []TelegramUserID) error {
+	num := len(d.Rounds) + 1
+	r, err := NewRoundBuilder().WithRoundNumber(num).WithParticipants(players).Build()
+	if err != nil {
+		return err
+	}
+	d.Rounds = append(d.Rounds, r)
+	d.UpdatedAt = time.Now()
+	return nil
 }
 
 // AddRollToCurrentRound adds a roll to the current round, checking that the player is in the list and has not rolled yet.
@@ -198,117 +223,7 @@ func (d *Duel) TimeoutForRound() time.Duration {
 func (d *Duel) TotalStakeValue() *tonamount.TonAmount {
 	sum := tonamount.Zero()
 	for _, s := range d.Stakes {
-		sum = sum.Add(s.StakeValue)
+		sum = sum.Add(s.Gift.Price)
 	}
 	return sum
-}
-
-type Params struct {
-	IsPrivate  bool
-	MaxPlayers MaxPlayers
-	MaxGifts   MaxGifts
-}
-
-func NewParams(isPrivate bool, maxPlayers MaxPlayers, maxGifts MaxGifts) Params {
-	return Params{
-		IsPrivate:  isPrivate,
-		MaxPlayers: maxPlayers,
-		MaxGifts:   maxGifts,
-	}
-}
-
-type Participant struct {
-	TelegramUserID TelegramUserID
-	PhotoURL       string
-	IsCreator      bool
-}
-
-func NewParticipant(
-	telegramUserID TelegramUserID,
-	photoURL string,
-	isCreator bool,
-) Participant {
-	return Participant{
-		TelegramUserID: telegramUserID,
-		PhotoURL:       photoURL,
-		IsCreator:      isCreator,
-	}
-}
-
-type Stake struct {
-	TelegramUserID TelegramUserID
-	Gift           StakedGift
-	StakeValue     *tonamount.TonAmount
-}
-
-type StakedGift struct {
-	ID    string
-	Title string
-	Slug  string
-	Price *tonamount.TonAmount
-}
-
-func NewStakedGift(
-	giftID string,
-	title string,
-	slug string,
-	price *tonamount.TonAmount,
-) StakedGift {
-	if price == nil {
-		price, _ = tonamount.NewTonAmountFromString("0")
-	}
-	return StakedGift{
-		ID:    giftID,
-		Title: title,
-		Slug:  slug,
-		Price: price,
-	}
-}
-
-func NewStake(
-	telegramUserID TelegramUserID,
-	gift StakedGift,
-	stakeValue *tonamount.TonAmount,
-) Stake {
-	return Stake{
-		TelegramUserID: telegramUserID,
-		Gift:           gift,
-		StakeValue:     stakeValue,
-	}
-}
-
-type Round struct {
-	RoundNumber  int
-	Participants []TelegramUserID
-	Rolls        []Roll
-}
-
-func NewRound(roundNumber int, players []TelegramUserID) Round {
-	ps := append([]TelegramUserID(nil), players...)
-	return Round{RoundNumber: roundNumber, Participants: ps}
-}
-
-func (r *Round) AddRoll(roll Roll) {
-	r.Rolls = append(r.Rolls, roll)
-}
-
-type Roll struct {
-	TelegramUserID TelegramUserID
-	DiceValue      int32
-	RolledAt       time.Time
-	IsAutoRolled   bool
-}
-
-func NewRoll(
-	telegramUserID TelegramUserID,
-	diceValue int32,
-	rolledAt time.Time,
-	isAutoRolled bool,
-) Roll {
-	return Roll{
-		TelegramUserID: telegramUserID,
-		DiceValue:      diceValue,
-		RolledAt:       rolledAt,
-		IsAutoRolled:   isAutoRolled,
-	}
 }

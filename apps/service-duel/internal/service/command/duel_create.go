@@ -80,10 +80,17 @@ func (c *DuelCreateCommand) Execute(
 	// 3. Создаем доменный объект
 	repo := c.repo.WithTx(tx)
 	duel := dueldomain.NewDuel(params.Params)
-	creator := dueldomain.NewParticipant(dueldomain.TelegramUserID(telegramUserID), "", true)
+	creator, err := dueldomain.NewParticipantBuilder().
+		WithTelegramUserID(dueldomain.TelegramUserID(telegramUserID)).
+		WithPhoto("").
+		AsCreator().
+		Build()
+	if err != nil {
+		return "", err
+	}
 
 	// 4. Join
-	if execErr = duel.Join(creator); execErr != nil {
+	if execErr = duel.AddParticipant(creator); execErr != nil {
 		return "", execErr
 	}
 
@@ -146,7 +153,7 @@ func (c *DuelCreateCommand) reserveStakes(
 		if err != nil {
 			return staked, err
 		}
-		stakes[i].StakeValue = amount
+		stakes[i].Gift.Price = amount
 		stakes[i].TelegramUserID = dueldomain.TelegramUserID(telegramUserID)
 
 		if err = duel.PlaceStake(stakes[i]); err != nil {
@@ -192,7 +199,11 @@ func (c *DuelCreateCommand) returnStakedGifts(giftIDs []string) error {
 		c.log.Info("returning gift from game due to error", zap.String("giftID", giftID))
 		msg := message.NewMessage(uuid.New().String(), []byte(giftID))
 		if err := c.publisher.Publish(duelevents.TopicDuelCreateFailed.String(), msg); err != nil {
-			c.log.Error("failed to return gift during cleanup", zap.String("giftID", giftID), zap.Error(err))
+			c.log.Error(
+				"failed to return gift during cleanup",
+				zap.String("giftID", giftID),
+				zap.Error(err),
+			)
 			return err
 		}
 	}

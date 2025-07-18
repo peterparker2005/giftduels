@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -41,7 +41,7 @@ type HTTPClient struct {
 }
 
 func NewHTTPClient(authHeader string, logger *logger.Logger) *HTTPClient {
-	// 3 запросa в секунду, burst = 1
+	//nolint:mnd // 3 req/s, burst = 1
 	limiter := rate.NewLimiter(rate.Every(time.Second/3), 1)
 
 	return &HTTPClient{
@@ -115,7 +115,10 @@ func (c *HTTPClient) SearchNFTs(
 		// если нас запоролили — ждём время из заголовков, а не просто backoff
 		if resp.StatusCode == http.StatusTooManyRequests {
 			waitSec := parseRetryAfter(resp.Header)
-			c.logger.Warn("429 получен — ждём перед новой попыткой", zap.Int("retry_after_s", waitSec))
+			c.logger.Warn(
+				"429 получен — ждём перед новой попыткой",
+				zap.Int("retry_after_s", waitSec),
+			)
 			select {
 			case <-time.After(time.Duration(waitSec) * time.Second):
 			case <-ctx.Done():
@@ -131,7 +134,7 @@ func (c *HTTPClient) SearchNFTs(
 		}
 
 		var r NFTResponse
-		if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
+		if err = json.NewDecoder(resp.Body).Decode(&r); err != nil {
 			return nil, fmt.Errorf("decode response: %w", err)
 		}
 		if len(r.Results) == 0 {
@@ -156,6 +159,7 @@ func parseRetryAfter(h http.Header) int {
 			}
 		}
 	}
+	//nolint:canonicalheader // we need to parse the header
 	if reset := h.Get("X-RateLimit-Reset"); reset != "" {
 		if sec, err := strconv.Atoi(reset); err == nil {
 			return sec
@@ -163,7 +167,8 @@ func parseRetryAfter(h http.Header) int {
 	}
 	// fallback: defaultBackoffDelay + jitter [0..defaultBackoffDelay)
 	baseMs := int(defaultBackoffDelay / time.Millisecond)
-	jitter := rand.Intn(baseMs)
+	//nolint:gosec // we need to generate a random number
+	jitter := rand.IntN(baseMs)
 	// переводим в секунды и добавляем 1s buffer
 	return (baseMs+jitter)/1000 + 1
 }

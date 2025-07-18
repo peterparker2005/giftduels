@@ -68,7 +68,15 @@ func (c *DuelAutoRollCommand) Execute(ctx context.Context, duelID dueldomain.ID)
 			if err != nil {
 				return err
 			}
-			roll := dueldomain.NewRoll(pl, val, time.Now(), true)
+			roll, err := dueldomain.NewRollBuilder().
+				WithTelegramUserID(pl).
+				WithDiceValue(val).
+				WithRolledAt(time.Now()).
+				WithIsAutoRolled(true).
+				Build()
+			if err != nil {
+				return err
+			}
 			if err := d.AddRollToCurrentRound(roll); err != nil {
 				return err
 			}
@@ -130,13 +138,23 @@ func (c *DuelAutoRollCommand) rollDice(
 	return resp.GetValue(), nil
 }
 
-func (c *DuelAutoRollCommand) startNewRound(ctx context.Context, tx pgx.Tx, d *dueldomain.Duel) error {
+func (c *DuelAutoRollCommand) startNewRound(
+	ctx context.Context,
+	tx pgx.Tx,
+	d *dueldomain.Duel,
+) error {
 	repo := c.repo.WithTx(tx)
 	participants := make([]dueldomain.TelegramUserID, len(d.Participants))
 	for i, p := range d.Participants {
 		participants[i] = p.TelegramUserID
 	}
-	round := dueldomain.NewRound(len(d.Rounds)+1, participants)
+	round, err := dueldomain.NewRoundBuilder().
+		WithRoundNumber(len(d.Rounds) + 1).
+		WithParticipants(participants).
+		Build()
+	if err != nil {
+		return err
+	}
 	d.StartRound(participants)
 	if err := repo.CreateRound(ctx, d.ID, round); err != nil {
 		return err

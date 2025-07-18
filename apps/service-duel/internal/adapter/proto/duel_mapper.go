@@ -137,7 +137,7 @@ func MapDuelStake(stake duelDomain.Stake) *duelv1.DuelStake {
 			},
 		},
 		StakeValue: &sharedv1.TonAmount{
-			Value: stake.StakeValue.String(),
+			Value: stake.StakeValue().String(),
 		},
 	}
 }
@@ -262,22 +262,12 @@ func MapDuelFromProto(protoDuel *duelv1.Duel) (*duelDomain.Duel, error) {
 }
 
 func MapDuelParamsFromProto(protoParams *duelv1.DuelParams) (duelDomain.Params, error) {
-	maxPlayersInt, err := safecast.ToInt32(protoParams.GetMaxPlayers())
+	maxPlayers, err := duelDomain.NewMaxPlayers(protoParams.GetMaxPlayers())
 	if err != nil {
 		return duelDomain.Params{}, err
 	}
 
-	maxGiftsInt, err := safecast.ToInt32(protoParams.GetMaxGifts())
-	if err != nil {
-		return duelDomain.Params{}, err
-	}
-
-	maxPlayers, err := duelDomain.NewMaxPlayers(maxPlayersInt)
-	if err != nil {
-		return duelDomain.Params{}, err
-	}
-
-	maxGifts, err := duelDomain.NewMaxGifts(maxGiftsInt)
+	maxGifts, err := duelDomain.NewMaxGifts(protoParams.GetMaxGifts())
 	if err != nil {
 		return duelDomain.Params{}, err
 	}
@@ -337,15 +327,19 @@ func MapDuelStakeFromProto(protoStake *duelv1.DuelStake) (duelDomain.Stake, erro
 		return duelDomain.Stake{}, err
 	}
 
+	gift, err := duelDomain.NewStakedGiftBuilder().
+		WithID(protoStake.GetGift().GetGiftId().GetValue()).
+		WithTitle(protoStake.GetGift().GetTitle()).
+		WithSlug(protoStake.GetGift().GetSlug()).
+		WithPrice(stakeValue).
+		Build()
+	if err != nil {
+		return duelDomain.Stake{}, err
+	}
+
 	return duelDomain.Stake{
 		TelegramUserID: telegramUserID,
-		Gift: duelDomain.NewStakedGift(
-			protoStake.GetGift().GetGiftId().GetValue(),
-			protoStake.GetGift().GetTitle(),
-			protoStake.GetGift().GetSlug(),
-			nil,
-		),
-		StakeValue: stakeValue,
+		Gift:           gift,
 	}, nil
 }
 
@@ -397,14 +391,16 @@ func MapDuelCreatedEvent(duel *duelDomain.Duel) (*duelv1.DuelCreatedEvent, error
 	stakes := make([]*duelv1.DuelStake, 0, len(duel.Stakes))
 	for _, stake := range duel.Stakes {
 		stakes = append(stakes, &duelv1.DuelStake{
-			ParticipantTelegramUserId: &sharedv1.TelegramUserId{Value: stake.TelegramUserID.Int64()},
+			ParticipantTelegramUserId: &sharedv1.TelegramUserId{
+				Value: stake.TelegramUserID.Int64(),
+			},
 			Gift: &duelv1.StakedGift{
 				GiftId: &sharedv1.GiftId{Value: stake.Gift.ID},
 				Title:  stake.Gift.Title,
 				Slug:   stake.Gift.Slug,
-				Price:  &sharedv1.TonAmount{Value: stake.StakeValue.String()},
+				Price:  &sharedv1.TonAmount{Value: stake.StakeValue().String()},
 			},
-			StakeValue: &sharedv1.TonAmount{Value: stake.StakeValue.String()},
+			StakeValue: &sharedv1.TonAmount{Value: stake.StakeValue().String()},
 		})
 	}
 	event := duelv1.DuelCreatedEvent{
@@ -422,6 +418,61 @@ func MapDuelCreatedEvent(duel *duelDomain.Duel) (*duelv1.DuelCreatedEvent, error
 		EntryPriceRange: &duelv1.EntryPriceRange{
 			MinEntryPrice: &sharedv1.TonAmount{Value: minEntryPrice.String()},
 			MaxEntryPrice: &sharedv1.TonAmount{Value: maxEntryPrice.String()},
+		},
+	}
+	return &event, nil
+}
+
+func MapDuelJoinedEvent(
+	duel *duelDomain.Duel,
+	userID duelDomain.TelegramUserID,
+) (*duelv1.DuelParticipantEvent, error) {
+	// Находим участника
+	var participant *duelv1.DuelParticipant
+	for _, p := range duel.Participants {
+		if p.TelegramUserID == userID {
+			participant = &duelv1.DuelParticipant{
+				TelegramUserId: &sharedv1.TelegramUserId{Value: p.TelegramUserID.Int64()},
+				PhotoUrl:       p.PhotoURL,
+				IsCreator:      p.IsCreator,
+			}
+			break
+		}
+	}
+	if participant == nil {
+		return nil, errors.New("participant not found")
+	}
+
+	// Находим ставки этого участника
+	var userStakes []*duelv1.DuelStake
+	var totalStakeValue *tonamount.TonAmount
+	for _, stake := range duel.Stakes {
+		if stake.TelegramUserID == userID {
+			userStakes = append(userStakes, &duelv1.DuelStake{
+				ParticipantTelegramUserId: &sharedv1.TelegramUserId{
+					Value: stake.TelegramUserID.Int64(),
+				},
+				Gift: &duelv1.StakedGift{
+					GiftId: &sharedv1.GiftId{Value: stake.Gift.ID},
+					Title:  stake.Gift.Title,
+					Slug:   stake.Gift.Slug,
+					Price:  &sharedv1.TonAmount{Value: stake.StakeValue().String()},
+				},
+				StakeValue: &sharedv1.TonAmount{Value: stake.StakeValue().String()},
+			})
+			if totalStakeValue == nil {
+				totalStakeValue = tonamount.Zero()
+			}
+			totalStakeValue = totalStakeValue.Add(stake.StakeValue())
+		}
+	}
+
+	event := duelv1.DuelParticipantEvent{
+		DuelId:      &sharedv1.DuelId{Value: duel.ID.String()},
+		Participant: participant,
+		Stakes:      userStakes,
+		TotalStakeValue: &sharedv1.TonAmount{
+			Value: totalStakeValue.String(),
 		},
 	}
 	return &event, nil

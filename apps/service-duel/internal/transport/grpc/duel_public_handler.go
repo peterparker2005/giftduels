@@ -23,6 +23,7 @@ type duelPublicHandler struct {
 	logger              *logger.Logger
 	duelCreateCommand   *command.DuelCreateCommand
 	duelAutoRollCommand *command.DuelAutoRollCommand
+	duelJoinCommand     *command.DuelJoinCommand
 	duelQueryService    *query.DuelQueryService
 }
 
@@ -31,12 +32,14 @@ func NewDuelPublicHandler(
 	logger *logger.Logger,
 	duelCreateCommand *command.DuelCreateCommand,
 	duelAutoRollCommand *command.DuelAutoRollCommand,
+	duelJoinCommand *command.DuelJoinCommand,
 	duelQueryService *query.DuelQueryService,
 ) duelv1.DuelPublicServiceServer {
 	return &duelPublicHandler{
 		logger:              logger,
 		duelCreateCommand:   duelCreateCommand,
 		duelAutoRollCommand: duelAutoRollCommand,
+		duelJoinCommand:     duelJoinCommand,
 		duelQueryService:    duelQueryService,
 	}
 }
@@ -103,13 +106,14 @@ func (h *duelPublicHandler) CreateDuel(
 			zap.String("giftID", giftID),
 			zap.Int("stakeIndex", i))
 
+		gift, err := duelDomain.NewStakedGiftBuilder().
+			WithID(giftID).
+			Build()
+		if err != nil {
+			return nil, errors.NewInternalError("failed to build staked gift")
+		}
 		stakes[i] = duelDomain.Stake{
-			Gift: duelDomain.NewStakedGift(
-				giftID,
-				"",
-				"",
-				nil,
-			),
+			Gift: gift,
 		}
 	}
 
@@ -143,13 +147,48 @@ func (h *duelPublicHandler) GetDuel(
 	}
 	duel, err := h.duelQueryService.GetDuelByID(ctx, duelID)
 	if err != nil {
+		h.logger.Error("failed to get duel", zap.Error(err))
 		return nil, errors.NewInternalError("failed to get duel")
 	}
 
 	protoDuel, err := proto.MapDuel(duel)
 	if err != nil {
+		h.logger.Error("failed to map duel", zap.Error(err))
 		return nil, errors.NewInternalError("failed to map duel")
 	}
 
 	return &duelv1.GetDuelResponse{Duel: protoDuel}, nil
+}
+
+func (h *duelPublicHandler) JoinDuel(
+	ctx context.Context,
+	req *duelv1.JoinDuelRequest,
+) (*duelv1.JoinDuelResponse, error) {
+	telegramUserID, err := authctx.TelegramUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Получаем ID дуэли из запроса
+	duelIDStr := req.GetDuelId().GetValue()
+	duelID, err := duelDomain.NewID(duelIDStr)
+	if err != nil {
+		return nil, errors.NewInternalError("failed to create duel ID")
+	}
+
+	giftIDs := make([]string, len(req.GetStakes()))
+	for i, stake := range req.GetStakes() {
+		giftIDs[i] = stake.GetGiftId().GetValue()
+	}
+
+	err = h.duelJoinCommand.Execute(ctx, duelID, giftIDs, telegramUserID)
+	if err != nil {
+		h.logger.Error("failed to join duel",
+			zap.Int64("telegramUserID", telegramUserID),
+			zap.String("duelID", duelIDStr),
+			zap.Error(err))
+		return nil, err
+	}
+
+	return &duelv1.JoinDuelResponse{}, nil
 }

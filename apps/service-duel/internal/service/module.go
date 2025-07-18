@@ -13,6 +13,7 @@ var Module = fx.Module("service",
 		// Commands
 		command.NewDuelCreateCommand,
 		command.NewDuelAutoRollCommand,
+		command.NewDuelJoinCommand,
 		// Queries
 		query.NewDuelQueryService,
 	),
