@@ -34,11 +34,14 @@ export class InvoiceService {
 		// 1) Опционально: повторно декодим, если нужны детали
 		const obj = this.decodeInvoicePayload(payload);
 
-		// 2) Делаем AMQP-событие
+		// 2) Убеждаемся, что starsAmount - целое число (protobuf uint32)
+		const roundedStarsAmount = Math.round(starsAmount);
+
+		// 3) Делаем AMQP-событие
 		const evt = create(InvoicePaymentEventSchema, {
 			invoiceId,
 			telegramUserId: { value: BigInt(telegramUserId) },
-			starsAmount: { value: starsAmount },
+			starsAmount: { value: roundedStarsAmount },
 			payload: obj,
 		});
 

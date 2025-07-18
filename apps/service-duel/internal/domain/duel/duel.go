@@ -122,7 +122,7 @@ func (d *Duel) Start() error {
 }
 
 func (d *Duel) StartRound(players []TelegramUserID) error {
-	num := len(d.Rounds) + 1
+	num := int32(len(d.Rounds) + 1)
 	r, err := NewRoundBuilder().WithRoundNumber(num).WithParticipants(players).Build()
 	if err != nil {
 		return err
@@ -226,4 +226,107 @@ func (d *Duel) TotalStakeValue() *tonamount.TonAmount {
 		sum = sum.Add(s.Gift.Price)
 	}
 	return sum
+}
+
+func (d *Duel) IsCompleted() bool {
+	return d.Status == StatusCompleted
+}
+
+func (d *Duel) IsCancelled() bool {
+	return d.Status == StatusCancelled
+}
+
+func (d *Duel) IsInProgress() bool {
+	return d.Status == StatusInProgress
+}
+
+func (d *Duel) IsWaitingForOpponent() bool {
+	return d.Status == StatusWaitingForOpponent
+}
+
+func (d *Duel) CurrentRound() (*Round, error) {
+	if len(d.Rounds) == 0 {
+		return nil, ErrNoRoundStarted
+	}
+	return &d.Rounds[len(d.Rounds)-1], nil
+}
+
+//nolint:revive // naming is ok
+type DuelBuilder struct {
+	d Duel
+}
+
+func NewDuelBuilder() *DuelBuilder {
+	return &DuelBuilder{d: Duel{}}
+}
+
+func (b *DuelBuilder) WithID(id ID) *DuelBuilder {
+	b.d.ID = id
+	return b
+}
+
+func (b *DuelBuilder) WithDisplayNumber(num int64) *DuelBuilder {
+	b.d.DisplayNumber = num
+	return b
+}
+
+func (b *DuelBuilder) WithParams(params Params) *DuelBuilder {
+	b.d.Params = params
+	return b
+}
+
+func (b *DuelBuilder) WithStatus(status Status) *DuelBuilder {
+	b.d.Status = status
+	return b
+}
+
+func (b *DuelBuilder) WithWinner(w *TelegramUserID) *DuelBuilder {
+	b.d.WinnerID = w
+	return b
+}
+
+func (b *DuelBuilder) WithNextRollDeadline(t *time.Time) *DuelBuilder {
+	b.d.NextRollDeadline = t
+	return b
+}
+
+func (b *DuelBuilder) WithCreatedAt(t time.Time) *DuelBuilder {
+	b.d.CreatedAt = t
+	return b
+}
+
+func (b *DuelBuilder) WithUpdatedAt(t time.Time) *DuelBuilder {
+	b.d.UpdatedAt = t
+	return b
+}
+
+func (b *DuelBuilder) WithCompletedAt(t *time.Time) *DuelBuilder {
+	b.d.CompletedAt = t
+	return b
+}
+
+func (b *DuelBuilder) WithParticipants(ps []Participant) *DuelBuilder {
+	b.d.Participants = ps
+	return b
+}
+
+func (b *DuelBuilder) WithStakes(ss []Stake) *DuelBuilder {
+	b.d.Stakes = ss
+	return b
+}
+
+func (b *DuelBuilder) WithRounds(rr []Round) *DuelBuilder {
+	b.d.Rounds = rr
+	return b
+}
+
+func (b *DuelBuilder) validate() error {
+	return nil
+}
+
+func (b *DuelBuilder) Build() (*Duel, error) {
+	if err := b.validate(); err != nil {
+		return nil, err
+	}
+	return &b.d, nil
 }

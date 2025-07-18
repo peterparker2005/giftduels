@@ -22,7 +22,7 @@ type Repository interface {
 	CreateStake(ctx context.Context, duelID ID, stake Stake) error
 	CreateParticipant(ctx context.Context, duelID ID, participant Participant) error
 	CreateRound(ctx context.Context, duelID ID, round Round) error
-	CreateRoll(ctx context.Context, duelID ID, roll Roll) error
+	CreateRoll(ctx context.Context, duelID ID, roundNumber int32, roll Roll) error
 
 	UpdateDuelStatus(
 		ctx context.Context,

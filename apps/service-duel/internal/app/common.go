@@ -4,7 +4,9 @@ import (
 	"context"
 
 	"github.com/peterparker2005/giftduels/apps/service-duel/internal/adapter/amqp"
+	"github.com/peterparker2005/giftduels/apps/service-duel/internal/adapter/asynq"
 	"github.com/peterparker2005/giftduels/apps/service-duel/internal/adapter/pg"
+	"github.com/peterparker2005/giftduels/apps/service-duel/internal/adapter/redis"
 	"github.com/peterparker2005/giftduels/apps/service-duel/internal/config"
 	"github.com/peterparker2005/giftduels/apps/service-duel/internal/service"
 	"github.com/peterparker2005/giftduels/packages/grpc-go/clients"
@@ -26,4 +28,6 @@ var CommonModule = fx.Module("common",
 	pg.Module,
 	amqp.Module,
 	service.Module,
+	redis.Module,
+	asynq.ConnectionModule,
 )

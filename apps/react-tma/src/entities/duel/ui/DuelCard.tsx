@@ -1,3 +1,4 @@
+import { timestampDate } from "@bufbuild/protobuf/wkt";
 import {
 	Duel,
 	DuelStatus,
@@ -9,6 +10,7 @@ import { BiPlus, BiSolidGift } from "react-icons/bi";
 import { DuelAvatars } from "@/entities/duel/ui/DuelAvatars";
 import { GiftCardSmall } from "@/entities/gift/ui/GiftCardSmall";
 import { JoinDuelDrawer } from "@/features/join-duel/ui/JoinDuelDrawer";
+import { useCountdown } from "@/shared/hooks/useCountdown";
 import { Button } from "@/shared/ui/Button";
 import { Icon } from "@/shared/ui/Icon/Icon";
 import { cn } from "@/shared/utils/cn";
@@ -16,6 +18,13 @@ import { cn } from "@/shared/utils/cn";
 export function DuelCard({ duel }: { duel: Duel }) {
 	const { tgWebAppData } = retrieveLaunchParams();
 	const user = tgWebAppData?.user;
+
+	const deadlineDate = useMemo(
+		() => duel.nextRollDeadline && timestampDate(duel.nextRollDeadline),
+		[duel.nextRollDeadline],
+	);
+
+	const { seconds } = useCountdown(deadlineDate);
 
 	const isUserParticipant = useMemo(
 		() =>
@@ -42,6 +51,7 @@ export function DuelCard({ duel }: { duel: Duel }) {
 		>
 			<div className="flex items-center justify-between">
 				<DuelAvatars
+					winnerTelegramUserId={duel.winnerTelegramUserId?.value.toString()}
 					participants={duel.participants.map((participant) => ({
 						telegramUserId: {
 							value: participant.telegramUserId?.value.toString() ?? "",
@@ -80,6 +90,11 @@ export function DuelCard({ duel }: { duel: Duel }) {
 					<Icon icon="TON" className="w-3.5 h-3.5" />
 					<span>{duel.totalStakeValue?.value}</span>
 				</div>
+				{duel.nextRollDeadline && seconds > 0 && (
+					<div className="text-sm font-semibold px-2 py-1 rounded-full bg-card-accent flex items-center gap-1">
+						<span>{seconds}</span>
+					</div>
+				)}
 			</div>
 
 			<section className="flex gap-2 overflow-x-auto">

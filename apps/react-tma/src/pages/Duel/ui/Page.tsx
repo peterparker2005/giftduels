@@ -20,7 +20,7 @@ export function Page() {
 	};
 
 	return (
-		<div className="container">
+		<div className="container pb-20">
 			<div className="flex flex-col gap-4">
 				<div className="text-center">
 					<h1 className="text-2xl font-bold">Duel #{duelId}</h1>
@@ -39,7 +39,6 @@ export function Page() {
 					<JoinDuelDrawer
 						displayNumber={data.duel.displayNumber.toString()}
 						duel={data.duel}
-						onJoinDuel={handleJoinDuel}
 					>
 						<Button className="w-full py-3">Join Duel</Button>
 					</JoinDuelDrawer>
@@ -84,6 +83,9 @@ export function Page() {
 											<span className="text-sm">
 												{participant.telegramUserId?.value}
 												{participant.isCreator && " (Creator)"}
+												{participant.telegramUserId?.value.toString() ===
+													data.duel?.winnerTelegramUserId?.value.toString() &&
+													" (Winner)"}
 											</span>
 										</div>
 									))}

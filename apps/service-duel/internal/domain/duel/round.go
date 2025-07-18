@@ -1,13 +1,22 @@
 package duel
 
 type Round struct {
-	RoundNumber  int
+	RoundNumber  int32
 	Participants []TelegramUserID
 	Rolls        []Roll
 }
 
 func (r *Round) AddRoll(roll Roll) {
 	r.Rolls = append(r.Rolls, roll)
+}
+
+func (r *Round) HasRolled(participant TelegramUserID) bool {
+	for _, roll := range r.Rolls {
+		if roll.TelegramUserID == participant {
+			return true
+		}
+	}
+	return false
 }
 
 type RoundBuilder struct {
@@ -18,7 +27,7 @@ func NewRoundBuilder() *RoundBuilder {
 	return &RoundBuilder{r: Round{}}
 }
 
-func (b *RoundBuilder) WithRoundNumber(roundNumber int) *RoundBuilder {
+func (b *RoundBuilder) WithRoundNumber(roundNumber int32) *RoundBuilder {
 	b.r.RoundNumber = roundNumber
 	return b
 }

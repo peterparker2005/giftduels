@@ -354,7 +354,7 @@ func MapDuelRoundFromProto(protoRound *duelv1.DuelRound) (duelDomain.Round, erro
 	}
 
 	return duelDomain.Round{
-		RoundNumber: int(protoRound.GetRoundNumber()),
+		RoundNumber: protoRound.GetRoundNumber(),
 		Rolls:       rolls,
 	}, nil
 }
@@ -475,5 +475,46 @@ func MapDuelJoinedEvent(
 			Value: totalStakeValue.String(),
 		},
 	}
+	return &event, nil
+}
+
+func MapDuelCompletedEvent(duel *duelDomain.Duel) (*duelv1.DuelCompletedEvent, error) {
+	participants := make([]*duelv1.DuelParticipant, 0, len(duel.Participants))
+	for _, participant := range duel.Participants {
+		participants = append(participants, &duelv1.DuelParticipant{
+			TelegramUserId: &sharedv1.TelegramUserId{Value: participant.TelegramUserID.Int64()},
+			PhotoUrl:       participant.PhotoURL,
+			IsCreator:      participant.IsCreator,
+		})
+	}
+	stakes := make([]*duelv1.DuelStake, 0, len(duel.Stakes))
+	for _, stake := range duel.Stakes {
+		stakes = append(stakes, &duelv1.DuelStake{
+			ParticipantTelegramUserId: &sharedv1.TelegramUserId{
+				Value: stake.TelegramUserID.Int64(),
+			},
+			Gift: &duelv1.StakedGift{
+				GiftId: &sharedv1.GiftId{Value: stake.Gift.ID},
+				Title:  stake.Gift.Title,
+				Slug:   stake.Gift.Slug,
+				Price:  &sharedv1.TonAmount{Value: stake.StakeValue().String()},
+			},
+			StakeValue: &sharedv1.TonAmount{Value: stake.StakeValue().String()},
+		})
+	}
+	event := duelv1.DuelCompletedEvent{
+		DuelId:               &sharedv1.DuelId{Value: duel.ID.String()},
+		WinnerTelegramUserId: &sharedv1.TelegramUserId{Value: duel.WinnerID.Int64()},
+		Participants:         participants,
+		Stakes:               stakes,
+		TotalStakeValue: &sharedv1.TonAmount{
+			Value: duel.TotalStakeValue().String(),
+		},
+	}
+
+	if duel.CompletedAt != nil {
+		event.CompletedAt = timestamppb.New(*duel.CompletedAt)
+	}
+
 	return &event, nil
 }

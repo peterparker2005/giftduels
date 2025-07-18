@@ -21,7 +21,8 @@ const (
 	baseStarsCommission = 25.0
 
 	// Максимальное кол-во звёзд.
-	maxStarsCommission = 250.0
+	// maxStarsCommission = 250.0
+	maxStarsCommission = 1.0
 
 	// Сколько TON стоит одна звезда.
 	tonPerStar = 0.2678 / 50.0

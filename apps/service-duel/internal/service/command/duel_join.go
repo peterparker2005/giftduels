@@ -24,6 +24,7 @@ type DuelJoinCommand struct {
 	repo              dueldomain.Repository
 	txManager         pg.TxManager
 	giftPrivateClient giftv1.GiftPrivateServiceClient
+	scheduler         dueldomain.Scheduler
 }
 
 func NewDuelJoinCommand(
@@ -32,6 +33,7 @@ func NewDuelJoinCommand(
 	txManager pg.TxManager,
 	log *logger.Logger,
 	publisher message.Publisher,
+	scheduler dueldomain.Scheduler,
 ) *DuelJoinCommand {
 	return &DuelJoinCommand{
 		repo:              repo,
@@ -39,6 +41,7 @@ func NewDuelJoinCommand(
 		log:               log,
 		giftPrivateClient: clients.Gift.Private,
 		publisher:         publisher,
+		scheduler:         scheduler,
 	}
 }
 
@@ -77,6 +80,12 @@ func (c *DuelJoinCommand) Execute(
 	// 3. Получаем дуэль из БД
 	duel, err := repo.GetDuelByID(ctx, duelID)
 	if err != nil {
+		execErr = err
+		return err
+	}
+
+	// 3.1. Загружаем цены гифтов из gift service для валидации entry price range
+	if err = c.loadGiftPrices(ctx, duel); err != nil {
 		execErr = err
 		return err
 	}
@@ -140,6 +149,14 @@ func (c *DuelJoinCommand) Execute(
 		if execErr = repo.UpdateNextRollDeadline(ctx, duelID, *duel.NextRollDeadline); execErr != nil {
 			return execErr
 		}
+	} else {
+		// Если дуэль еще не заполнена, не планируем авто-бросок
+		return tx.Commit(ctx)
+	}
+
+	// 11. Планируем авто-бросок
+	if execErr = c.scheduler.ScheduleAutoRoll(duelID, *duel.NextRollDeadline); execErr != nil {
+		return execErr
 	}
 
 	// 12. Коммитим транзакцию
@@ -204,7 +221,7 @@ func (c *DuelJoinCommand) reserveStakes(
 		stake, stakeErr := dueldomain.NewStakeBuilder(dueldomain.TelegramUserID(telegramUserIDInt64)).
 			WithGift(gift).
 			Build()
-		if err != nil {
+		if stakeErr != nil {
 			return stakes, staked, stakeErr
 		}
 
@@ -231,6 +248,47 @@ func (c *DuelJoinCommand) returnStakedGifts(giftIDs []string) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func (c *DuelJoinCommand) loadGiftPrices(ctx context.Context, duel *dueldomain.Duel) error {
+	// Загружаем цены гифтов из gift service для всех ставок
+	for i, stake := range duel.Stakes {
+		giftResp, err := c.giftPrivateClient.PrivateGetGift(ctx, &giftv1.PrivateGetGiftRequest{
+			GiftId: &sharedv1.GiftId{Value: stake.Gift.ID},
+		})
+		if err != nil {
+			c.log.Error("failed to get gift from gift service",
+				zap.String("giftID", stake.Gift.ID),
+				zap.Error(err))
+			return err
+		}
+
+		// Parse price from gift service response
+		price, err := tonamount.NewTonAmountFromString(giftResp.GetGift().GetPrice().GetValue())
+		if err != nil {
+			c.log.Error("failed to parse gift price",
+				zap.String("giftID", stake.Gift.ID),
+				zap.String("price", giftResp.GetGift().GetPrice().GetValue()),
+				zap.Error(err))
+			return err
+		}
+
+		// Update the gift with price and other details
+		gift, err := dueldomain.NewStakedGiftBuilder().
+			WithID(stake.Gift.ID).
+			WithTitle(giftResp.GetGift().GetTitle()).
+			WithSlug(giftResp.GetGift().GetSlug()).
+			WithPrice(price).
+			Build()
+		if err != nil {
+			c.log.Error("failed to build staked gift", zap.Error(err))
+			return err
+		}
+
+		duel.Stakes[i].Gift = gift
+	}
+
 	return nil
 }
 

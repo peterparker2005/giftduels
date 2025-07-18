@@ -23,26 +23,34 @@ func mapStatus(status sqlc.DuelStatus) duelDomain.Status {
 	}
 }
 
-func mapDuel(duel *sqlc.Duel) (*duelDomain.Duel, error) {
+func mapDuel(duelRow *sqlc.Duel) (*duelDomain.Duel, error) {
+	// 1. Преобразуем базовые поля из SQL-модели
+	duelID, err := duelDomain.NewID(duelRow.ID.String())
+	if err != nil {
+		return nil, err
+	}
 	var winnerID *duelDomain.TelegramUserID
-	if duel.WinnerTelegramUserID.Valid {
-		id, err := duelDomain.NewTelegramUserID(duel.WinnerTelegramUserID.Int64)
-		if err != nil {
-			return nil, err
+	if duelRow.WinnerTelegramUserID.Valid {
+		id, idErr := duelDomain.NewTelegramUserID(duelRow.WinnerTelegramUserID.Int64)
+		if idErr != nil {
+			return nil, idErr
 		}
 		winnerID = &id
 	}
+	var nextRollDeadline *time.Time
+	if duelRow.NextRollDeadline.Valid {
+		nextRollDeadline = &duelRow.NextRollDeadline.Time
+	}
+	var completedAt *time.Time
+	if duelRow.CompletedAt.Valid {
+		completedAt = &duelRow.CompletedAt.Time
+	}
 
-	duelID, err := duelDomain.NewID(duel.ID.String())
+	maxPlayersUint32, err := safecast.ToUint32(duelRow.MaxPlayers)
 	if err != nil {
 		return nil, err
 	}
-
-	maxPlayersUint32, err := safecast.ToUint32(duel.MaxPlayers)
-	if err != nil {
-		return nil, err
-	}
-	maxGiftsUint32, err := safecast.ToUint32(duel.MaxGifts)
+	maxGiftsUint32, err := safecast.ToUint32(duelRow.MaxGifts)
 	if err != nil {
 		return nil, err
 	}
@@ -51,35 +59,32 @@ func mapDuel(duel *sqlc.Duel) (*duelDomain.Duel, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	maxGifts, err := duelDomain.NewMaxGifts(maxGiftsUint32)
 	if err != nil {
 		return nil, err
 	}
 
-	var nextRollDeadline *time.Time
-	if duel.NextRollDeadline.Valid {
-		nextRollDeadline = &duel.NextRollDeadline.Time
+	params, err := duelDomain.NewParamsBuilder().
+		WithIsPrivate(duelRow.IsPrivate).
+		WithMaxPlayers(maxPlayers).
+		WithMaxGifts(maxGifts).
+		Build()
+	if err != nil {
+		return nil, err
 	}
 
-	var completedAt *time.Time
-	if duel.CompletedAt.Valid {
-		completedAt = &duel.CompletedAt.Time
-	}
+	// 3. Стартуем билдeр и поочерёдно заполняем все поля
+	builder := duelDomain.NewDuelBuilder().
+		WithID(duelID).
+		WithDisplayNumber(duelRow.DisplayNumber).
+		WithParams(params).
+		WithStatus(mapStatus(duelRow.Status.DuelStatus)).
+		WithWinner(winnerID).
+		WithNextRollDeadline(nextRollDeadline).
+		WithCreatedAt(duelRow.CreatedAt.Time).
+		WithUpdatedAt(duelRow.UpdatedAt.Time).
+		WithCompletedAt(completedAt)
 
-	return &duelDomain.Duel{
-		ID:            duelID,
-		DisplayNumber: duel.DisplayNumber,
-		Params: duelDomain.Params{
-			IsPrivate:  duel.IsPrivate,
-			MaxPlayers: maxPlayers,
-			MaxGifts:   maxGifts,
-		},
-		WinnerID:         winnerID,
-		NextRollDeadline: nextRollDeadline,
-		Status:           mapStatus(duel.Status.DuelStatus),
-		CreatedAt:        duel.CreatedAt.Time,
-		UpdatedAt:        duel.UpdatedAt.Time,
-		CompletedAt:      completedAt,
-	}, nil
+	// 4. Возвращаем готовый объект
+	return builder.Build()
 }

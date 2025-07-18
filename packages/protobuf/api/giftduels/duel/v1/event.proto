@@ -52,6 +52,9 @@ message DuelStartedEvent {
 
 message DuelCompletedEvent {
   shared.v1.DuelId duel_id = 1;
-  giftduels.duel.v1.DuelStatus status = 2;
-  google.protobuf.Timestamp completed_at = 3;
+  shared.v1.TelegramUserId winner_telegram_user_id = 2;
+  repeated giftduels.duel.v1.DuelParticipant participants = 3;
+  repeated giftduels.duel.v1.DuelStake stakes = 4;
+  shared.v1.TonAmount total_stake_value = 5;
+  google.protobuf.Timestamp completed_at = 6;
 }

@@ -79,7 +79,7 @@ type Repository interface {
 	) (*GetUserGiftsResult, error)
 	StakeGiftForGame(ctx context.Context, id string) (*Gift, error)
 	ReturnGiftFromGame(ctx context.Context, id string) (*Gift, error)
-	UpdateGiftOwner(ctx context.Context, id string, ownerTelegramID int64) (*Gift, error)
+	UpdateGiftOwner(ctx context.Context, id string, ownerTelegramID int64) error
 	MarkGiftForWithdrawal(ctx context.Context, id string) (*Gift, error)
 	CancelGiftWithdrawal(ctx context.Context, id string) (*Gift, error)
 	CompleteGiftWithdrawal(ctx context.Context, id string) (*Gift, error)

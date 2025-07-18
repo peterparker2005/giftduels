@@ -28,6 +28,7 @@ var Module = fx.Options(
 		workerhandlers.NewGiftWithdrawFailedHandler,
 		workerhandlers.NewInvoicePaymentHandler,
 		workerhandlers.NewGiftReturnedHandler,
+		workerhandlers.NewDuelCompletedHandler,
 	),
 
 	// инициализируем router + forwarder
@@ -43,6 +44,7 @@ func registerHandlers(
 	failHandler *workerhandlers.GiftWithdrawFailedHandler,
 	invHandler *workerhandlers.InvoicePaymentHandler,
 	returnedHandler *workerhandlers.GiftReturnedHandler,
+	duelCompletedHandler *workerhandlers.DuelCompletedHandler,
 	router *message.Router,
 	log *logger.Logger,
 ) error {
@@ -61,6 +63,13 @@ func registerHandlers(
 	if err != nil {
 		return err
 	}
+
+	router.AddNoPublisherHandler(
+		"duel_completed",
+		duelevents.TopicDuelCompleted.String(),
+		duelSub,
+		duelCompletedHandler.Handle,
+	)
 
 	// регистрируем каждый
 	router.AddNoPublisherHandler(

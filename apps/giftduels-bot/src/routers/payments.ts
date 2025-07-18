@@ -21,7 +21,7 @@ paymentsRouter.on("message:successful_payment", async (ctx) => {
 	const p = ctx.update.message.successful_payment;
 	const payload = p.invoice_payload;
 	const invoiceId = p.provider_payment_charge_id;
-	const starsAmount = Number(p.total_amount) / 100; // total_amount в центах
+	const starsAmount = p.total_amount; // total_amount уже в звездах
 	// публикуем событие в AMQP
 	await ctx.services.invoice.handleSuccessfulPayment(
 		ctx.from.id,

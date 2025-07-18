@@ -26,7 +26,10 @@ func TestJoin(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected NewParticipantBuilder without error, got %v", err)
 	}
-	participant2, err := dueldomain.NewParticipantBuilder().WithTelegramUserID(2).WithPhoto("").Build()
+	participant2, err := dueldomain.NewParticipantBuilder().
+		WithTelegramUserID(2).
+		WithPhoto("").
+		Build()
 	if err != nil {
 		t.Fatalf("expected NewParticipantBuilder without error, got %v", err)
 	}
@@ -38,7 +41,10 @@ func TestJoin(t *testing.T) {
 	}
 
 	// Третий превысит лимит
-	participant3, err := dueldomain.NewParticipantBuilder().WithTelegramUserID(3).WithPhoto("").Build()
+	participant3, err := dueldomain.NewParticipantBuilder().
+		WithTelegramUserID(3).
+		WithPhoto("").
+		Build()
 	if err != nil {
 		t.Fatalf("expected NewParticipantBuilder without error, got %v", err)
 	}
@@ -61,7 +67,11 @@ func TestPlaceStake(t *testing.T) {
 		t.Fatalf("expected NewParamsBuilder without error, got %v", err)
 	}
 	d := dueldomain.NewDuel(params)
-	p1, err := dueldomain.NewParticipantBuilder().WithTelegramUserID(1).WithPhoto("").AsCreator().Build()
+	p1, err := dueldomain.NewParticipantBuilder().
+		WithTelegramUserID(1).
+		WithPhoto("").
+		AsCreator().
+		Build()
 	if err != nil {
 		t.Fatalf("expected NewParticipantBuilder without error, got %v", err)
 	}
@@ -108,7 +118,11 @@ func TestRoundFlow_ThreePlayers(t *testing.T) {
 		t.Fatalf("expected NewParamsBuilder without error, got %v", err)
 	}
 	d := dueldomain.NewDuel(params)
-	p1, err := dueldomain.NewParticipantBuilder().WithTelegramUserID(1).WithPhoto("").AsCreator().Build()
+	p1, err := dueldomain.NewParticipantBuilder().
+		WithTelegramUserID(1).
+		WithPhoto("").
+		AsCreator().
+		Build()
 	if err != nil {
 		t.Fatalf("expected NewParticipantBuilder without error, got %v", err)
 	}
@@ -125,7 +139,9 @@ func TestRoundFlow_ThreePlayers(t *testing.T) {
 	d.AddParticipant(p3)
 
 	// Первый раунд
-	d.StartRound([]dueldomain.TelegramUserID{p1.TelegramUserID, p2.TelegramUserID, p3.TelegramUserID})
+	d.StartRound(
+		[]dueldomain.TelegramUserID{p1.TelegramUserID, p2.TelegramUserID, p3.TelegramUserID},
+	)
 
 	// Пока не оба броска — не finished
 	_, finished := d.EvaluateCurrentRound()
@@ -193,7 +209,11 @@ func TestRoundFlow_TieThenResolve(t *testing.T) {
 		t.Fatalf("expected NewParamsBuilder without error, got %v", err)
 	}
 	d := dueldomain.NewDuel(params)
-	p1, err := dueldomain.NewParticipantBuilder().WithTelegramUserID(1).WithPhoto("").AsCreator().Build()
+	p1, err := dueldomain.NewParticipantBuilder().
+		WithTelegramUserID(1).
+		WithPhoto("").
+		AsCreator().
+		Build()
 	if err != nil {
 		t.Fatalf("expected NewParticipantBuilder without error, got %v", err)
 	}

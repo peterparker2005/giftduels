@@ -15,6 +15,7 @@ type Config struct {
 	Database configs.DatabaseConfig `yaml:"database"`
 	GRPC     configs.GRPCConfig     `yaml:"grpc"`
 	AMQP     configs.AMQPConfig     `yaml:"amqp"`
+	Redis    configs.RedisConfig    `yaml:"redis"`
 }
 
 func LoadConfig() (*Config, error) {

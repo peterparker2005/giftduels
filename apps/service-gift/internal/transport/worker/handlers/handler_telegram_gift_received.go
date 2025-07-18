@@ -132,7 +132,12 @@ func (h *TelegramGiftReceivedHandler) getGiftPrice(
 			"Failed to get floor price",
 			zap.Error(err),
 		)
-		return nil, fmt.Errorf("get floor price: %w", err)
+		// return nil, fmt.Errorf("get floor price: %w", err)
+		amount, err := tonamount.NewTonAmountFromString("1")
+		if err != nil {
+			return nil, fmt.Errorf("new ton amount: %w", err)
+		}
+		return amount, nil
 	}
 	return tonamount.NewTonAmountFromString(priceResult.Price)
 }

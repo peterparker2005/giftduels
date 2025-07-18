@@ -6,6 +6,7 @@ import (
 
 	"github.com/ccoveille/go-safecast"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/peterparker2005/giftduels/apps/service-duel/internal/adapter/pg/sqlc"
 	duelDomain "github.com/peterparker2005/giftduels/apps/service-duel/internal/domain/duel"
@@ -65,7 +66,7 @@ func (r *duelRepository) GetDuelByID(
 	}
 
 	// Load related data
-	if err := r.loadDuelRelatedData(ctx, duel); err != nil {
+	if err = r.loadDuelRelatedData(ctx, duel); err != nil {
 		r.logger.Error("failed to load duel related data", zap.Error(err))
 		return nil, err
 	}
@@ -94,14 +95,14 @@ func (r *duelRepository) GetDuelList(
 
 	duels := make([]*duelDomain.Duel, len(sqlcDuels))
 	for i, sqlcDuel := range sqlcDuels {
-		duel, err := mapDuel(&sqlcDuel)
-		if err != nil {
-			r.logger.Error("failed to map duel", zap.Error(err))
-			return nil, 0, err
+		duel, mapErr := mapDuel(&sqlcDuel)
+		if mapErr != nil {
+			r.logger.Error("failed to map duel", zap.Error(mapErr))
+			return nil, 0, mapErr
 		}
 
 		// Load related data
-		if err := r.loadDuelRelatedData(ctx, duel); err != nil {
+		if err = r.loadDuelRelatedData(ctx, duel); err != nil {
 			r.logger.Error("failed to load duel related data", zap.Error(err))
 			return nil, 0, err
 		}
@@ -112,103 +113,147 @@ func (r *duelRepository) GetDuelList(
 	return duels, total, nil
 }
 
-func (r *duelRepository) loadDuelRelatedData(ctx context.Context, duel *duelDomain.Duel) error {
+func (r *duelRepository) loadDuelRelatedData(
+	ctx context.Context, duel *duelDomain.Duel,
+) error {
 	duelID, err := pgUUID(duel.ID.String())
 	if err != nil {
-		r.logger.Error("failed to load duel related data", zap.Error(err))
 		return err
 	}
 
-	// Load participants
-	sqlcParticipants, err := r.q.GetDuelParticipants(ctx, duelID)
-	if err != nil {
-		r.logger.Error("failed to load duel related data", zap.Error(err))
+	// Поочерёдно добавляем все связанные сущности
+	if err = r.loadParticipants(ctx, duelID, duel); err != nil {
 		return err
 	}
-	duel.Participants = make([]duelDomain.Participant, len(sqlcParticipants))
-	for i, p := range sqlcParticipants {
-		telegramUserID, err := duelDomain.NewTelegramUserID(p.TelegramUserID)
-		if err != nil {
-			r.logger.Error("failed to map participant", zap.Error(err))
-			return err
-		}
-		duel.Participants[i] = duelDomain.Participant{
-			TelegramUserID: telegramUserID,
-			IsCreator:      p.IsCreator,
-		}
-	}
-
-	// Load stakes
-	sqlcStakes, err := r.q.GetDuelStakes(ctx, duelID)
-	if err != nil {
+	if err = r.loadStakes(ctx, duelID, duel); err != nil {
 		return err
 	}
-	duel.Stakes = make([]duelDomain.Stake, len(sqlcStakes))
-	for i, s := range sqlcStakes {
-		telegramUserID, err := duelDomain.NewTelegramUserID(s.TelegramUserID)
-		if err != nil {
-			r.logger.Error("failed to map stake", zap.Error(err))
-			return err
-		}
-
-		gift, err := duelDomain.NewStakedGiftBuilder().
-			WithID(s.GiftID.String()).
-			Build()
-		if err != nil {
-			r.logger.Error("failed to map stake", zap.Error(err))
-			return err
-		}
-		duel.Stakes[i] = duelDomain.Stake{
-			TelegramUserID: telegramUserID,
-			Gift:           gift,
-		}
-	}
-
-	// Load rounds and rolls
-	sqlcRounds, err := r.q.GetDuelRounds(ctx, duelID)
-	if err != nil {
+	if err = r.loadRoundsAndRolls(ctx, duelID, duel); err != nil {
 		return err
-	}
-	duel.Rounds = make([]duelDomain.Round, len(sqlcRounds))
-	for i, round := range sqlcRounds {
-		duel.Rounds[i] = duelDomain.Round{
-			RoundNumber:  int(round.RoundNumber),
-			Participants: make([]duelDomain.TelegramUserID, 0), // Will be filled from participants
-			Rolls:        make([]duelDomain.Roll, 0),
-		}
-	}
-
-	// Load rolls for all rounds
-	sqlcRolls, err := r.q.GetDuelRolls(ctx, duelID)
-	if err != nil {
-		return err
-	}
-
-	// Group rolls by round number
-	rollsByRound := make(map[int32][]sqlc.DuelRoll)
-	for _, roll := range sqlcRolls {
-		rollsByRound[roll.RoundNumber] = append(rollsByRound[roll.RoundNumber], roll)
-	}
-
-	// Fill rolls for each round
-	for i, round := range duel.Rounds {
-		roundRolls := rollsByRound[int32(round.RoundNumber)]
-		duel.Rounds[i].Rolls = make([]duelDomain.Roll, len(roundRolls))
-		for j, roll := range roundRolls {
-			telegramUserID, err := duelDomain.NewTelegramUserID(roll.TelegramUserID)
-			if err != nil {
-				return err
-			}
-			duel.Rounds[i].Rolls[j] = duelDomain.Roll{
-				TelegramUserID: telegramUserID,
-				DiceValue:      int32(roll.DiceValue),
-				RolledAt:       roll.RolledAt.Time,
-				IsAutoRolled:   roll.IsAutoRolled,
-			}
-		}
 	}
 
 	return nil
+}
+
+// loadParticipants loads participants.
+func (r *duelRepository) loadParticipants(
+	ctx context.Context,
+	duelID pgtype.UUID,
+	duel *duelDomain.Duel,
+) error {
+	rows, err := r.q.GetDuelParticipants(ctx, duelID)
+	if err != nil {
+		return err
+	}
+	parts := make([]duelDomain.Participant, len(rows))
+	for i, p := range rows {
+		uid, uidErr := duelDomain.NewTelegramUserID(p.TelegramUserID)
+		if uidErr != nil {
+			return uidErr
+		}
+		pb := duelDomain.NewParticipantBuilder().WithTelegramUserID(uid)
+		if p.IsCreator {
+			pb = pb.AsCreator()
+		}
+		parts[i], err = pb.Build()
+		if err != nil {
+			return err
+		}
+	}
+	duel.Participants = parts
+	return nil
+}
+
+// loadStakes loads stakes.
+func (r *duelRepository) loadStakes(
+	ctx context.Context,
+	duelID pgtype.UUID,
+	duel *duelDomain.Duel,
+) error {
+	rows, err := r.q.GetDuelStakes(ctx, duelID)
+	if err != nil {
+		return err
+	}
+	stakes := make([]duelDomain.Stake, len(rows))
+	for i, s := range rows {
+		uid, uidErr := duelDomain.NewTelegramUserID(s.TelegramUserID)
+		if uidErr != nil {
+			return uidErr
+		}
+		gift, giftErr := duelDomain.NewStakedGiftBuilder().
+			WithID(s.GiftID.String()).
+			Build()
+		if giftErr != nil {
+			return giftErr
+		}
+		stakes[i], err = duelDomain.NewStakeBuilder(uid).
+			WithGift(gift).
+			Build()
+		if err != nil {
+			return err
+		}
+	}
+	duel.Stakes = stakes
+	return nil
+}
+
+// loadRoundsAndRolls loads rounds and rolls.
+func (r *duelRepository) loadRoundsAndRolls(
+	ctx context.Context,
+	duelID pgtype.UUID,
+	duel *duelDomain.Duel,
+) error {
+	roundsRows, err := r.q.GetDuelRounds(ctx, duelID)
+	if err != nil {
+		return err
+	}
+	rollsRows, err := r.q.GetDuelRolls(ctx, duelID)
+	if err != nil {
+		return err
+	}
+	// Группируем броски по номеру раунда
+	rollsBy := make(map[int32][]sqlc.DuelRoll)
+	for _, rl := range rollsRows {
+		rollsBy[rl.RoundNumber] = append(rollsBy[rl.RoundNumber], rl)
+	}
+	// Build each Round through the builder
+	var rounds []duelDomain.Round
+	for _, rr := range roundsRows {
+		// take participants from the builder (they are already loaded in DuelBuilder)
+		participants := duel.Participants // допустимо, Participants уже в билдере
+		rbuilder := duelDomain.NewRoundBuilder().
+			WithRoundNumber(rr.RoundNumber).
+			WithParticipants(extractIDs(participants))
+		// добавляем броски
+		for _, rl := range rollsBy[rr.RoundNumber] {
+			uid, uidErr := duelDomain.NewTelegramUserID(rl.TelegramUserID)
+			if uidErr != nil {
+				return uidErr
+			}
+			rbuilder.AddRoll(duelDomain.Roll{
+				TelegramUserID: uid,
+				DiceValue:      int32(rl.DiceValue),
+				RolledAt:       rl.RolledAt.Time,
+				IsAutoRolled:   rl.IsAutoRolled,
+			})
+		}
+		round, roundErr := rbuilder.Build()
+		if roundErr != nil {
+			return roundErr
+		}
+		rounds = append(rounds, round)
+	}
+	duel.Rounds = rounds
+	return nil
+}
+
+// extractIDs extracts []TelegramUserID from []Participant.
+func extractIDs(parts []duelDomain.Participant) []duelDomain.TelegramUserID {
+	ids := make([]duelDomain.TelegramUserID, len(parts))
+	for i, p := range parts {
+		ids[i] = p.TelegramUserID
+	}
+	return ids
 }
 
 func (r *duelRepository) CreateParticipant(
@@ -272,6 +317,7 @@ func (r *duelRepository) CreateRound(
 func (r *duelRepository) CreateRoll(
 	ctx context.Context,
 	duelID duelDomain.ID,
+	roundNumber int32,
 	roll duelDomain.Roll,
 ) error {
 	rolledAt := pgTimestamptz(roll.RolledAt)
@@ -287,6 +333,7 @@ func (r *duelRepository) CreateRoll(
 
 	_, err = r.q.CreateRoll(ctx, sqlc.CreateRollParams{
 		DuelID:         pgDuelID,
+		RoundNumber:    roundNumber,
 		TelegramUserID: roll.TelegramUserID.Int64(),
 		DiceValue:      diceValue,
 		RolledAt:       rolledAt,

@@ -126,17 +126,26 @@ func (r *GiftRepository) UpdateGiftOwner(
 	ctx context.Context,
 	id string,
 	ownerTelegramID int64,
-) (*gift.Gift, error) {
+) error {
 	_, err := r.q.UpdateGiftOwner(ctx, sqlc.UpdateGiftOwnerParams{
 		ID:              mustPgUUID(id),
 		OwnerTelegramID: ownerTelegramID,
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	// Get full gift details with joins
-	return r.GetGiftByID(ctx, id)
+	idUUID, err := pgUUID(id)
+	if err != nil {
+		return err
+	}
+	_, err = r.q.UpdateGiftStatus(ctx, sqlc.UpdateGiftStatusParams{
+		ID:     idUUID,
+		Status: sqlc.GiftStatusOwned,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *GiftRepository) MarkGiftForWithdrawal(ctx context.Context, id string) (*gift.Gift, error) {
