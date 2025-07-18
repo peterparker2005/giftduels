@@ -7,6 +7,31 @@ INSERT INTO user_balances (
 )
 RETURNING *;
 
+-- name: GetUserBalance :one
+SELECT
+  id,
+  telegram_user_id,
+  ton_amount,
+  created_at,
+  updated_at
+FROM user_balances
+WHERE telegram_user_id = $1;
+
+-- name: SpendUserBalance :one
+UPDATE user_balances AS b
+   SET ton_amount = b.ton_amount - $2
+ WHERE b.telegram_user_id = $1
+   AND b.ton_amount      >= $2
+RETURNING *;
+
+-- name: UpsertUserBalance :one
+INSERT INTO user_balances (telegram_user_id, ton_amount)
+VALUES ($1, $2)
+ON CONFLICT (telegram_user_id)
+DO UPDATE
+  SET ton_amount = user_balances.ton_amount + EXCLUDED.ton_amount
+RETURNING *;
+
 -- name: CreateTransaction :one
 INSERT INTO user_transactions (
     telegram_user_id,
@@ -20,21 +45,6 @@ RETURNING *;
 
 -- name: DeleteTransaction :exec
 DELETE FROM user_transactions WHERE id = $1;
-
--- name: GetUserBalance :one
-SELECT * FROM user_balances WHERE telegram_user_id = $1;
-
--- name: SpendUserBalance :one
-UPDATE user_balances 
-SET ton_amount = ton_amount - $2 
-WHERE telegram_user_id = $1 AND ton_amount >= $2
-RETURNING *;
-
--- name: AddUserBalance :one
-UPDATE user_balances 
-SET ton_amount = ton_amount + $2 
-WHERE telegram_user_id = $1
-RETURNING *;
 
 -- name: CreateDeposit :one
 INSERT INTO deposits (telegram_user_id, amount_nano, payload, expires_at)

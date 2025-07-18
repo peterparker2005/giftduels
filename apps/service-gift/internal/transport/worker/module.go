@@ -27,6 +27,7 @@ var Module = fx.Options(
 		workerhandlers.NewTelegramGiftReceivedHandler,
 		workerhandlers.NewGiftWithdrawFailedHandler,
 		workerhandlers.NewInvoicePaymentHandler,
+		workerhandlers.NewGiftWithdrawnHandler,
 		workerhandlers.NewGiftReturnedHandler,
 		workerhandlers.NewDuelCompletedHandler,
 	),
@@ -43,6 +44,7 @@ func registerHandlers(
 	tgHandler *workerhandlers.TelegramGiftReceivedHandler,
 	failHandler *workerhandlers.GiftWithdrawFailedHandler,
 	invHandler *workerhandlers.InvoicePaymentHandler,
+	withdrawnHandler *workerhandlers.GiftWithdrawnHandler,
 	returnedHandler *workerhandlers.GiftReturnedHandler,
 	duelCompletedHandler *workerhandlers.DuelCompletedHandler,
 	router *message.Router,
@@ -89,6 +91,12 @@ func registerHandlers(
 		telegrambotEvents.TopicInvoicePaymentCompleted.String(),
 		telegrambotSub,
 		invHandler.Handle,
+	)
+	router.AddNoPublisherHandler(
+		"gift_withdrawn",
+		telegramEvents.TopicTelegramGiftWithdrawn.String(),
+		telegramSub,
+		withdrawnHandler.Handle,
 	)
 	router.AddNoPublisherHandler(
 		"create_duel_fail",

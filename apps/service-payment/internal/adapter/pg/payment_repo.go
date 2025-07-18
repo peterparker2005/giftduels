@@ -2,13 +2,14 @@ package pg
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/adapter/pg/sqlc"
 	payment "github.com/peterparker2005/giftduels/apps/service-payment/internal/domain/payment"
-	"github.com/peterparker2005/giftduels/packages/errors/pkg/errors"
+	errorspkg "github.com/peterparker2005/giftduels/packages/errors/pkg/errors"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	"github.com/peterparker2005/giftduels/packages/shared"
 	"github.com/peterparker2005/giftduels/packages/tonamount-go"
@@ -48,27 +49,31 @@ func (r *repo) Create(ctx context.Context, params *payment.CreateBalanceParams) 
 }
 
 func (r *repo) GetUserBalance(ctx context.Context, telegramUserID int64) (*payment.Balance, error) {
-	balance, err := r.q.GetUserBalance(ctx, telegramUserID)
+	b, err := r.q.GetUserBalance(ctx, telegramUserID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			zero := tonamount.Zero()
+			return &payment.Balance{
+				TelegramUserID: telegramUserID,
+				TonAmount:      zero,
+			}, nil
+		}
+		return nil, err
+	}
+	tonStr, err := fromPgNumeric(b.TonAmount)
 	if err != nil {
 		return nil, err
 	}
-
-	tonAmountStr, err := fromPgNumeric(balance.TonAmount)
+	ta, err := tonamount.NewTonAmountFromString(tonStr)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-
-	tonAmount, err := tonamount.NewTonAmountFromString(tonAmountStr)
-	if err != nil {
-		panic(err)
-	}
-
 	return &payment.Balance{
-		ID:             balance.ID.String(),
-		TelegramUserID: balance.TelegramUserID,
-		TonAmount:      tonAmount,
-		CreatedAt:      balance.CreatedAt.Time,
-		UpdatedAt:      balance.UpdatedAt.Time,
+		ID:             b.ID.String(),
+		TelegramUserID: b.TelegramUserID,
+		TonAmount:      ta,
+		CreatedAt:      b.CreatedAt.Time,
+		UpdatedAt:      b.UpdatedAt.Time,
 	}, nil
 }
 
@@ -101,16 +106,14 @@ func (r *repo) AddUserBalance(
 	if err != nil {
 		return nil, err
 	}
-
-	balance, err := r.q.AddUserBalance(ctx, sqlc.AddUserBalanceParams{
+	b, err := r.q.UpsertUserBalance(ctx, sqlc.UpsertUserBalanceParams{
 		TelegramUserID: params.TelegramUserID,
 		TonAmount:      amount,
 	})
 	if err != nil {
 		return nil, err
 	}
-
-	return ToBalanceDomain(balance), nil
+	return ToBalanceDomain(b), nil
 }
 
 func (r *repo) SpendUserBalance(
@@ -130,7 +133,7 @@ func (r *repo) SpendUserBalance(
 
 	// Проверяем достаточность средств
 	if currentBalance.TonAmount.Decimal().Cmp(params.Amount.Decimal()) < 0 {
-		return nil, errors.NewInsufficientTonError("insufficient balance for withdrawal")
+		return nil, errorspkg.NewInsufficientTonError("insufficient balance for withdrawal")
 	}
 
 	// Списываем средства

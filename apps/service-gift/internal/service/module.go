@@ -14,6 +14,7 @@ var Module = fx.Module("services",
 		command.NewGiftEventHandler,
 		command.NewGiftStakeCommand,
 		command.NewGiftWithdrawCommand,
+		command.NewGiftCompleteWithdrawalCommand,
 		command.NewGiftReturnFromGameCommand,
 
 		query.NewGiftReadService,

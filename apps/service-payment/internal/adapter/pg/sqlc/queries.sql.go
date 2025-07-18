@@ -11,31 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const addUserBalance = `-- name: AddUserBalance :one
-UPDATE user_balances 
-SET ton_amount = ton_amount + $2 
-WHERE telegram_user_id = $1
-RETURNING id, telegram_user_id, ton_amount, created_at, updated_at
-`
-
-type AddUserBalanceParams struct {
-	TelegramUserID int64
-	TonAmount      pgtype.Numeric
-}
-
-func (q *Queries) AddUserBalance(ctx context.Context, arg AddUserBalanceParams) (UserBalance, error) {
-	row := q.db.QueryRow(ctx, addUserBalance, arg.TelegramUserID, arg.TonAmount)
-	var i UserBalance
-	err := row.Scan(
-		&i.ID,
-		&i.TelegramUserID,
-		&i.TonAmount,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const createDeposit = `-- name: CreateDeposit :one
 INSERT INTO deposits (telegram_user_id, amount_nano, payload, expires_at)
 VALUES ($1, $2, $3, $4)
@@ -190,7 +165,14 @@ func (q *Queries) GetTonCursor(ctx context.Context, arg GetTonCursorParams) (int
 }
 
 const getUserBalance = `-- name: GetUserBalance :one
-SELECT id, telegram_user_id, ton_amount, created_at, updated_at FROM user_balances WHERE telegram_user_id = $1
+SELECT
+  id,
+  telegram_user_id,
+  ton_amount,
+  created_at,
+  updated_at
+FROM user_balances
+WHERE telegram_user_id = $1
 `
 
 func (q *Queries) GetUserBalance(ctx context.Context, telegramUserID int64) (UserBalance, error) {
@@ -294,9 +276,10 @@ func (q *Queries) SetDepositTransaction(ctx context.Context, arg SetDepositTrans
 }
 
 const spendUserBalance = `-- name: SpendUserBalance :one
-UPDATE user_balances 
-SET ton_amount = ton_amount - $2 
-WHERE telegram_user_id = $1 AND ton_amount >= $2
+UPDATE user_balances AS b
+   SET ton_amount = b.ton_amount - $2
+ WHERE b.telegram_user_id = $1
+   AND b.ton_amount      >= $2
 RETURNING id, telegram_user_id, ton_amount, created_at, updated_at
 `
 
@@ -335,4 +318,31 @@ type UpsertTonCursorParams struct {
 func (q *Queries) UpsertTonCursor(ctx context.Context, arg UpsertTonCursorParams) error {
 	_, err := q.db.Exec(ctx, upsertTonCursor, arg.Network, arg.WalletAddress, arg.LastLt)
 	return err
+}
+
+const upsertUserBalance = `-- name: UpsertUserBalance :one
+INSERT INTO user_balances (telegram_user_id, ton_amount)
+VALUES ($1, $2)
+ON CONFLICT (telegram_user_id)
+DO UPDATE
+  SET ton_amount = user_balances.ton_amount + EXCLUDED.ton_amount
+RETURNING id, telegram_user_id, ton_amount, created_at, updated_at
+`
+
+type UpsertUserBalanceParams struct {
+	TelegramUserID int64
+	TonAmount      pgtype.Numeric
+}
+
+func (q *Queries) UpsertUserBalance(ctx context.Context, arg UpsertUserBalanceParams) (UserBalance, error) {
+	row := q.db.QueryRow(ctx, upsertUserBalance, arg.TelegramUserID, arg.TonAmount)
+	var i UserBalance
+	err := row.Scan(
+		&i.ID,
+		&i.TelegramUserID,
+		&i.TonAmount,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	amqputil "github.com/peterparker2005/giftduels/apps/service-payment/internal/adapter/amqp"
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/config"
-	"github.com/peterparker2005/giftduels/packages/events/identity"
 	paymentEvents "github.com/peterparker2005/giftduels/packages/events/payment"
 	telegramEvents "github.com/peterparker2005/giftduels/packages/events/telegram"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
@@ -28,8 +27,6 @@ var Module = fx.Options(
 		},
 	),
 
-	fx.Provide(NewIdentityNewUserHandler),
-
 	fx.Provide(NewTelegramGiftWithdrawFailedHandler),
 
 	fx.Invoke(func(
@@ -38,7 +35,6 @@ var Module = fx.Options(
 		log *logger.Logger,
 		subFac amqputil.SubFactory,
 		pub message.Publisher,
-		newUserHandler *IdentityNewUserHandler,
 		telegramGiftWithdrawFailHandler *TelegramGiftWithdrawFailedHandler,
 	) error {
 		router, err := ProvideRouter(
@@ -50,22 +46,11 @@ var Module = fx.Options(
 			return err
 		}
 
-		identitySub, err := subFac(identity.Config(cfg.ServiceName.String()))
-		if err != nil {
-			return err
-		}
-
 		telegramSub, err := subFac(telegramEvents.Config(cfg.ServiceName.String()))
 		if err != nil {
 			return err
 		}
 
-		router.AddNoPublisherHandler(
-			"identity_new_user",
-			identity.TopicUserCreated.String(),
-			identitySub,
-			newUserHandler.Handle,
-		)
 		router.AddNoPublisherHandler(
 			"telegram_gift_withdraw_fail",
 			telegramEvents.TopicTelegramGiftWithdrawFailed.String(),

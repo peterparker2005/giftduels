@@ -78,4 +78,4 @@ export class Publisher {
 	}
 }
 
-export const publisher = new Publisher("telegram.events");
+export const publisher = new Publisher("telegrambot.events");
