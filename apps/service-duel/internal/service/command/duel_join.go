@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"errors"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/google/uuid"
@@ -54,7 +55,7 @@ func (c *DuelJoinCommand) Execute(
 	// 1. Начинаем транзакцию
 	tx, err := c.txManager.BeginTx(ctx)
 	if err != nil {
-		return err
+		return ErrTransactionFailed
 	}
 
 	// 2. Подготовка defer‑компенсатора
@@ -80,8 +81,8 @@ func (c *DuelJoinCommand) Execute(
 	// 3. Получаем дуэль из БД
 	duel, err := repo.GetDuelByID(ctx, duelID)
 	if err != nil {
-		execErr = err
-		return err
+		execErr = ErrDuelNotFound
+		return ErrDuelNotFound
 	}
 
 	// 3.1. Загружаем цены гифтов из gift service для валидации entry price range
@@ -93,8 +94,8 @@ func (c *DuelJoinCommand) Execute(
 	// 4. Создаем TelegramUserID
 	telegramUserID, err := dueldomain.NewTelegramUserID(telegramUserIDInt64)
 	if err != nil {
-		execErr = err
-		return err
+		execErr = ErrInvalidParticipant
+		return ErrInvalidParticipant
 	}
 
 	// 5. Создаем участника (не создатель)
@@ -102,12 +103,18 @@ func (c *DuelJoinCommand) Execute(
 		WithTelegramUserID(telegramUserID).
 		Build()
 	if err != nil {
-		return err
+		return ErrInvalidParticipant
 	}
 
 	// 6. Присоединяемся к дуэли
 	if execErr = duel.AddParticipant(participant); execErr != nil {
-		return execErr
+		if errors.Is(execErr, dueldomain.ErrMaxPlayersExceeded) {
+			return ErrDuelFull
+		}
+		if errors.Is(execErr, dueldomain.ErrAlreadyJoined) {
+			return ErrAlreadyJoined
+		}
+		return ErrJoinDuel
 	}
 
 	// 7. Резервируем ставки (StakeGift + PlaceStake)
@@ -118,50 +125,56 @@ func (c *DuelJoinCommand) Execute(
 
 	// 8. Проверяем entry price range
 	if execErr = duel.ValidateEntry(telegramUserID); execErr != nil {
-		return execErr
+		if errors.Is(execErr, dueldomain.ErrStakeOutOfRange) {
+			return ErrStakeOutOfRange
+		}
+		return ErrJoinDuel
 	}
 
 	// 9. Сохраняем участника в БД
 	if execErr = repo.CreateParticipant(ctx, duelID, participant); execErr != nil {
-		return execErr
+		return ErrDatabaseOperation
 	}
 
 	// 10. Сохраняем ставки в БД
 	for _, stake := range stakes {
 		if execErr = repo.CreateStake(ctx, duelID, stake); execErr != nil {
-			return execErr
+			return ErrDatabaseOperation
 		}
 	}
 
 	// 11. Проверяем, нужно ли запускать дуэль
 	if len(duel.Participants) == int(duel.Params.MaxPlayers) {
 		if execErr = duel.Start(); execErr != nil {
-			return execErr
+			return ErrJoinDuel
 		}
 		// сохраняем новый раунд
 		if execErr = repo.CreateRound(ctx, duelID, duel.Rounds[len(duel.Rounds)-1]); execErr != nil {
-			return execErr
+			return ErrDatabaseOperation
 		}
 		// меняем статус и дедлайн в таблице duels
 		if execErr = repo.UpdateDuelStatus(ctx, duelID, duel.Status, nil, nil); execErr != nil {
-			return execErr
+			return ErrDatabaseOperation
 		}
 		if execErr = repo.UpdateNextRollDeadline(ctx, duelID, *duel.NextRollDeadline); execErr != nil {
-			return execErr
+			return ErrDatabaseOperation
 		}
 	} else {
 		// Если дуэль еще не заполнена, не планируем авто-бросок
-		return tx.Commit(ctx)
+		if execErr = tx.Commit(ctx); execErr != nil {
+			return ErrTransactionFailed
+		}
+		return nil
 	}
 
 	// 11. Планируем авто-бросок
 	if execErr = c.scheduler.ScheduleAutoRoll(duelID, *duel.NextRollDeadline); execErr != nil {
-		return execErr
+		return ErrJoinDuel
 	}
 
 	// 12. Коммитим транзакцию
 	if execErr = tx.Commit(ctx); execErr != nil {
-		return execErr
+		return ErrTransactionFailed
 	}
 
 	// 13. Публикация события о присоединении к дуэли (ошибки логируем, но не откатываем)
@@ -204,13 +217,13 @@ func (c *DuelJoinCommand) reserveStakes(
 			},
 		})
 		if err != nil {
-			return stakes, staked, err
+			return stakes, staked, ErrGiftStakingFailed
 		}
 		staked = append(staked, giftID)
 
 		amount, err := tonamount.NewTonAmountFromString(resp.GetGift().GetPrice().GetValue())
 		if err != nil {
-			return stakes, staked, err
+			return stakes, staked, ErrInvalidGiftPrice
 		}
 
 		gift, err := dueldomain.NewStakedGiftBuilder().
@@ -220,18 +233,18 @@ func (c *DuelJoinCommand) reserveStakes(
 			WithPrice(amount).
 			Build()
 		if err != nil {
-			return stakes, staked, err
+			return stakes, staked, ErrInvalidStake
 		}
 
 		stake, stakeErr := dueldomain.NewStakeBuilder(dueldomain.TelegramUserID(telegramUserIDInt64)).
 			WithGift(gift).
 			Build()
 		if stakeErr != nil {
-			return stakes, staked, stakeErr
+			return stakes, staked, ErrInvalidStake
 		}
 
 		if err = duel.PlaceStake(stake); err != nil {
-			return stakes, staked, err
+			return stakes, staked, ErrInvalidStake
 		}
 
 		stakes = append(stakes, stake)
@@ -266,7 +279,7 @@ func (c *DuelJoinCommand) loadGiftPrices(ctx context.Context, duel *dueldomain.D
 			c.log.Error("failed to get gift from gift service",
 				zap.String("giftID", stake.Gift.ID),
 				zap.Error(err))
-			return err
+			return ErrGiftStakingFailed
 		}
 
 		// Parse price from gift service response
@@ -276,7 +289,7 @@ func (c *DuelJoinCommand) loadGiftPrices(ctx context.Context, duel *dueldomain.D
 				zap.String("giftID", stake.Gift.ID),
 				zap.String("price", giftResp.GetGift().GetPrice().GetValue()),
 				zap.Error(err))
-			return err
+			return ErrInvalidGiftPrice
 		}
 
 		// Update the gift with price and other details
@@ -288,7 +301,7 @@ func (c *DuelJoinCommand) loadGiftPrices(ctx context.Context, duel *dueldomain.D
 			Build()
 		if err != nil {
 			c.log.Error("failed to build staked gift", zap.Error(err))
-			return err
+			return ErrInvalidStake
 		}
 
 		duel.Stakes[i].Gift = gift
@@ -303,14 +316,17 @@ func (c *DuelJoinCommand) publishDuelJoined(
 ) error {
 	event, err := proto.MapDuelJoinedEvent(duel, userID)
 	if err != nil {
-		return err
+		return ErrPublishEventFailed
 	}
 	data, err := googleproto.Marshal(event)
 	if err != nil {
-		return err
+		return ErrPublishEventFailed
 	}
 	msg := message.NewMessage(duel.ID.String(), data)
-	return c.publisher.Publish(duelevents.TopicDuelJoined.String(), msg)
+	if err := c.publisher.Publish(duelevents.TopicDuelJoined.String(), msg); err != nil {
+		return ErrPublishEventFailed
+	}
+	return nil
 }
 
 func (c *DuelJoinCommand) publishDuelStarted(
@@ -318,12 +334,15 @@ func (c *DuelJoinCommand) publishDuelStarted(
 ) error {
 	event, err := proto.MapDuelStartedEvent(duel)
 	if err != nil {
-		return err
+		return ErrPublishEventFailed
 	}
 	data, err := googleproto.Marshal(event)
 	if err != nil {
-		return err
+		return ErrPublishEventFailed
 	}
 	msg := message.NewMessage(duel.ID.String(), data)
-	return c.publisher.Publish(duelevents.TopicDuelStarted.String(), msg)
+	if err := c.publisher.Publish(duelevents.TopicDuelStarted.String(), msg); err != nil {
+		return ErrPublishEventFailed
+	}
+	return nil
 }

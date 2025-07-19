@@ -77,20 +77,91 @@ func (r *duelRepository) GetDuelByID(
 func (r *duelRepository) GetDuelList(
 	ctx context.Context,
 	pageRequest *shared.PageRequest,
+	filter *duelDomain.Filter,
+	telegramUserID *duelDomain.TelegramUserID,
 ) ([]*duelDomain.Duel, int64, error) {
-	total, err := r.q.GetVisibleDuelsCount(ctx)
-	if err != nil {
-		r.logger.Error("failed to get visible duels count", zap.Error(err))
-		return nil, 0, err
-	}
+	var total int64
+	var sqlcDuels []sqlc.Duel
+	var err error
 
-	sqlcDuels, err := r.q.GetDuels(ctx, sqlc.GetDuelsParams{
-		Limit:  pageRequest.PageSize(),
-		Offset: pageRequest.Offset(),
-	})
-	if err != nil {
-		r.logger.Error("failed to get visible duels count", zap.Error(err))
-		return nil, 0, err
+	// Apply filter based on filter type
+	switch filter.FilterType {
+	case duelDomain.FilterTypeAll:
+		total, err = r.q.GetVisibleDuelsCount(ctx)
+		if err != nil {
+			r.logger.Error("failed to get visible duels count", zap.Error(err))
+			return nil, 0, err
+		}
+		sqlcDuels, err = r.q.GetDuels(ctx, sqlc.GetDuelsParams{
+			Limit:  pageRequest.PageSize(),
+			Offset: pageRequest.Offset(),
+		})
+		if err != nil {
+			r.logger.Error("failed to get duels", zap.Error(err))
+			return nil, 0, err
+		}
+
+	case duelDomain.FilterType1v1:
+		total, err = r.q.Get1v1DuelsCount(ctx)
+		if err != nil {
+			r.logger.Error("failed to get 1v1 duels count", zap.Error(err))
+			return nil, 0, err
+		}
+		sqlcDuels, err = r.q.Get1v1Duels(ctx, sqlc.Get1v1DuelsParams{
+			Limit:  pageRequest.PageSize(),
+			Offset: pageRequest.Offset(),
+		})
+		if err != nil {
+			r.logger.Error("failed to get 1v1 duels", zap.Error(err))
+			return nil, 0, err
+		}
+
+	case duelDomain.FilterTypeDailyTop:
+		total, err = r.q.GetTopDuelsCount(ctx)
+		if err != nil {
+			r.logger.Error("failed to get top duels count", zap.Error(err))
+			return nil, 0, err
+		}
+		sqlcDuels, err = r.q.GetTopDuels(ctx, sqlc.GetTopDuelsParams{
+			Limit:  pageRequest.PageSize(),
+			Offset: pageRequest.Offset(),
+		})
+		if err != nil {
+			r.logger.Error("failed to get top duels", zap.Error(err))
+			return nil, 0, err
+		}
+
+	case duelDomain.FilterTypeMyDuels:
+		total, err = r.q.GetMyDuelsCount(ctx, telegramUserID.Int64())
+		if err != nil {
+			r.logger.Error("failed to get my duels count", zap.Error(err))
+			return nil, 0, err
+		}
+		sqlcDuels, err = r.q.GetMyDuels(ctx, sqlc.GetMyDuelsParams{
+			TelegramUserID: telegramUserID.Int64(),
+			Limit:          pageRequest.PageSize(),
+			Offset:         pageRequest.Offset(),
+		})
+		if err != nil {
+			r.logger.Error("failed to get my duels", zap.Error(err))
+			return nil, 0, err
+		}
+
+	default:
+		// Default to all visible duels
+		total, err = r.q.GetVisibleDuelsCount(ctx)
+		if err != nil {
+			r.logger.Error("failed to get visible duels count", zap.Error(err))
+			return nil, 0, err
+		}
+		sqlcDuels, err = r.q.GetDuels(ctx, sqlc.GetDuelsParams{
+			Limit:  pageRequest.PageSize(),
+			Offset: pageRequest.Offset(),
+		})
+		if err != nil {
+			r.logger.Error("failed to get duels", zap.Error(err))
+			return nil, 0, err
+		}
 	}
 
 	duels := make([]*duelDomain.Duel, len(sqlcDuels))

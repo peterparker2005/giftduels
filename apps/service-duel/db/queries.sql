@@ -22,6 +22,34 @@ WHERE status = 'completed'
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
 
+-- name: GetTopDuelsCount :one
+SELECT COUNT(*) FROM duels
+WHERE status = 'completed';
+
+-- name: Get1v1Duels :many
+SELECT * FROM duels
+WHERE status IN ('waiting_for_opponent', 'in_progress')
+  AND max_players = 2
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;
+
+-- name: Get1v1DuelsCount :one
+SELECT COUNT(*) FROM duels
+WHERE status IN ('waiting_for_opponent', 'in_progress')
+  AND max_players = 2;
+
+-- name: GetMyDuels :many
+SELECT DISTINCT d.* FROM duels d
+JOIN duel_participants dp ON d.id = dp.duel_id
+WHERE dp.telegram_user_id = $1
+ORDER BY d.created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: GetMyDuelsCount :one
+SELECT COUNT(DISTINCT d.id) FROM duels d
+JOIN duel_participants dp ON d.id = dp.duel_id
+WHERE dp.telegram_user_id = $1;
+
 -- name: GetDuelParticipants :many
 SELECT * FROM duel_participants WHERE duel_id = $1;
 

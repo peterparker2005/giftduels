@@ -556,7 +556,9 @@ func MapDuelStartedEvent(duel *duelDomain.Duel) (*duelv1.DuelStartedEvent, error
 	stakes := make([]*duelv1.DuelStake, 0, len(duel.Stakes))
 	for _, stake := range duel.Stakes {
 		stakes = append(stakes, &duelv1.DuelStake{
-			ParticipantTelegramUserId: &sharedv1.TelegramUserId{Value: stake.TelegramUserID.Int64()},
+			ParticipantTelegramUserId: &sharedv1.TelegramUserId{
+				Value: stake.TelegramUserID.Int64(),
+			},
 			Gift: &duelv1.StakedGift{
 				GiftId: &sharedv1.GiftId{Value: stake.Gift.ID},
 				Title:  stake.Gift.Title,

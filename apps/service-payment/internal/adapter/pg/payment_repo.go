@@ -9,7 +9,6 @@ import (
 
 	"github.com/peterparker2005/giftduels/apps/service-payment/internal/adapter/pg/sqlc"
 	payment "github.com/peterparker2005/giftduels/apps/service-payment/internal/domain/payment"
-	errorspkg "github.com/peterparker2005/giftduels/packages/errors/pkg/errors"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	"github.com/peterparker2005/giftduels/packages/shared"
 	"github.com/peterparker2005/giftduels/packages/tonamount-go"
@@ -42,7 +41,7 @@ func (r *repo) Create(ctx context.Context, params *payment.CreateBalanceParams) 
 		TelegramUserID: params.TelegramUserID,
 	})
 	if err != nil {
-		return err
+		return MapPGError(err)
 	}
 
 	return nil
@@ -58,15 +57,15 @@ func (r *repo) GetUserBalance(ctx context.Context, telegramUserID int64) (*payme
 				TonAmount:      zero,
 			}, nil
 		}
-		return nil, err
+		return nil, MapPGError(err)
 	}
 	tonStr, err := fromPgNumeric(b.TonAmount)
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 	ta, err := tonamount.NewTonAmountFromString(tonStr)
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 	return &payment.Balance{
 		ID:             b.ID.String(),
@@ -83,7 +82,7 @@ func (r *repo) CreateTransaction(
 ) error {
 	amount, err := pgNumeric(params.Amount.String())
 	if err != nil {
-		return err
+		return MapPGError(err)
 	}
 
 	_, err = r.q.CreateTransaction(ctx, sqlc.CreateTransactionParams{
@@ -93,7 +92,7 @@ func (r *repo) CreateTransaction(
 		Metadata:       params.Metadata,
 	})
 	if err != nil {
-		return err
+		return MapPGError(err)
 	}
 	return nil
 }
@@ -104,14 +103,14 @@ func (r *repo) AddUserBalance(
 ) (*payment.Balance, error) {
 	amount, err := pgNumeric(params.Amount.String())
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 	b, err := r.q.UpsertUserBalance(ctx, sqlc.UpsertUserBalanceParams{
 		TelegramUserID: params.TelegramUserID,
 		TonAmount:      amount,
 	})
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 	return ToBalanceDomain(b), nil
 }
@@ -122,18 +121,7 @@ func (r *repo) SpendUserBalance(
 ) (*payment.Balance, error) {
 	amount, err := pgNumeric(params.Amount.String())
 	if err != nil {
-		return nil, err
-	}
-
-	// Сначала проверяем текущий баланс
-	currentBalance, err := r.GetUserBalance(ctx, params.TelegramUserID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Проверяем достаточность средств
-	if currentBalance.TonAmount.Decimal().Cmp(params.Amount.Decimal()) < 0 {
-		return nil, errorspkg.NewInsufficientTonError("insufficient balance for withdrawal")
+		return nil, MapPGError(err)
 	}
 
 	// Списываем средства
@@ -142,7 +130,7 @@ func (r *repo) SpendUserBalance(
 		TonAmount:      amount,
 	})
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 
 	return ToBalanceDomain(balance), nil
@@ -151,12 +139,12 @@ func (r *repo) SpendUserBalance(
 func (r *repo) DeleteTransaction(ctx context.Context, id string) error {
 	idPg, err := pgUUID(id)
 	if err != nil {
-		return err
+		return MapPGError(err)
 	}
 
 	err = r.q.DeleteTransaction(ctx, idPg)
 	if err != nil {
-		return err
+		return MapPGError(err)
 	}
 	return nil
 }
@@ -172,7 +160,7 @@ func (r *repo) GetUserTransactions(
 		Offset:         pagination.Offset(),
 	})
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 
 	transactionsDomain := make([]*payment.Transaction, 0, len(transactions))

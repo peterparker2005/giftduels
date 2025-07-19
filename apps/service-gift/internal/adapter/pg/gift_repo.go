@@ -30,7 +30,7 @@ func (r *GiftRepository) WithTx(tx pgx.Tx) gift.Repository {
 func (r *GiftRepository) GetGiftByID(ctx context.Context, id string) (*gift.Gift, error) {
 	dbGift, err := r.q.GetGiftByID(ctx, mustPgUUID(id))
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 
 	return GiftToDomain(dbGift)
@@ -43,7 +43,7 @@ func (r *GiftRepository) GetUserGifts(
 ) (*gift.GetUserGiftsResult, error) {
 	total, err := r.q.GetUserGiftsCount(ctx, ownerTelegramID)
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 
 	rows, err := r.q.GetUserGifts(ctx, sqlc.GetUserGiftsParams{
@@ -52,14 +52,14 @@ func (r *GiftRepository) GetUserGifts(
 		OwnerTelegramID: ownerTelegramID,
 	})
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 
 	out := make([]*gift.Gift, len(rows))
 	for i, row := range rows {
 		gift, err := GiftToDomainFromUserGiftsRow(row)
 		if err != nil {
-			return nil, err
+			return nil, MapPGError(err)
 		}
 		out[i] = gift
 	}
@@ -76,7 +76,7 @@ func (r *GiftRepository) GetUserActiveGifts(
 ) (*gift.GetUserGiftsResult, error) {
 	total, err := r.q.GetUserActiveGiftsCount(ctx, ownerTelegramID)
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 
 	rows, err := r.q.GetUserActiveGifts(ctx, sqlc.GetUserActiveGiftsParams{
@@ -85,14 +85,14 @@ func (r *GiftRepository) GetUserActiveGifts(
 		OwnerTelegramID: ownerTelegramID,
 	})
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 
 	out := make([]*gift.Gift, len(rows))
 	for i, row := range rows {
 		gift, err := GiftToDomainFromUserActiveGiftsRow(row)
 		if err != nil {
-			return nil, err
+			return nil, MapPGError(err)
 		}
 		out[i] = gift
 	}
@@ -105,7 +105,7 @@ func (r *GiftRepository) GetUserActiveGifts(
 func (r *GiftRepository) StakeGiftForGame(ctx context.Context, id string) (*gift.Gift, error) {
 	_, err := r.q.StakeGiftForGame(ctx, mustPgUUID(id))
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 
 	// Get full gift details with joins
@@ -115,7 +115,7 @@ func (r *GiftRepository) StakeGiftForGame(ctx context.Context, id string) (*gift
 func (r *GiftRepository) ReturnGiftFromGame(ctx context.Context, id string) (*gift.Gift, error) {
 	_, err := r.q.ReturnGiftFromGame(ctx, mustPgUUID(id))
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 
 	// Get full gift details with joins
@@ -132,18 +132,18 @@ func (r *GiftRepository) UpdateGiftOwner(
 		OwnerTelegramID: ownerTelegramID,
 	})
 	if err != nil {
-		return err
+		return MapPGError(err)
 	}
 	idUUID, err := pgUUID(id)
 	if err != nil {
-		return err
+		return MapPGError(err)
 	}
 	_, err = r.q.UpdateGiftStatus(ctx, sqlc.UpdateGiftStatusParams{
 		ID:     idUUID,
 		Status: sqlc.GiftStatusOwned,
 	})
 	if err != nil {
-		return err
+		return MapPGError(err)
 	}
 	return nil
 }
@@ -151,7 +151,7 @@ func (r *GiftRepository) UpdateGiftOwner(
 func (r *GiftRepository) MarkGiftForWithdrawal(ctx context.Context, id string) (*gift.Gift, error) {
 	_, err := r.q.MarkGiftForWithdrawal(ctx, mustPgUUID(id))
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 
 	// Get full gift details with joins
@@ -161,7 +161,7 @@ func (r *GiftRepository) MarkGiftForWithdrawal(ctx context.Context, id string) (
 func (r *GiftRepository) CancelGiftWithdrawal(ctx context.Context, id string) (*gift.Gift, error) {
 	_, err := r.q.CancelGiftWithdrawal(ctx, mustPgUUID(id))
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 
 	// Get full gift details with joins
@@ -174,7 +174,7 @@ func (r *GiftRepository) CompleteGiftWithdrawal(
 ) (*gift.Gift, error) {
 	_, err := r.q.CompleteGiftWithdrawal(ctx, mustPgUUID(id))
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 
 	// Get full gift details with joins
@@ -187,11 +187,11 @@ func (r *GiftRepository) CreateGiftEvent(
 ) (*gift.Event, error) {
 	dbGiftEventParams, err := CreateGiftEventParamsToDB(params)
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 	dbGiftEvent, err := r.q.CreateGiftEvent(ctx, dbGiftEventParams)
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 	return GiftEventToDomain(dbGiftEvent)
 }
@@ -208,14 +208,14 @@ func (r *GiftRepository) GetGiftEvents(
 		Offset: offset,
 	})
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 
 	events := make([]*gift.Event, len(dbEvents))
 	for i, dbEvent := range dbEvents {
 		event, err := GiftEventToDomain(dbEvent)
 		if err != nil {
-			return nil, err
+			return nil, MapPGError(err)
 		}
 		events[i] = event
 	}
@@ -229,7 +229,7 @@ func (r *GiftRepository) CreateGift(
 ) (*gift.Gift, error) {
 	createParams, err := CreateGiftParamsToDB(params)
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 	createParams.CollectionID = collectionID
 	createParams.ModelID = modelID
@@ -257,14 +257,14 @@ func (r *GiftRepository) GetGiftsByIDs(ctx context.Context, ids []string) ([]*gi
 
 	rows, err := r.q.GetGiftsByIDs(ctx, pgUUIDs)
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 
 	gifts := make([]*gift.Gift, len(rows))
 	for i, row := range rows {
 		gift, err := GiftToDomainFromGiftsByIDsRow(row)
 		if err != nil {
-			return nil, err
+			return nil, MapPGError(err)
 		}
 		gifts[i] = gift
 	}
@@ -281,7 +281,7 @@ func (r *GiftRepository) SaveGiftWithPrice(
 		var err error
 		pgPrice, err = pgNumeric(price.String())
 		if err != nil {
-			return nil, err
+			return nil, MapPGError(err)
 		}
 	}
 
@@ -290,7 +290,7 @@ func (r *GiftRepository) SaveGiftWithPrice(
 		Price: pgPrice,
 	})
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 
 	// Get full gift details with joins
@@ -301,7 +301,7 @@ func (r *GiftRepository) SaveGiftWithPrice(
 func (r *GiftRepository) GetGiftModel(ctx context.Context, id int32) (*gift.Model, error) {
 	dbModel, err := r.q.GetGiftModel(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 	return ModelToDomain(dbModel), nil
 }
@@ -309,7 +309,7 @@ func (r *GiftRepository) GetGiftModel(ctx context.Context, id int32) (*gift.Mode
 func (r *GiftRepository) GetGiftBackdrop(ctx context.Context, id int32) (*gift.Backdrop, error) {
 	dbBackdrop, err := r.q.GetGiftBackdrop(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 	return BackdropToDomain(dbBackdrop), nil
 }
@@ -317,7 +317,7 @@ func (r *GiftRepository) GetGiftBackdrop(ctx context.Context, id int32) (*gift.B
 func (r *GiftRepository) GetGiftSymbol(ctx context.Context, id int32) (*gift.Symbol, error) {
 	dbSymbol, err := r.q.GetGiftSymbol(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 	return SymbolToDomain(dbSymbol), nil
 }
@@ -328,7 +328,7 @@ func (r *GiftRepository) GetGiftCollection(
 ) (*gift.Collection, error) {
 	dbCollection, err := r.q.GetGiftCollection(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 	return CollectionToDomain(dbCollection), nil
 }
@@ -340,7 +340,7 @@ func (r *GiftRepository) CreateCollection(
 ) (*gift.Collection, error) {
 	dbCollection, err := r.q.CreateCollection(ctx, CreateCollectionParamsToDB(params))
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 	return CollectionToDomain(dbCollection), nil
 }
@@ -351,7 +351,7 @@ func (r *GiftRepository) CreateModel(
 ) (*gift.Model, error) {
 	dbModel, err := r.q.CreateModel(ctx, CreateModelParamsToDB(params))
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 	return ModelToDomain(dbModel), nil
 }
@@ -362,7 +362,7 @@ func (r *GiftRepository) CreateBackdrop(
 ) (*gift.Backdrop, error) {
 	dbBackdrop, err := r.q.CreateBackdrop(ctx, CreateBackdropParamsToDB(params))
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 	return BackdropToDomain(dbBackdrop), nil
 }
@@ -373,7 +373,7 @@ func (r *GiftRepository) CreateSymbol(
 ) (*gift.Symbol, error) {
 	dbSymbol, err := r.q.CreateSymbol(ctx, CreateSymbolParamsToDB(params))
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 	return SymbolToDomain(dbSymbol), nil
 }
@@ -385,7 +385,7 @@ func (r *GiftRepository) FindCollectionByName(
 ) (*gift.Collection, error) {
 	dbCollection, err := r.q.FindCollectionByName(ctx, name)
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 	return CollectionToDomain(dbCollection), nil
 }
@@ -393,7 +393,7 @@ func (r *GiftRepository) FindCollectionByName(
 func (r *GiftRepository) FindModelByName(ctx context.Context, name string) (*gift.Model, error) {
 	dbModel, err := r.q.FindModelByName(ctx, name)
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 	return ModelToDomain(dbModel), nil
 }
@@ -404,7 +404,7 @@ func (r *GiftRepository) FindBackdropByName(
 ) (*gift.Backdrop, error) {
 	dbBackdrop, err := r.q.FindBackdropByName(ctx, name)
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 	return BackdropToDomain(dbBackdrop), nil
 }
@@ -412,7 +412,7 @@ func (r *GiftRepository) FindBackdropByName(
 func (r *GiftRepository) FindSymbolByName(ctx context.Context, name string) (*gift.Symbol, error) {
 	dbSymbol, err := r.q.FindSymbolByName(ctx, name)
 	if err != nil {
-		return nil, err
+		return nil, MapPGError(err)
 	}
 	return SymbolToDomain(dbSymbol), nil
 }

@@ -179,6 +179,64 @@ func (q *Queries) FindDuelByGiftID(ctx context.Context, giftID pgtype.UUID) (pgt
 	return id, err
 }
 
+const get1v1Duels = `-- name: Get1v1Duels :many
+SELECT id, display_number, is_private, max_players, max_gifts, winner_telegram_user_id, next_roll_deadline, status, created_at, updated_at, completed_at FROM duels
+WHERE status IN ('waiting_for_opponent', 'in_progress')
+  AND max_players = 2
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type Get1v1DuelsParams struct {
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) Get1v1Duels(ctx context.Context, arg Get1v1DuelsParams) ([]Duel, error) {
+	rows, err := q.db.Query(ctx, get1v1Duels, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Duel
+	for rows.Next() {
+		var i Duel
+		if err := rows.Scan(
+			&i.ID,
+			&i.DisplayNumber,
+			&i.IsPrivate,
+			&i.MaxPlayers,
+			&i.MaxGifts,
+			&i.WinnerTelegramUserID,
+			&i.NextRollDeadline,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CompletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const get1v1DuelsCount = `-- name: Get1v1DuelsCount :one
+SELECT COUNT(*) FROM duels
+WHERE status IN ('waiting_for_opponent', 'in_progress')
+  AND max_players = 2
+`
+
+func (q *Queries) Get1v1DuelsCount(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, get1v1DuelsCount)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getDuelByID = `-- name: GetDuelByID :one
 SELECT id, display_number, is_private, max_players, max_gifts, winner_telegram_user_id, next_roll_deadline, status, created_at, updated_at, completed_at FROM duels WHERE id = $1
 `
@@ -349,6 +407,65 @@ func (q *Queries) GetDuels(ctx context.Context, arg GetDuelsParams) ([]Duel, err
 	return items, nil
 }
 
+const getMyDuels = `-- name: GetMyDuels :many
+SELECT DISTINCT d.id, d.display_number, d.is_private, d.max_players, d.max_gifts, d.winner_telegram_user_id, d.next_roll_deadline, d.status, d.created_at, d.updated_at, d.completed_at FROM duels d
+JOIN duel_participants dp ON d.id = dp.duel_id
+WHERE dp.telegram_user_id = $1
+ORDER BY d.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type GetMyDuelsParams struct {
+	TelegramUserID int64
+	Limit          int32
+	Offset         int32
+}
+
+func (q *Queries) GetMyDuels(ctx context.Context, arg GetMyDuelsParams) ([]Duel, error) {
+	rows, err := q.db.Query(ctx, getMyDuels, arg.TelegramUserID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Duel
+	for rows.Next() {
+		var i Duel
+		if err := rows.Scan(
+			&i.ID,
+			&i.DisplayNumber,
+			&i.IsPrivate,
+			&i.MaxPlayers,
+			&i.MaxGifts,
+			&i.WinnerTelegramUserID,
+			&i.NextRollDeadline,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CompletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getMyDuelsCount = `-- name: GetMyDuelsCount :one
+SELECT COUNT(DISTINCT d.id) FROM duels d
+JOIN duel_participants dp ON d.id = dp.duel_id
+WHERE dp.telegram_user_id = $1
+`
+
+func (q *Queries) GetMyDuelsCount(ctx context.Context, telegramUserID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, getMyDuelsCount, telegramUserID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getTopDuels = `-- name: GetTopDuels :many
 SELECT id, display_number, is_private, max_players, max_gifts, winner_telegram_user_id, next_roll_deadline, status, created_at, updated_at, completed_at FROM duels
 WHERE status = 'completed'
@@ -391,6 +508,18 @@ func (q *Queries) GetTopDuels(ctx context.Context, arg GetTopDuelsParams) ([]Due
 		return nil, err
 	}
 	return items, nil
+}
+
+const getTopDuelsCount = `-- name: GetTopDuelsCount :one
+SELECT COUNT(*) FROM duels
+WHERE status = 'completed'
+`
+
+func (q *Queries) GetTopDuelsCount(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, getTopDuelsCount)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const getVisibleDuels = `-- name: GetVisibleDuels :many

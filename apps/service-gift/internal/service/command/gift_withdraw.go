@@ -4,7 +4,6 @@ import (
 	"context"
 
 	giftDomain "github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
-	"github.com/peterparker2005/giftduels/packages/errors/pkg/errors"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	"go.uber.org/zap"
 )
@@ -36,7 +35,7 @@ func (c *GiftWithdrawCommand) ValidateGiftsOwnership(
 				zap.Int64("ownerID", g.OwnerTelegramID),
 				zap.String("status", string(g.Status)),
 			)
-			return errors.NewGiftNotOwnedError("one or more gifts cannot be withdrawn")
+			return giftDomain.ErrGiftNotOwned
 		}
 	}
 	return nil
@@ -74,7 +73,7 @@ func (c *GiftWithdrawCommand) GetAndValidateGiftsForWithdrawal(
 				zap.Int64("ownerID", g.OwnerTelegramID),
 				zap.String("status", string(g.Status)),
 			)
-			return nil, errors.NewGiftNotOwnedError("gift cannot be withdrawn: " + g.ID)
+			return nil, giftDomain.ErrGiftNotOwned
 		}
 	}
 

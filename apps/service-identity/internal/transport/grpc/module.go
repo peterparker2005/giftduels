@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/peterparker2005/giftduels/apps/service-identity/internal/config"
+	grpchandlers "github.com/peterparker2005/giftduels/apps/service-identity/internal/transport/grpc/handlers"
 	"go.uber.org/fx"
 )
 
@@ -18,11 +19,9 @@ var Module = fx.Options(
 			}
 			return listener
 		},
-		NewRecoveryInterceptor,
-		NewVersionInterceptors,
-		NewIdentityPublicHandler,
-		NewIdentityPrivateHandler,
-		NewIdentityEnvoyHandler,
+		grpchandlers.NewIdentityPublicHandler,
+		grpchandlers.NewIdentityPrivateHandler,
+		grpchandlers.NewIdentityEnvoyHandler,
 		NewGRPCServer,
 	),
 	fx.Invoke(

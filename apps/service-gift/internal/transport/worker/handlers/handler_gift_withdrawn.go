@@ -47,9 +47,12 @@ func (h *GiftWithdrawnHandler) Handle(msg *message.Message) error {
 	log.Info("processing gift withdrawn event")
 
 	// Завершаем вывод подарка
-	completedGift, err := h.giftCompleteWithdrawalCmd.Execute(ctx, command.CompleteGiftWithdrawalParams{
-		GiftID: giftID,
-	})
+	completedGift, err := h.giftCompleteWithdrawalCmd.Execute(
+		ctx,
+		command.CompleteGiftWithdrawalParams{
+			GiftID: giftID,
+		},
+	)
 	if err != nil {
 		log.Error("failed to complete gift withdrawal", zap.Error(err))
 		return err

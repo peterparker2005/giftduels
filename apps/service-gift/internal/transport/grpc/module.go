@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/config"
+	grpchandlers "github.com/peterparker2005/giftduels/apps/service-gift/internal/transport/grpc/handlers"
 	"go.uber.org/fx"
 )
 
@@ -14,10 +15,8 @@ var Module = fx.Options(
 		func(cfg *config.Config) (net.Listener, error) {
 			return NewListener(&cfg.GRPC.Gift)
 		},
-		NewRecoveryInterceptor,
-		NewVersionInterceptors,
-		NewGiftPublicHandler,
-		NewGiftPrivateHandler,
+		grpchandlers.NewGiftPublicHandler,
+		grpchandlers.NewGiftPrivateHandler,
 		NewGRPCServer,
 	),
 

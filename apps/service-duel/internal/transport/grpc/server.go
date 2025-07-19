@@ -4,7 +4,8 @@ import (
 	"net"
 
 	"github.com/peterparker2005/giftduels/apps/service-duel/internal/config"
-	authctx "github.com/peterparker2005/giftduels/packages/grpc-go/authctx"
+	"github.com/peterparker2005/giftduels/apps/service-duel/internal/transport/grpc/errors"
+	"github.com/peterparker2005/giftduels/packages/grpc-go/interceptors"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	duelv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/duel/v1"
 	"go.uber.org/zap"
@@ -24,17 +25,24 @@ type Server struct {
 func NewGRPCServer(
 	cfg *config.Config,
 	listener net.Listener,
-	recoverInterceptor grpc.UnaryServerInterceptor,
-	versionUnary []grpc.UnaryServerInterceptor,
-	versionStream []grpc.StreamServerInterceptor,
 	publicHandler duelv1.DuelPublicServiceServer,
 	privateHandler duelv1.DuelPrivateServiceServer,
 	log *logger.Logger,
 ) *Server {
 	opts := []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(
-			append(versionUnary, recoverInterceptor, authctx.TelegramIDCtxInterceptor())...),
-		grpc.ChainStreamInterceptor(versionStream...),
+			interceptors.TelegramIDCtxInterceptor(),
+			interceptors.CorrelationInterceptorUnary(),
+			interceptors.VersionInterceptorUnary(),
+			interceptors.RecoveryInterceptor(log),
+			grpcerrors.ErrorMappingInterceptor(),
+		),
+		grpc.ChainStreamInterceptor(
+			interceptors.TelegramIDStreamInterceptor(),
+			interceptors.CorrelationInterceptorStream(),
+			interceptors.VersionInterceptorStream(),
+			interceptors.RecoveryInterceptorStream(log),
+		),
 	}
 
 	s := grpc.NewServer(opts...)

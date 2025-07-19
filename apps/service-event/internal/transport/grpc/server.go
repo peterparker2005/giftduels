@@ -5,7 +5,7 @@ import (
 	"net"
 
 	"github.com/peterparker2005/giftduels/apps/service-event/internal/config"
-	authctx "github.com/peterparker2005/giftduels/packages/grpc-go/authctx"
+	"github.com/peterparker2005/giftduels/packages/grpc-go/interceptors"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	eventv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/event/v1"
 	"go.uber.org/zap"
@@ -25,17 +25,21 @@ type Server struct {
 func NewGRPCServer(
 	cfg *config.Config,
 	listener net.Listener,
-	recoverInterceptor grpc.UnaryServerInterceptor,
-	versionUnary []grpc.UnaryServerInterceptor,
-	versionStream []grpc.StreamServerInterceptor,
 	publicHandler eventv1.EventPublicServiceServer,
 	log *logger.Logger,
 ) *Server {
 	opts := []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(
-			append(versionUnary, recoverInterceptor, authctx.TelegramIDCtxInterceptor())...),
+			interceptors.TelegramIDCtxInterceptor(),
+			interceptors.CorrelationInterceptorUnary(),
+			interceptors.VersionInterceptorUnary(),
+			interceptors.RecoveryInterceptor(log),
+		),
 		grpc.ChainStreamInterceptor(
-			append(versionStream, authctx.TelegramIDStreamInterceptor())...,
+			interceptors.TelegramIDStreamInterceptor(),
+			interceptors.CorrelationInterceptorStream(),
+			interceptors.VersionInterceptorStream(),
+			interceptors.RecoveryInterceptorStream(log),
 		),
 	}
 

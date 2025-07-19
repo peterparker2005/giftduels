@@ -11,7 +11,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/peterparker2005/giftduels/apps/service-gift/internal/adapter/pg"
 	giftDomain "github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
-	"github.com/peterparker2005/giftduels/packages/errors/pkg/errors"
 	giftEvents "github.com/peterparker2005/giftduels/packages/events/gift"
 	"github.com/peterparker2005/giftduels/packages/grpc-go/clients"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
@@ -64,12 +63,9 @@ func (s *WithdrawalSaga) ExecuteWithdraw(
 	case giftv1.ExecuteWithdrawRequest_COMMISSION_CURRENCY_STARS:
 		return s.executeWithdrawStars(ctx, telegramUserID, giftIDs)
 	case giftv1.ExecuteWithdrawRequest_COMMISSION_CURRENCY_UNSPECIFIED:
-		return nil, errors.NewValidationError(
-			"commission currency",
-			"unspecified commission currency",
-		)
+		return nil, giftDomain.ErrInvalidCommissionCurrency
 	default:
-		return nil, errors.NewValidationError("commission currency", "invalid commission currency")
+		return nil, giftDomain.ErrInvalidCommissionCurrency
 	}
 }
 
@@ -167,7 +163,7 @@ func (s *WithdrawalSaga) validateGiftsOwnership(
 				zap.Int64("ownerID", g.OwnerTelegramID),
 				zap.String("status", string(g.Status)),
 			)
-			return errors.NewGiftNotOwnedError("one or more gifts cannot be withdrawn")
+			return giftDomain.ErrGiftNotOwned
 		}
 	}
 	return nil
@@ -423,7 +419,7 @@ func (s *WithdrawalSaga) getAndValidateGiftsForStarsWithdrawal(
 				zap.Int64("ownerID", g.OwnerTelegramID),
 				zap.String("status", string(g.Status)),
 			)
-			return nil, errors.NewGiftNotOwnedError("gift cannot be withdrawn: " + g.ID)
+			return nil, giftDomain.ErrGiftNotOwned
 		}
 	}
 

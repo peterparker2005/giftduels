@@ -5,7 +5,6 @@ import (
 	"time"
 
 	giftDomain "github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
-	"github.com/peterparker2005/giftduels/packages/errors/pkg/errors"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	"go.uber.org/zap"
 )
@@ -39,7 +38,7 @@ func (c *GiftCompleteWithdrawalCommand) Execute(
 		c.log.Error("failed to get gift for withdrawal completion",
 			zap.String("giftID", params.GiftID),
 			zap.Error(err))
-		return nil, errors.NewNotFoundError("gift not found: " + params.GiftID)
+		return nil, giftDomain.ErrGiftNotFound
 	}
 
 	// Проверяем, что подарок находится в статусе withdraw_pending
@@ -48,10 +47,7 @@ func (c *GiftCompleteWithdrawalCommand) Execute(
 			zap.String("giftID", params.GiftID),
 			zap.String("currentStatus", string(gift.Status)),
 			zap.String("requiredStatus", string(giftDomain.StatusWithdrawPending)))
-		return nil, errors.NewValidationError(
-			"gift status",
-			"gift must be in withdraw_pending status to complete withdrawal",
-		)
+		return nil, giftDomain.ErrGiftNotWithdrawPending
 	}
 
 	// Используем domain метод для валидации

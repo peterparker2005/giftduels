@@ -5,7 +5,7 @@ import (
 
 	envoyauthv3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"github.com/peterparker2005/giftduels/apps/service-identity/internal/config"
-	authctx "github.com/peterparker2005/giftduels/packages/grpc-go/authctx"
+	"github.com/peterparker2005/giftduels/packages/grpc-go/interceptors"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	identityv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/identity/v1"
 	"go.uber.org/zap"
@@ -25,9 +25,6 @@ type Server struct {
 func NewGRPCServer(
 	cfg *config.Config,
 	listener net.Listener,
-	recoverInterceptor grpc.UnaryServerInterceptor,
-	versionUnary []grpc.UnaryServerInterceptor,
-	versionStream []grpc.StreamServerInterceptor,
 	publicHandler identityv1.IdentityPublicServiceServer,
 	privateHandler identityv1.IdentityPrivateServiceServer,
 	envoyHandler envoyauthv3.AuthorizationServer,
@@ -35,8 +32,15 @@ func NewGRPCServer(
 ) *Server {
 	opts := []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(
-			append(versionUnary, recoverInterceptor, authctx.TelegramIDCtxInterceptor())...),
-		grpc.ChainStreamInterceptor(versionStream...),
+			interceptors.VersionInterceptorUnary(),
+			interceptors.RecoveryInterceptor(log),
+			interceptors.TelegramIDCtxInterceptor(),
+		),
+		grpc.ChainStreamInterceptor(
+			interceptors.VersionInterceptorStream(),
+			interceptors.RecoveryInterceptorStream(log),
+			interceptors.TelegramIDStreamInterceptor(),
+		),
 	}
 
 	s := grpc.NewServer(opts...)

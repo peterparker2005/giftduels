@@ -2,57 +2,51 @@ syntax = "proto3";
 
 package giftduels.errors.v1;
 
+import "google/rpc/status.proto";
+
 option go_package = "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/errors/v1;errorsv1";
 
 enum ErrorCode {
   ERROR_CODE_UNSPECIFIED = 0;
 
-  // Validation errors (100-199)
+  // Validation errors (100–199)
   ERROR_CODE_VALIDATION_GENERAL = 100;
   ERROR_CODE_REQUIRED_FIELD = 101;
 
-  // Authentication errors (200-299)
+  // Authentication errors (200–299)
   ERROR_CODE_UNAUTHORIZED = 200;
 
-  // Authorization errors (300-399)
+  // Authorization errors (300–399)
   ERROR_CODE_FORBIDDEN = 300;
   ERROR_CODE_GIFT_NOT_OWNED = 301;
 
-  // Not found errors (400-499)
+  // Not found errors (400–499)
   ERROR_CODE_NOT_FOUND = 400;
   ERROR_CODE_GIFT_NOT_FOUND = 401;
 
-  // Conflict errors (500-599)
+  // Conflict errors (500–599)
   ERROR_CODE_ALREADY_EXISTS = 500;
   ERROR_CODE_GIFT_ALREADY_STAKED = 501;
 
-  // Resource errors (600-699)
+  // Resource errors (600–699)
   ERROR_CODE_RATE_LIMIT_EXCEEDED = 600;
-  ERROR_CODE_INSUFFICIENT_TON = 601;
+  ERROR_CODE_INSUFFICIENT_BALANCE = 601;
   ERROR_CODE_GIFT_NOT_AVAILABLE = 602;
   ERROR_CODE_DUEL_FULL = 603;
 
-  // Internal errors (700-799)
+  // Internal errors (700–799)
   ERROR_CODE_INTERNAL = 700;
   ERROR_CODE_DATABASE_ERROR = 701;
   ERROR_CODE_SERVICE_UNAVAILABLE = 702;
 }
 
-// ===== ERROR DETAILS =====
-
-message ErrorDetail {
-  ErrorCode code = 1;
-  string message = 3; // Human-readable error message
-  string field = 4; // Field name for validation errors
+message ErrorStatus {
+  google.rpc.Status status = 1;
 }
 
 message ErrorContext {
-  map<string, string> metadata = 1; // Key-value pairs with additional info
-  string trace_id = 2; // Request trace ID for debugging
-  string resource_id = 3; // ID of the resource that caused the error
-  string resource_type = 4; // Type of resource (gift, duel, user, etc.)
-}
-
-message ErrorResponse {
-  repeated ErrorDetail details = 1; // List of error details
+  map<string, string> metadata = 1;
+  string trace_id = 2;
+  string resource_type = 3;
+  string resource_id = 4;
 }

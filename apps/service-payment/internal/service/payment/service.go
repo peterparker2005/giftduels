@@ -203,6 +203,15 @@ func (s *Service) SpendUserBalance(
 
 	repo := s.repo.WithTx(tx)
 
+	currentBalance, err := repo.GetUserBalance(ctx, telegramUserID)
+	if err != nil {
+		return nil, err
+	}
+
+	if currentBalance.TonAmount.Decimal().Cmp(tonAmount.Decimal()) < 0 {
+		return nil, ErrInsufficientBalance
+	}
+
 	balance, err := repo.SpendUserBalance(ctx, &payment.SpendUserBalanceParams{
 		TelegramUserID: telegramUserID,
 		Amount:         tonAmount,

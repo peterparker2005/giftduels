@@ -34,6 +34,18 @@ message GetDuelResponse {
 
 message GetDuelListRequest {
   shared.v1.PageRequest page_request = 1;
+  GetDuelListFilter filter = 2;
+}
+
+message GetDuelListFilter {
+  enum FilterType {
+    FILTER_TYPE_UNSPECIFIED = 0;
+    FILTER_TYPE_ALL = 1;
+    FILTER_TYPE_1V1 = 2;
+    FILTER_TYPE_DAILY_TOP = 4;
+    FILTER_TYPE_MY_DUELS = 5;
+  }
+  FilterType filter_type = 1;
 }
 
 message GetDuelListResponse {

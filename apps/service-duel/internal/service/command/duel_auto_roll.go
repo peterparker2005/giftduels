@@ -11,6 +11,7 @@ import (
 	"github.com/peterparker2005/giftduels/apps/service-duel/internal/adapter/pg"
 	"github.com/peterparker2005/giftduels/apps/service-duel/internal/adapter/proto"
 	dueldomain "github.com/peterparker2005/giftduels/apps/service-duel/internal/domain/duel"
+
 	duelevents "github.com/peterparker2005/giftduels/packages/events/duel"
 	"github.com/peterparker2005/giftduels/packages/grpc-go/clients"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
@@ -47,7 +48,7 @@ func NewDuelAutoRollCommand(
 func (c *DuelAutoRollCommand) Execute(ctx context.Context, duelID dueldomain.ID) error {
 	tx, err := c.txManager.BeginTx(ctx)
 	if err != nil {
-		return err
+		return ErrTransactionFailed
 	}
 	defer func() {
 		if err != nil {
@@ -61,7 +62,7 @@ func (c *DuelAutoRollCommand) Execute(ctx context.Context, duelID dueldomain.ID)
 	repo := c.repo.WithTx(tx)
 	d, err := repo.GetDuelByID(ctx, duelID)
 	if err != nil {
-		return err
+		return ErrDuelNotFound
 	}
 
 	// Пока не определится единственный победитель — повторяем:
@@ -71,7 +72,7 @@ func (c *DuelAutoRollCommand) Execute(ctx context.Context, duelID dueldomain.ID)
 		if roundErr != nil {
 			c.log.Error("failed to get current round", zap.Error(roundErr))
 			// раунда может ещё не быть, но должен быть после Start() при полном составе
-			return err
+			return ErrNoCurrentRound
 		}
 
 		// 2) автокидок всех, кто ещё не кинул
@@ -80,7 +81,7 @@ func (c *DuelAutoRollCommand) Execute(ctx context.Context, duelID dueldomain.ID)
 				val, msgID, rollErr := c.rollDice(ctx, d, pl.Int64())
 				if rollErr != nil {
 					c.log.Error("failed to roll dice", zap.Error(rollErr))
-					return rollErr
+					return ErrRollDiceFailed
 				}
 				roll, rollErr := dueldomain.NewRollBuilder().
 					WithTelegramUserID(pl).
@@ -91,15 +92,15 @@ func (c *DuelAutoRollCommand) Execute(ctx context.Context, duelID dueldomain.ID)
 					Build()
 				if rollErr != nil {
 					c.log.Error("failed to build roll", zap.Error(rollErr))
-					return rollErr
+					return ErrAutoRoll
 				}
 				if err = d.AddRollToCurrentRound(roll); err != nil {
 					c.log.Error("failed to add roll to current round", zap.Error(err))
-					return err
+					return ErrAutoRoll
 				}
 				if rollErr = repo.CreateRoll(ctx, duelID, round.RoundNumber, roll); rollErr != nil {
 					c.log.Error("failed to create roll", zap.Error(rollErr))
-					return rollErr
+					return ErrDatabaseOperation
 				}
 			}
 		}
@@ -112,30 +113,39 @@ func (c *DuelAutoRollCommand) Execute(ctx context.Context, duelID dueldomain.ID)
 			d.NextRollDeadline = &next
 			if err = repo.UpdateNextRollDeadline(ctx, duelID, next); err != nil {
 				c.log.Error("failed to update next roll deadline", zap.Error(err))
-				return err
+				return ErrDatabaseOperation
 			}
-			return tx.Commit(ctx)
+			if err = tx.Commit(ctx); err != nil {
+				return ErrTransactionFailed
+			}
+			return nil
 		}
 
 		switch len(winners) {
 		case 0:
 			// невозможно, но перестрахуемся
-			return tx.Commit(ctx)
+			if err = tx.Commit(ctx); err != nil {
+				return ErrTransactionFailed
+			}
+			return nil
 		case 1:
 			// нашли одного — завершаем дуэль
 			if err = d.Complete(winners[0]); err != nil {
 				c.log.Error("failed to complete duel", zap.Error(err))
-				return err
+				return ErrCompleteDuelFailed
 			}
 			if err = repo.UpdateDuelStatus(ctx, duelID, d.Status, d.WinnerID, d.CompletedAt); err != nil {
 				c.log.Error("failed to update duel status", zap.Error(err))
-				return err
+				return ErrDatabaseOperation
 			}
 			if err = c.sendDuelCompletedMessage(d); err != nil {
 				c.log.Error("failed to send duel completed message", zap.Error(err))
-				return err
+				return ErrSendDuelCompletedMessageFailed
 			}
-			return tx.Commit(ctx)
+			if err = tx.Commit(ctx); err != nil {
+				return ErrTransactionFailed
+			}
+			return nil
 		default:
 			if err = c.startNewRound(ctx, tx, d, winners); err != nil {
 				return err
@@ -148,15 +158,18 @@ func (c *DuelAutoRollCommand) sendDuelCompletedMessage(duel *dueldomain.Duel) er
 	msgID := uuid.New().String()
 	event, err := proto.MapDuelCompletedEvent(duel)
 	if err != nil {
-		return err
+		return ErrSendDuelCompletedMessageFailed
 	}
 	protoBytes, err := googleproto.Marshal(event)
 	if err != nil {
-		return err
+		return ErrSendDuelCompletedMessageFailed
 	}
 	msg := message.NewMessage(msgID, protoBytes)
 
-	return c.publisher.Publish(duelevents.TopicDuelCompleted.String(), msg)
+	if err := c.publisher.Publish(duelevents.TopicDuelCompleted.String(), msg); err != nil {
+		return ErrSendDuelCompletedMessageFailed
+	}
+	return nil
 }
 
 func (c *DuelAutoRollCommand) rollDice(
@@ -176,7 +189,7 @@ func (c *DuelAutoRollCommand) rollDice(
 		},
 	})
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, ErrRollDiceFailed
 	}
 	return resp.GetValue(), resp.GetTelegramMessageId(), nil
 }
@@ -193,17 +206,17 @@ func (c *DuelAutoRollCommand) startNewRound(
 		WithParticipants(participants).
 		Build()
 	if err != nil {
-		return err
+		return ErrStartNewRoundFailed
 	}
 	// 1) домен
 	if err = d.StartRound(participants); err != nil {
 		c.log.Error("failed to start new round", zap.Error(err))
-		return err
+		return ErrStartNewRoundFailed
 	}
 	// 2) база
 	if err = repo.CreateRound(ctx, d.ID, rObj); err != nil {
 		c.log.Error("failed to create new round", zap.Error(err))
-		return err
+		return ErrDatabaseOperation
 	}
 	return nil
 }

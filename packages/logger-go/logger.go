@@ -20,7 +20,7 @@ type Logger struct {
 	baseFields []zap.Field
 }
 
-// NewLogger configures zap-config and immediately calculates baseFields.
+// NewLogger configures zap and immediately calculates baseFields.
 func NewLogger(cfg Config) (*Logger, error) {
 	var zapCfg zap.Config
 	if cfg.Pretty {
@@ -101,8 +101,4 @@ func (l *Logger) With(fields ...zap.Field) *Logger {
 // Sync is called before shutdown.
 func (l *Logger) Sync() error {
 	return l.zap.Sync()
-}
-
-func (l *Logger) Zap() *zap.Logger {
-	return l.zap
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 
 	giftDomain "github.com/peterparker2005/giftduels/apps/service-gift/internal/domain/gift"
-	"github.com/peterparker2005/giftduels/packages/errors/pkg/errors"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	giftv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1"
 	"go.uber.org/zap"
@@ -41,7 +40,7 @@ func (c *GiftStakeCommand) StakeGift(
 		c.log.Error("failed to get gift for staking",
 			zap.String("giftID", params.GiftID),
 			zap.Error(err))
-		return nil, errors.NewNotFoundError("gift not found: " + params.GiftID)
+		return nil, giftDomain.ErrGiftNotFound
 	}
 
 	// Check if the gift can be staked by the user
@@ -50,7 +49,7 @@ func (c *GiftStakeCommand) StakeGift(
 			zap.String("giftID", params.GiftID),
 			zap.Int64("requestedByUser", params.TelegramUserID),
 			zap.Int64("actualOwner", gift.OwnerTelegramID))
-		return nil, errors.NewGiftNotOwnedError("gift not owned by user")
+		return nil, giftDomain.ErrGiftNotOwned
 	}
 
 	// Check if the gift can be staked (status check)
@@ -59,9 +58,7 @@ func (c *GiftStakeCommand) StakeGift(
 			zap.String("giftID", params.GiftID),
 			zap.String("currentStatus", string(gift.Status)),
 			zap.String("requiredStatus", string(giftDomain.StatusOwned)))
-		return nil, errors.NewGiftNotOwnedError(
-			"gift cannot be staked - current status: " + string(gift.Status),
-		)
+		return nil, giftDomain.ErrGiftNotOwned
 	}
 
 	// Now try to stake the gift
@@ -100,7 +97,7 @@ func (c *GiftStakeCommand) ReturnGiftFromGame(
 		c.log.Error("failed to get gift for returning from game",
 			zap.String("giftID", giftID),
 			zap.Error(err))
-		return nil, errors.NewNotFoundError("gift not found: " + giftID)
+		return nil, giftDomain.ErrGiftNotFound
 	}
 
 	// Check if the gift is in game status
@@ -109,9 +106,7 @@ func (c *GiftStakeCommand) ReturnGiftFromGame(
 			zap.String("giftID", giftID),
 			zap.String("currentStatus", string(gift.Status)),
 			zap.String("requiredStatus", string(giftDomain.StatusInGame)))
-		return nil, errors.NewGiftNotOwnedError(
-			"gift cannot be returned from game - current status: " + string(gift.Status),
-		)
+		return nil, giftDomain.ErrGiftNotOwned
 	}
 
 	// Return the gift to owned status

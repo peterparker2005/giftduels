@@ -55,7 +55,7 @@ func (c *DuelCreateCommand) Execute(
 	// 1. Начинаем транзакцию
 	tx, err := c.txManager.BeginTx(ctx)
 	if err != nil {
-		return "", err
+		return "", ErrTransactionFailed
 	}
 
 	// 2. Подготовка defer‑компенсатора
@@ -86,12 +86,12 @@ func (c *DuelCreateCommand) Execute(
 		AsCreator().
 		Build()
 	if err != nil {
-		return "", err
+		return "", ErrInvalidParticipant
 	}
 
 	// 4. Join
 	if execErr = duel.AddParticipant(creator); execErr != nil {
-		return "", execErr
+		return "", ErrCreateDuel
 	}
 
 	// 5. Резервируем ставки (StakeGift + PlaceStake)
@@ -103,12 +103,12 @@ func (c *DuelCreateCommand) Execute(
 	// 6. Сохраняем все в БД (Duel, Participant, Stakes)
 	duelID, execErr = c.saveDuel(ctx, repo, duel, creator, params.Stakes)
 	if execErr != nil {
-		return "", execErr
+		return "", ErrCreateDuel
 	}
 
 	// 7. Коммит транзакции
 	if execErr = tx.Commit(ctx); execErr != nil {
-		return "", execErr
+		return "", ErrTransactionFailed
 	}
 
 	// 8. Публикация события о создании дуэли (ошибки логируем, но не откатываем)
@@ -145,19 +145,19 @@ func (c *DuelCreateCommand) reserveStakes(
 			},
 		})
 		if err != nil {
-			return staked, err
+			return staked, ErrGiftStakingFailed
 		}
 		staked = append(staked, stake.Gift.ID)
 
 		amount, err := tonamount.NewTonAmountFromString(resp.GetGift().GetPrice().GetValue())
 		if err != nil {
-			return staked, err
+			return staked, ErrInvalidGiftPrice
 		}
 		stakes[i].Gift.Price = amount
 		stakes[i].TelegramUserID = dueldomain.TelegramUserID(telegramUserID)
 
 		if err = duel.PlaceStake(stakes[i]); err != nil {
-			return staked, err
+			return staked, ErrInvalidStake
 		}
 	}
 
@@ -174,16 +174,16 @@ func (c *DuelCreateCommand) saveDuel(
 ) (dueldomain.ID, error) {
 	duelID, err := repo.CreateDuel(ctx, duel)
 	if err != nil {
-		return "", err
+		return "", ErrDatabaseOperation
 	}
 
 	if err = repo.CreateParticipant(ctx, duelID, creator); err != nil {
-		return "", err
+		return "", ErrDatabaseOperation
 	}
 
 	for _, stake := range stakes {
 		if err = repo.CreateStake(ctx, duelID, stake); err != nil {
-			return "", err
+			return "", ErrDatabaseOperation
 		}
 	}
 
@@ -209,12 +209,15 @@ func (c *DuelCreateCommand) returnStakedGifts(giftIDs []string) error {
 func (c *DuelCreateCommand) publishDuelCreated(duel *dueldomain.Duel) error {
 	event, err := proto.MapDuelCreatedEvent(duel)
 	if err != nil {
-		return err
+		return ErrPublishEventFailed
 	}
 	data, err := googleproto.Marshal(event)
 	if err != nil {
-		return err
+		return ErrPublishEventFailed
 	}
 	msg := message.NewMessage(duel.ID.String(), data)
-	return c.publisher.Publish(duelevents.TopicDuelCreated.String(), msg)
+	if err := c.publisher.Publish(duelevents.TopicDuelCreated.String(), msg); err != nil {
+		return ErrPublishEventFailed
+	}
+	return nil
 }

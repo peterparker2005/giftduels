@@ -27,6 +27,11 @@ type Repository interface {
 	UpdateNextRollDeadline(ctx context.Context, duelID ID, nextRollDeadline time.Time) error
 
 	GetDuelByID(ctx context.Context, id ID) (*Duel, error)
-	GetDuelList(ctx context.Context, pageRequest *shared.PageRequest) ([]*Duel, int64, error)
+	GetDuelList(
+		ctx context.Context,
+		pageRequest *shared.PageRequest,
+		filter *Filter,
+		telegramUserID *TelegramUserID,
+	) ([]*Duel, int64, error)
 	FindDuelByGiftID(ctx context.Context, giftID string) (ID, error)
 }

@@ -4,6 +4,7 @@ import (
 	"net"
 
 	"github.com/peterparker2005/giftduels/apps/service-event/internal/config"
+	grpchandlers "github.com/peterparker2005/giftduels/apps/service-event/internal/transport/grpc/handlers"
 	"go.uber.org/fx"
 )
 
@@ -13,9 +14,7 @@ var Module = fx.Options(
 		func(cfg *config.Config) (net.Listener, error) {
 			return NewListener(&cfg.GRPC.Event)
 		},
-		NewRecoveryInterceptor,
-		NewVersionInterceptors,
-		NewEventPublicHandler,
+		grpchandlers.NewEventPublicHandler,
 		NewGRPCServer,
 	),
 
