@@ -76,12 +76,13 @@ type DuelParticipant struct {
 }
 
 type DuelRoll struct {
-	DuelID         pgtype.UUID
-	RoundNumber    int32
-	TelegramUserID int64
-	DiceValue      int16
-	RolledAt       pgtype.Timestamptz
-	IsAutoRolled   bool
+	DuelID            pgtype.UUID
+	RoundNumber       int32
+	TelegramUserID    int64
+	DiceValue         int16
+	RolledAt          pgtype.Timestamptz
+	IsAutoRolled      bool
+	TelegramMessageID int32
 }
 
 type DuelRound struct {

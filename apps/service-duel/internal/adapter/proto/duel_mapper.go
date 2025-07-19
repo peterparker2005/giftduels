@@ -2,6 +2,7 @@ package proto
 
 import (
 	"errors"
+	"sort"
 
 	"github.com/ccoveille/go-safecast"
 	duelDomain "github.com/peterparker2005/giftduels/apps/service-duel/internal/domain/duel"
@@ -59,9 +60,16 @@ func MapDuel(duel *duelDomain.Duel) (*duelv1.Duel, error) {
 		result.Participants[i] = MapDuelParticipant(participant)
 	}
 
+	// Sort stakes by price (high to low) before mapping
+	sortedStakes := make([]duelDomain.Stake, len(duel.Stakes))
+	copy(sortedStakes, duel.Stakes)
+	sort.Slice(sortedStakes, func(i, j int) bool {
+		return sortedStakes[i].Gift.Price.Decimal().Cmp(sortedStakes[j].Gift.Price.Decimal()) > 0
+	})
+
 	// Map stakes
-	result.Stakes = make([]*duelv1.DuelStake, len(duel.Stakes))
-	for i, stake := range duel.Stakes {
+	result.Stakes = make([]*duelv1.DuelStake, len(sortedStakes))
+	for i, stake := range sortedStakes {
 		result.Stakes[i] = MapDuelStake(stake)
 	}
 
@@ -175,9 +183,10 @@ func MapDuelRoll(roll duelDomain.Roll) (*duelv1.DuelRoll, error) {
 		ParticipantTelegramUserId: &sharedv1.TelegramUserId{
 			Value: int64(roll.TelegramUserID),
 		},
-		DiceValue:    diceValue,
-		RolledAt:     timestamppb.New(roll.RolledAt),
-		IsAutoRolled: roll.IsAutoRolled,
+		DiceValue:         diceValue,
+		RolledAt:          timestamppb.New(roll.RolledAt),
+		IsAutoRolled:      roll.IsAutoRolled,
+		TelegramMessageId: roll.TelegramMessageID,
 	}, nil
 }
 
@@ -368,10 +377,11 @@ func MapDuelRollFromProto(protoRoll *duelv1.DuelRoll) (duelDomain.Roll, error) {
 	}
 
 	return duelDomain.Roll{
-		TelegramUserID: telegramUserID,
-		DiceValue:      protoRoll.GetDiceValue(),
-		RolledAt:       protoRoll.GetRolledAt().AsTime(),
-		IsAutoRolled:   protoRoll.GetIsAutoRolled(),
+		TelegramUserID:    telegramUserID,
+		DiceValue:         protoRoll.GetDiceValue(),
+		RolledAt:          protoRoll.GetRolledAt().AsTime(),
+		IsAutoRolled:      protoRoll.GetIsAutoRolled(),
+		TelegramMessageID: protoRoll.GetTelegramMessageId(),
 	}, nil
 }
 
@@ -388,8 +398,15 @@ func MapDuelCreatedEvent(duel *duelDomain.Duel) (*duelv1.DuelCreatedEvent, error
 			IsCreator:      participant.IsCreator,
 		})
 	}
-	stakes := make([]*duelv1.DuelStake, 0, len(duel.Stakes))
-	for _, stake := range duel.Stakes {
+	// Sort stakes by price (high to low) before mapping
+	sortedStakes := make([]duelDomain.Stake, len(duel.Stakes))
+	copy(sortedStakes, duel.Stakes)
+	sort.Slice(sortedStakes, func(i, j int) bool {
+		return sortedStakes[i].Gift.Price.Decimal().Cmp(sortedStakes[j].Gift.Price.Decimal()) > 0
+	})
+
+	stakes := make([]*duelv1.DuelStake, 0, len(sortedStakes))
+	for _, stake := range sortedStakes {
 		stakes = append(stakes, &duelv1.DuelStake{
 			ParticipantTelegramUserId: &sharedv1.TelegramUserId{
 				Value: stake.TelegramUserID.Int64(),
@@ -487,8 +504,16 @@ func MapDuelCompletedEvent(duel *duelDomain.Duel) (*duelv1.DuelCompletedEvent, e
 			IsCreator:      participant.IsCreator,
 		})
 	}
-	stakes := make([]*duelv1.DuelStake, 0, len(duel.Stakes))
-	for _, stake := range duel.Stakes {
+
+	// Sort stakes by price (high to low) before mapping
+	sortedStakes := make([]duelDomain.Stake, len(duel.Stakes))
+	copy(sortedStakes, duel.Stakes)
+	sort.Slice(sortedStakes, func(i, j int) bool {
+		return sortedStakes[i].Gift.Price.Decimal().Cmp(sortedStakes[j].Gift.Price.Decimal()) > 0
+	})
+
+	stakes := make([]*duelv1.DuelStake, 0, len(sortedStakes))
+	for _, stake := range sortedStakes {
 		stakes = append(stakes, &duelv1.DuelStake{
 			ParticipantTelegramUserId: &sharedv1.TelegramUserId{
 				Value: stake.TelegramUserID.Int64(),
@@ -516,5 +541,38 @@ func MapDuelCompletedEvent(duel *duelDomain.Duel) (*duelv1.DuelCompletedEvent, e
 		event.CompletedAt = timestamppb.New(*duel.CompletedAt)
 	}
 
+	return &event, nil
+}
+
+func MapDuelStartedEvent(duel *duelDomain.Duel) (*duelv1.DuelStartedEvent, error) {
+	participants := make([]*duelv1.DuelParticipant, 0, len(duel.Participants))
+	for _, participant := range duel.Participants {
+		participants = append(participants, &duelv1.DuelParticipant{
+			TelegramUserId: &sharedv1.TelegramUserId{Value: participant.TelegramUserID.Int64()},
+			PhotoUrl:       participant.PhotoURL,
+			IsCreator:      participant.IsCreator,
+		})
+	}
+	stakes := make([]*duelv1.DuelStake, 0, len(duel.Stakes))
+	for _, stake := range duel.Stakes {
+		stakes = append(stakes, &duelv1.DuelStake{
+			ParticipantTelegramUserId: &sharedv1.TelegramUserId{Value: stake.TelegramUserID.Int64()},
+			Gift: &duelv1.StakedGift{
+				GiftId: &sharedv1.GiftId{Value: stake.Gift.ID},
+				Title:  stake.Gift.Title,
+				Slug:   stake.Gift.Slug,
+				Price:  &sharedv1.TonAmount{Value: stake.StakeValue().String()},
+			},
+			StakeValue: &sharedv1.TonAmount{Value: stake.StakeValue().String()},
+		})
+	}
+	event := duelv1.DuelStartedEvent{
+		DuelId:       &sharedv1.DuelId{Value: duel.ID.String()},
+		Participants: participants,
+		Stakes:       stakes,
+		TotalStakeValue: &sharedv1.TonAmount{
+			Value: duel.TotalStakeValue().String(),
+		},
+	}
 	return &event, nil
 }

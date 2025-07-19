@@ -7,6 +7,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { retrieveLaunchParams } from "@telegram-apps/sdk";
 import { useMemo } from "react";
 import { BiPlus, BiSolidGift } from "react-icons/bi";
+import { IoEyeSharp } from "react-icons/io5";
+import { RiSwordFill } from "react-icons/ri";
 import { DuelAvatars } from "@/entities/duel/ui/DuelAvatars";
 import { GiftCardSmall } from "@/entities/gift/ui/GiftCardSmall";
 import { JoinDuelDrawer } from "@/features/join-duel/ui/JoinDuelDrawer";
@@ -14,7 +16,6 @@ import { useCountdown } from "@/shared/hooks/useCountdown";
 import { Button } from "@/shared/ui/Button";
 import { Icon } from "@/shared/ui/Icon/Icon";
 import { cn } from "@/shared/utils/cn";
-
 export function DuelCard({ duel }: { duel: Duel }) {
 	const { tgWebAppData } = retrieveLaunchParams();
 	const user = tgWebAppData?.user;
@@ -51,6 +52,7 @@ export function DuelCard({ duel }: { duel: Duel }) {
 		>
 			<div className="flex items-center justify-between">
 				<DuelAvatars
+					status={duel.status}
 					winnerTelegramUserId={duel.winnerTelegramUserId?.value.toString()}
 					participants={duel.participants.map((participant) => ({
 						telegramUserId: {
@@ -64,20 +66,14 @@ export function DuelCard({ duel }: { duel: Duel }) {
 					className={cn(
 						"flex items-center justify-center rounded-full px-2 py-1 text-xs font-semibold",
 						duel.status === DuelStatus.WAITING_FOR_OPPONENT &&
-							"bg-yellow-400/15 text-yellow-400",
+							"bg-green-400/15 text-green-400",
 						duel.status === DuelStatus.IN_PROGRESS &&
-							"bg-green-400/15 text-green-400",
-						duel.status === DuelStatus.COMPLETED &&
-							"bg-green-400/15 text-green-400",
-						duel.status === DuelStatus.CANCELLED &&
-							"bg-red-400/15 text-red-400",
+							"bg-yellow-400/15 text-yellow-400",
 					)}
 				>
 					{duel.status === DuelStatus.WAITING_FOR_OPPONENT &&
 						"Waiting for opponent"}
 					{duel.status === DuelStatus.IN_PROGRESS && "In progress"}
-					{duel.status === DuelStatus.COMPLETED && "Completed"}
-					{duel.status === DuelStatus.CANCELLED && "Cancelled"}
 				</div>
 			</div>
 
@@ -132,24 +128,30 @@ export function DuelCard({ duel }: { duel: Duel }) {
 					</JoinDuelDrawer>
 				)}
 			</section>
-			{duel.status === DuelStatus.WAITING_FOR_OPPONENT &&
-				!isUserParticipant && (
-					<JoinDuelDrawer
-						displayNumber={duel.displayNumber.toString()}
-						duel={duel}
-					>
-						<Button
-							variant={"primary"}
-							className="w-full font-semibold text-base h-12 mt-2.5"
+			<div className="flex gap-2">
+				{duel.status === DuelStatus.WAITING_FOR_OPPONENT &&
+					!isUserParticipant && (
+						<JoinDuelDrawer
+							displayNumber={duel.displayNumber.toString()}
+							duel={duel}
 						>
-							Join
-						</Button>
-					</JoinDuelDrawer>
-				)}
-			{(duel.status === DuelStatus.IN_PROGRESS || isUserParticipant) && (
+							<Button
+								variant={"primary"}
+								className="w-full font-semibold text-base h-12 mt-2.5 flex items-center gap-2 justify-center"
+							>
+								<RiSwordFill className="w-5 h-5" />
+								Join
+							</Button>
+						</JoinDuelDrawer>
+					)}
 				<Button
 					variant={"secondary"}
-					className="w-full font-semibold text-base h-12 mt-2.5 bg-card-accent"
+					className={cn(
+						"font-semibold text-base h-12 mt-2.5 bg-card-accent flex items-center gap-2 justify-center",
+						(duel.status !== DuelStatus.WAITING_FOR_OPPONENT ||
+							isUserParticipant) &&
+							"w-full",
+					)}
 					onClick={() => {
 						navigate({
 							to: "/duel/$duelId",
@@ -157,9 +159,12 @@ export function DuelCard({ duel }: { duel: Duel }) {
 						});
 					}}
 				>
-					Watch
+					<IoEyeSharp className="w-5 h-5" />
+					{(duel.status !== DuelStatus.WAITING_FOR_OPPONENT ||
+						isUserParticipant) &&
+						"Watch"}
 				</Button>
-			)}
+			</div>
 		</div>
 	);
 }

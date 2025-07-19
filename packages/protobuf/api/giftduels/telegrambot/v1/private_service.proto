@@ -29,6 +29,7 @@ message RollDiceRequest {
   message Metadata {
     message Duel {
       shared.v1.DuelId duel_id = 1;
+      string display_number = 2;
     }
     oneof game {
       Duel duel = 1;

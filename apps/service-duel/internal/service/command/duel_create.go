@@ -172,11 +172,7 @@ func (c *DuelCreateCommand) saveDuel(
 	creator dueldomain.Participant,
 	stakes []dueldomain.Stake,
 ) (dueldomain.ID, error) {
-	duelID, err := repo.CreateDuel(ctx, dueldomain.CreateDuelParams{
-		DuelID:          duel.ID,
-		TotalStakeValue: duel.TotalStakeValue(),
-		Params:          duel.Params,
-	})
+	duelID, err := repo.CreateDuel(ctx, duel)
 	if err != nil {
 		return "", err
 	}

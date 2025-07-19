@@ -5,6 +5,8 @@ sql:
     schema:
       - db/migrations/20250713001850_init.up.sql
       - db/migrations/20250714000000_fix_duel_stakes_pkey.up.sql
+      - db/migrations/20250719144604_default_duel_status.up.sql
+      - db/migrations/20250719144634_telegram_message_id_rolls.up.sql
     queries:
       - db/queries.sql
     gen:

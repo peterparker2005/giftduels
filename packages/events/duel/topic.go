@@ -10,6 +10,7 @@ const (
 
 const (
 	TopicDuelCreated   events.Topic = "duel.created"
+	TopicDuelStarted   events.Topic = "duel.started"
 	TopicDuelCancelled events.Topic = "duel.cancelled"
 	TopicDuelCompleted events.Topic = "duel.completed"
 	TopicDuelJoined    events.Topic = "duel.joined"

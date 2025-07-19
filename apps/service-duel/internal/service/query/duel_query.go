@@ -5,6 +5,7 @@ import (
 
 	"github.com/peterparker2005/giftduels/apps/service-duel/internal/adapter/pg"
 	dueldomain "github.com/peterparker2005/giftduels/apps/service-duel/internal/domain/duel"
+	"github.com/peterparker2005/giftduels/packages/errors/pkg/errors"
 	"github.com/peterparker2005/giftduels/packages/grpc-go/clients"
 	"github.com/peterparker2005/giftduels/packages/logger-go"
 	giftv1 "github.com/peterparker2005/giftduels/packages/protobuf-go/gen/giftduels/gift/v1"
@@ -62,24 +63,37 @@ func (s *DuelQueryService) GetDuelList(
 				GiftIds: stakeIDs,
 			})
 			if err != nil {
-				s.log.Error("failed to get gift", zap.Error(err))
+				s.log.Error("failed to get gifts", zap.Error(err))
 				continue
 			}
+
+			// Create a map for quick lookup
+			giftMap := make(map[string]*giftv1.Gift)
+			for _, gift := range resp.GetGifts() {
+				giftMap[gift.GetGiftId().GetValue()] = gift
+			}
+
 			for i := range duel.Stakes {
-				price, err := tonamount.NewTonAmountFromString(resp.Gifts[i].GetPrice().GetValue())
+				giftProto, exists := giftMap[duel.Stakes[i].Gift.ID]
+				if !exists {
+					s.log.Error("gift not found in response", zap.String("giftID", duel.Stakes[i].Gift.ID))
+					return nil, errors.NewInternalError("gift not found in response")
+				}
+
+				price, err := tonamount.NewTonAmountFromString(giftProto.GetPrice().GetValue())
 				if err != nil {
 					s.log.Error("failed to parse price", zap.Error(err))
-					continue
+					return nil, errors.NewInternalError("failed to parse price")
 				}
 				gift, err := dueldomain.NewStakedGiftBuilder().
-					WithID(resp.GetGifts()[i].GetGiftId().GetValue()).
-					WithTitle(resp.GetGifts()[i].GetTitle()).
-					WithSlug(resp.GetGifts()[i].GetSlug()).
+					WithID(giftProto.GetGiftId().GetValue()).
+					WithTitle(giftProto.GetTitle()).
+					WithSlug(giftProto.GetSlug()).
 					WithPrice(price).
 					Build()
 				if err != nil {
 					s.log.Error("failed to build staked gift", zap.Error(err))
-					continue
+					return nil, errors.NewInternalError("failed to build staked gift")
 				}
 				duel.Stakes[i].Gift = gift
 			}
@@ -90,6 +104,7 @@ func (s *DuelQueryService) GetDuelList(
 				Value: duel.Participants[i].TelegramUserID.Int64(),
 			}
 		}
+
 		userResp, userErr := s.identityPrivateClient.GetUsersByIDs(
 			ctx,
 			&identityv1.GetUsersByIDsRequest{
@@ -98,10 +113,22 @@ func (s *DuelQueryService) GetDuelList(
 		)
 		if userErr != nil {
 			s.log.Error("failed to get user", zap.Error(userErr))
-			continue
+			return nil, errors.NewInternalError("failed to get user")
 		}
-		for i, user := range userResp.GetUsers() {
-			duel.Participants[i].PhotoURL = user.GetPhotoUrl()
+		userPhoto := make(map[int64]string, len(userResp.GetUsers()))
+		for _, u := range userResp.GetUsers() {
+			id := u.GetTelegramId().GetValue()
+			userPhoto[id] = u.GetPhotoUrl()
+		}
+
+		for i := range duel.Participants {
+			id := duel.Participants[i].TelegramUserID.Int64()
+			if photo, ok := userPhoto[id]; ok {
+				duel.Participants[i].PhotoURL = photo
+			} else {
+				// на случай, если вдруг пользователь не вернулся в ответе
+				s.log.Warn("photo for user not found", zap.Int64("userID", id))
+			}
 		}
 	}
 	return &GetDuelListResponse{Duels: duels, Total: total}, nil
@@ -130,28 +157,41 @@ func (s *DuelQueryService) GetDuelByID(
 		for i := range duel.Stakes {
 			stakeIDs[i] = &sharedv1.GiftId{Value: duel.Stakes[i].Gift.ID}
 		}
-		resp, err := s.giftPrivateClient.PrivateGetGift(ctx, &giftv1.PrivateGetGiftRequest{
-			GiftId: &sharedv1.GiftId{Value: stakeIDs[0].Value},
+		resp, err := s.giftPrivateClient.PrivateGetGifts(ctx, &giftv1.PrivateGetGiftsRequest{
+			GiftIds: stakeIDs,
 		})
 		if err != nil {
-			s.log.Error("failed to get gift", zap.Error(err))
-			return nil, err
+			s.log.Error("failed to get gifts", zap.Error(err))
+			return nil, errors.NewInternalError("failed to get gifts")
 		}
+
+		// Create a map for quick lookup
+		giftMap := make(map[string]*giftv1.Gift)
+		for _, gift := range resp.GetGifts() {
+			giftMap[gift.GetGiftId().GetValue()] = gift
+		}
+
 		for i := range duel.Stakes {
-			price, err := tonamount.NewTonAmountFromString(resp.GetGift().GetPrice().GetValue())
+			giftProto, exists := giftMap[duel.Stakes[i].Gift.ID]
+			if !exists {
+				s.log.Error("gift not found in response", zap.String("giftID", duel.Stakes[i].Gift.ID))
+				return nil, errors.NewInternalError("gift not found in response")
+			}
+
+			price, err := tonamount.NewTonAmountFromString(giftProto.GetPrice().GetValue())
 			if err != nil {
 				s.log.Error("failed to parse price", zap.Error(err))
-				return nil, err
+				return nil, errors.NewInternalError("failed to parse price")
 			}
 			gift, err := dueldomain.NewStakedGiftBuilder().
-				WithID(resp.GetGift().GetGiftId().GetValue()).
-				WithTitle(resp.GetGift().GetTitle()).
-				WithSlug(resp.GetGift().GetSlug()).
+				WithID(giftProto.GetGiftId().GetValue()).
+				WithTitle(giftProto.GetTitle()).
+				WithSlug(giftProto.GetSlug()).
 				WithPrice(price).
 				Build()
 			if err != nil {
 				s.log.Error("failed to build staked gift", zap.Error(err))
-				return nil, err
+				return nil, errors.NewInternalError("failed to build staked gift")
 			}
 			duel.Stakes[i].Gift = gift
 		}
@@ -165,6 +205,7 @@ func (s *DuelQueryService) GetDuelByID(
 				Value: duel.Participants[i].TelegramUserID.Int64(),
 			}
 		}
+
 		userResp, userErr := s.identityPrivateClient.GetUsersByIDs(
 			ctx,
 			&identityv1.GetUsersByIDsRequest{
@@ -173,10 +214,22 @@ func (s *DuelQueryService) GetDuelByID(
 		)
 		if userErr != nil {
 			s.log.Error("failed to get user", zap.Error(userErr))
-			return nil, userErr
+			return nil, errors.NewInternalError("failed to get user")
 		}
-		for i, user := range userResp.GetUsers() {
-			duel.Participants[i].PhotoURL = user.GetPhotoUrl()
+		userPhoto := make(map[int64]string, len(userResp.GetUsers()))
+		for _, u := range userResp.GetUsers() {
+			id := u.GetTelegramId().GetValue()
+			userPhoto[id] = u.GetPhotoUrl()
+		}
+
+		for i := range duel.Participants {
+			id := duel.Participants[i].TelegramUserID.Int64()
+			if photo, ok := userPhoto[id]; ok {
+				duel.Participants[i].PhotoURL = photo
+			} else {
+				// на случай, если вдруг пользователь не вернулся в ответе
+				s.log.Warn("photo for user not found", zap.Int64("userID", id))
+			}
 		}
 	}
 

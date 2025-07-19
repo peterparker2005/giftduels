@@ -58,6 +58,7 @@ message DuelRoll {
   int32 dice_value = 2; // 1–6
   google.protobuf.Timestamp rolled_at = 3;
   bool is_auto_rolled = 4;
+  int32 telegram_message_id = 5;
 }
 
 enum DuelStatus {

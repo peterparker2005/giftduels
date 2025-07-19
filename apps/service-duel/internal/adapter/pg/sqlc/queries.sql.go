@@ -62,18 +62,19 @@ func (q *Queries) CreateParticipant(ctx context.Context, arg CreateParticipantPa
 }
 
 const createRoll = `-- name: CreateRoll :one
-INSERT INTO duel_rolls (duel_id, round_number, telegram_user_id, dice_value, rolled_at, is_auto_rolled)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING duel_id, round_number, telegram_user_id, dice_value, rolled_at, is_auto_rolled
+INSERT INTO duel_rolls (duel_id, round_number, telegram_user_id, dice_value, rolled_at, is_auto_rolled, telegram_message_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING duel_id, round_number, telegram_user_id, dice_value, rolled_at, is_auto_rolled, telegram_message_id
 `
 
 type CreateRollParams struct {
-	DuelID         pgtype.UUID
-	RoundNumber    int32
-	TelegramUserID int64
-	DiceValue      int16
-	RolledAt       pgtype.Timestamptz
-	IsAutoRolled   bool
+	DuelID            pgtype.UUID
+	RoundNumber       int32
+	TelegramUserID    int64
+	DiceValue         int16
+	RolledAt          pgtype.Timestamptz
+	IsAutoRolled      bool
+	TelegramMessageID int32
 }
 
 func (q *Queries) CreateRoll(ctx context.Context, arg CreateRollParams) (DuelRoll, error) {
@@ -84,6 +85,7 @@ func (q *Queries) CreateRoll(ctx context.Context, arg CreateRollParams) (DuelRol
 		arg.DiceValue,
 		arg.RolledAt,
 		arg.IsAutoRolled,
+		arg.TelegramMessageID,
 	)
 	var i DuelRoll
 	err := row.Scan(
@@ -93,6 +95,7 @@ func (q *Queries) CreateRoll(ctx context.Context, arg CreateRollParams) (DuelRol
 		&i.DiceValue,
 		&i.RolledAt,
 		&i.IsAutoRolled,
+		&i.TelegramMessageID,
 	)
 	return i, err
 }
@@ -224,7 +227,7 @@ func (q *Queries) GetDuelParticipants(ctx context.Context, duelID pgtype.UUID) (
 }
 
 const getDuelRolls = `-- name: GetDuelRolls :many
-SELECT duel_id, round_number, telegram_user_id, dice_value, rolled_at, is_auto_rolled FROM duel_rolls WHERE duel_id = $1 ORDER BY round_number, rolled_at
+SELECT duel_id, round_number, telegram_user_id, dice_value, rolled_at, is_auto_rolled, telegram_message_id FROM duel_rolls WHERE duel_id = $1 ORDER BY round_number, rolled_at
 `
 
 func (q *Queries) GetDuelRolls(ctx context.Context, duelID pgtype.UUID) ([]DuelRoll, error) {
@@ -243,6 +246,7 @@ func (q *Queries) GetDuelRolls(ctx context.Context, duelID pgtype.UUID) ([]DuelR
 			&i.DiceValue,
 			&i.RolledAt,
 			&i.IsAutoRolled,
+			&i.TelegramMessageID,
 		); err != nil {
 			return nil, err
 		}

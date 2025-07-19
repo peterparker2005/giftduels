@@ -47,8 +47,46 @@ export function makeTelegramBotHandlers(
 			call: ServerUnaryCall<RollDiceRequest, RollDiceResponse>,
 			callback: sendUnaryData<RollDiceResponse>,
 		) {
+			const req = call.request;
+
+			// FIXME: fix this, oneof is not working
+			const duelData = (req.metadata as any)?.duel;
+			if (!duelData) {
+				callback(
+					{ code: Status.INVALID_ARGUMENT, message: "Duel data is required" },
+					null,
+				);
+				return;
+			}
+			const displayNumber = duelData.displayNumber;
+			if (!displayNumber) {
+				callback(
+					{
+						code: Status.INVALID_ARGUMENT,
+						message: "Display number is required",
+					},
+					null,
+				);
+				return;
+			}
+			const duelId = duelData.duelId?.value;
+			if (!duelId) {
+				callback(
+					{
+						code: Status.INVALID_ARGUMENT,
+						message: "Duel ID is required",
+					},
+					null,
+				);
+				return;
+			}
+
 			duelService
-				.rollDice(Number(call.request.rollerTelegramUserId?.value))
+				.rollDice(
+					Number(req.rollerTelegramUserId?.value),
+					displayNumber,
+					duelId,
+				)
 				.then((res) => {
 					callback(null, res);
 				})

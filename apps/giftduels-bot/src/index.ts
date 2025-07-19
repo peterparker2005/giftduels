@@ -1,6 +1,7 @@
 import fastify from "fastify";
 import { connectAmqp } from "./amqp/connection";
 import { Consumer } from "./amqp/consumer";
+import { DuelStartedHandler } from "./amqp/handlers/DuelStartedHandler";
 import { GiftDepositedHandler } from "./amqp/handlers/GiftDepositedHandler";
 import { GiftWithdrawFailedHandler } from "./amqp/handlers/GiftWithdrawFailedHandler";
 import { GiftWithdrawnHandler } from "./amqp/handlers/GiftWithdrawnHandler";
@@ -85,6 +86,23 @@ async function main() {
 			},
 			async (message, properties, ctrl) => {
 				new GiftWithdrawUserNotFoundHandler(notificationService).handle(
+					message,
+					properties,
+					ctrl,
+				);
+			},
+		),
+		new Consumer(
+			{
+				exchange: {
+					name: "duel.events",
+					type: "topic",
+				},
+				routingKey: "duel.started",
+				maxRetries: 3,
+			},
+			async (message, properties, ctrl) => {
+				new DuelStartedHandler(notificationService).handle(
 					message,
 					properties,
 					ctrl,

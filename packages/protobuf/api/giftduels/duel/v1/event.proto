@@ -46,8 +46,9 @@ message DuelCreatedEvent {
 
 message DuelStartedEvent {
   shared.v1.DuelId duel_id = 1;
-  giftduels.duel.v1.DuelStatus status = 2;
-  google.protobuf.Timestamp updated_at = 3;
+  repeated giftduels.duel.v1.DuelParticipant participants = 2;
+  repeated giftduels.duel.v1.DuelStake stakes = 3;
+  shared.v1.TonAmount total_stake_value = 4;
 }
 
 message DuelCompletedEvent {

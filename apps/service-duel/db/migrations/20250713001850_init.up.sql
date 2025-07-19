@@ -10,6 +10,7 @@ CREATE TYPE duel_status AS ENUM (
   'waiting_for_opponent',
   'in_progress',
   'completed',
+  -- TODO: remove cancelled status
   'cancelled'
 );
 

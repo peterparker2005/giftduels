@@ -641,6 +641,7 @@ const getGiftsByIDs = `-- name: GetGiftsByIDs :many
 SELECT id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, collection_id, model_id, backdrop_id, symbol_id, status, created_at, updated_at, withdrawn_at
 FROM gifts
 WHERE id = ANY($1::uuid[])
+ORDER BY updated_at DESC
 `
 
 func (q *Queries) GetGiftsByIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]Gift, error) {
@@ -686,7 +687,7 @@ FROM gifts
 WHERE owner_telegram_id = $1
   AND status IN ('owned', 'in_game')
 ORDER BY
-  created_at DESC,
+  updated_at DESC,
   (status = 'owned') DESC,
   price DESC
 LIMIT $2 OFFSET $3
@@ -753,7 +754,7 @@ const getUserGifts = `-- name: GetUserGifts :many
 SELECT id, telegram_gift_id, collectible_id, owner_telegram_id, upgrade_message_id, title, slug, price, collection_id, model_id, backdrop_id, symbol_id, status, created_at, updated_at, withdrawn_at
 FROM gifts
 WHERE owner_telegram_id = $1
-ORDER BY created_at DESC
+ORDER BY updated_at DESC
 LIMIT $2 OFFSET $3
 `
 

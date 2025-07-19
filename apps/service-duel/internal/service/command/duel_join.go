@@ -169,6 +169,11 @@ func (c *DuelJoinCommand) Execute(
 		c.log.Error("failed to publish duel joined", zap.Error(pubErr))
 	}
 
+	// 14. Публикация события о создании дуэли
+	if pubErr := c.publishDuelStarted(duel); pubErr != nil {
+		c.log.Error("failed to publish duel created", zap.Error(pubErr))
+	}
+
 	return nil
 }
 
@@ -306,4 +311,19 @@ func (c *DuelJoinCommand) publishDuelJoined(
 	}
 	msg := message.NewMessage(duel.ID.String(), data)
 	return c.publisher.Publish(duelevents.TopicDuelJoined.String(), msg)
+}
+
+func (c *DuelJoinCommand) publishDuelStarted(
+	duel *dueldomain.Duel,
+) error {
+	event, err := proto.MapDuelStartedEvent(duel)
+	if err != nil {
+		return err
+	}
+	data, err := googleproto.Marshal(event)
+	if err != nil {
+		return err
+	}
+	msg := message.NewMessage(duel.ID.String(), data)
+	return c.publisher.Publish(duelevents.TopicDuelStarted.String(), msg)
 }

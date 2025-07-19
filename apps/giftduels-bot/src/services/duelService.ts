@@ -15,8 +15,16 @@ export class DuelService {
 		this.bot = container.resolve("bot");
 	}
 
-	async rollDice(telegramUserId: number): Promise<RollDiceResponse> {
-		const msg = await this.sendDiceMessage(telegramUserId);
+	async rollDice(
+		telegramUserId: number,
+		displayNumber: string,
+		duelId: string,
+	): Promise<RollDiceResponse> {
+		const msg = await this.sendDiceMessage(
+			telegramUserId,
+			displayNumber,
+			duelId,
+		);
 		const response = create(RollDiceResponseSchema, {
 			value: msg.dice.value,
 			telegramMessageId: msg.message_id,
@@ -26,19 +34,25 @@ export class DuelService {
 		return response;
 	}
 
-	async sendDiceMessage(telegramUserId: number) {
+	async sendDiceMessage(
+		telegramUserId: number,
+		displayNumber: string,
+		duelId: string,
+	) {
+		const duelUrl = `tg://devpp2_bot?startapp&href=duels/${duelId}`;
+
 		return await this.bot.api.sendDice(config.telegram.duelChannelId, "🎲", {
 			reply_markup: {
 				inline_keyboard: [
 					[
 						{
-							text: "Duel #0",
-							url: "tg://devpp2_bot?startapp&href=duels/id",
+							text: `Duel #${displayNumber}`,
+							url: duelUrl,
 						},
 					],
 					[
 						{
-							text: "Player",
+							text: `Player`,
 							url: `tg://user?id=${telegramUserId}`,
 						},
 					],

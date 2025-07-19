@@ -55,8 +55,8 @@ VALUES ($1, $2)
 RETURNING *;
 
 -- name: CreateRoll :one
-INSERT INTO duel_rolls (duel_id, round_number, telegram_user_id, dice_value, rolled_at, is_auto_rolled)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO duel_rolls (duel_id, round_number, telegram_user_id, dice_value, rolled_at, is_auto_rolled, telegram_message_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: FindDueDuels :many

@@ -80,4 +80,24 @@ Please send a sticker and try withdrawing your gift again.`;
 
 		await this.send(telegramUserId, { text, parseMode: "HTML" });
 	}
+
+	async sendDuelStartedNotification(
+		telegramUserId: number,
+		duelId: string,
+		totalStakeValue: string,
+	) {
+		const text = `🎲 Duel for you joined just started!
+		
+		Watch it now! Total stakes: ${totalStakeValue} TON`;
+
+		const keyboard = new InlineKeyboard().webApp(
+			"🎲 Watch Duel",
+			`${config.telegram.webAppUrl}?startapp&href=duels/${duelId}`,
+		);
+		await this.send(telegramUserId, {
+			text,
+			keyboard,
+			parseMode: "HTML",
+		});
+	}
 }

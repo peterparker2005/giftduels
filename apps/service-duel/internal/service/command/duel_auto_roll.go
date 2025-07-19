@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -76,7 +77,7 @@ func (c *DuelAutoRollCommand) Execute(ctx context.Context, duelID dueldomain.ID)
 		// 2) автокидок всех, кто ещё не кинул
 		for _, pl := range round.Participants {
 			if !round.HasRolled(pl) {
-				val, rollErr := c.rollDice(ctx, &duelID, pl.Int64())
+				val, msgID, rollErr := c.rollDice(ctx, d, pl.Int64())
 				if rollErr != nil {
 					c.log.Error("failed to roll dice", zap.Error(rollErr))
 					return rollErr
@@ -86,6 +87,7 @@ func (c *DuelAutoRollCommand) Execute(ctx context.Context, duelID dueldomain.ID)
 					WithDiceValue(val).
 					WithRolledAt(time.Now()).
 					WithIsAutoRolled(true).
+					WithTelegramMessageID(msgID).
 					Build()
 				if rollErr != nil {
 					c.log.Error("failed to build roll", zap.Error(rollErr))
@@ -159,23 +161,24 @@ func (c *DuelAutoRollCommand) sendDuelCompletedMessage(duel *dueldomain.Duel) er
 
 func (c *DuelAutoRollCommand) rollDice(
 	ctx context.Context,
-	duelID *dueldomain.ID,
+	duel *dueldomain.Duel,
 	telegramUserID int64,
-) (int32, error) {
+) (int32, int32, error) {
 	resp, err := c.telegramPrivateClient.RollDice(ctx, &telegrambotv1.RollDiceRequest{
 		RollerTelegramUserId: &sharedv1.TelegramUserId{Value: telegramUserID},
 		Metadata: &telegrambotv1.RollDiceRequest_Metadata{
 			Game: &telegrambotv1.RollDiceRequest_Metadata_Duel_{
 				Duel: &telegrambotv1.RollDiceRequest_Metadata_Duel{
-					DuelId: &sharedv1.DuelId{Value: duelID.String()},
+					DuelId:        &sharedv1.DuelId{Value: duel.ID.String()},
+					DisplayNumber: strconv.FormatInt(duel.DisplayNumber, 10),
 				},
 			},
 		},
 	})
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
-	return resp.GetValue(), nil
+	return resp.GetValue(), resp.GetTelegramMessageId(), nil
 }
 
 func (c *DuelAutoRollCommand) startNewRound(

@@ -3,10 +3,11 @@ package duel
 import "time"
 
 type Roll struct {
-	TelegramUserID TelegramUserID
-	DiceValue      int32
-	RolledAt       time.Time
-	IsAutoRolled   bool
+	TelegramUserID    TelegramUserID
+	DiceValue         int32
+	RolledAt          time.Time
+	IsAutoRolled      bool
+	TelegramMessageID int32
 }
 
 type RollBuilder struct {
@@ -34,6 +35,11 @@ func (b *RollBuilder) WithRolledAt(rolledAt time.Time) *RollBuilder {
 
 func (b *RollBuilder) WithIsAutoRolled(isAutoRolled bool) *RollBuilder {
 	b.r.IsAutoRolled = isAutoRolled
+	return b
+}
+
+func (b *RollBuilder) WithTelegramMessageID(telegramMessageID int32) *RollBuilder {
+	b.r.TelegramMessageID = telegramMessageID
 	return b
 }
 

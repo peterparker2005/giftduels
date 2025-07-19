@@ -6,19 +6,12 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/peterparker2005/giftduels/packages/shared"
-	"github.com/peterparker2005/giftduels/packages/tonamount-go"
 )
-
-type CreateDuelParams struct {
-	DuelID          ID
-	TotalStakeValue *tonamount.TonAmount
-	Params          Params
-}
 
 type Repository interface {
 	WithTx(tx pgx.Tx) Repository
 
-	CreateDuel(ctx context.Context, params CreateDuelParams) (ID, error)
+	CreateDuel(ctx context.Context, duel *Duel) (ID, error)
 	CreateStake(ctx context.Context, duelID ID, stake Stake) error
 	CreateParticipant(ctx context.Context, duelID ID, participant Participant) error
 	CreateRound(ctx context.Context, duelID ID, round Round) error

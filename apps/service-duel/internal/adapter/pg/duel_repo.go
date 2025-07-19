@@ -30,18 +30,18 @@ func (r *duelRepository) WithTx(tx pgx.Tx) duelDomain.Repository {
 
 func (r *duelRepository) CreateDuel(
 	ctx context.Context,
-	params duelDomain.CreateDuelParams,
+	duel *duelDomain.Duel,
 ) (duelDomain.ID, error) {
-	duel, err := r.q.CreateDuel(ctx, sqlc.CreateDuelParams{
-		IsPrivate:  params.Params.IsPrivate,
-		MaxPlayers: params.Params.MaxPlayers.Int32(),
-		MaxGifts:   params.Params.MaxGifts.Int32(),
+	pgDuel, err := r.q.CreateDuel(ctx, sqlc.CreateDuelParams{
+		IsPrivate:  duel.Params.IsPrivate,
+		MaxPlayers: duel.Params.MaxPlayers.Int32(),
+		MaxGifts:   duel.Params.MaxGifts.Int32(),
 	})
 	if err != nil {
 		return "", err
 	}
 
-	return duelDomain.NewID(duel.ID.String())
+	return duelDomain.NewID(pgDuel.ID.String())
 }
 
 func (r *duelRepository) GetDuelByID(
@@ -332,12 +332,13 @@ func (r *duelRepository) CreateRoll(
 	}
 
 	_, err = r.q.CreateRoll(ctx, sqlc.CreateRollParams{
-		DuelID:         pgDuelID,
-		RoundNumber:    roundNumber,
-		TelegramUserID: roll.TelegramUserID.Int64(),
-		DiceValue:      diceValue,
-		RolledAt:       rolledAt,
-		IsAutoRolled:   roll.IsAutoRolled,
+		DuelID:            pgDuelID,
+		RoundNumber:       roundNumber,
+		TelegramUserID:    roll.TelegramUserID.Int64(),
+		DiceValue:         diceValue,
+		RolledAt:          rolledAt,
+		IsAutoRolled:      roll.IsAutoRolled,
+		TelegramMessageID: roll.TelegramMessageID,
 	})
 	return err
 }

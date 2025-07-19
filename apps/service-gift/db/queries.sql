@@ -6,13 +6,14 @@ WHERE id = $1;
 -- name: GetGiftsByIDs :many
 SELECT *
 FROM gifts
-WHERE id = ANY($1::uuid[]);
+WHERE id = ANY($1::uuid[])
+ORDER BY updated_at DESC;
 
 -- name: GetUserGifts :many
 SELECT *
 FROM gifts
 WHERE owner_telegram_id = $1
-ORDER BY created_at DESC
+ORDER BY updated_at DESC
 LIMIT $2 OFFSET $3;
 
 -- name: GetUserGiftsCount :one
@@ -26,7 +27,7 @@ FROM gifts
 WHERE owner_telegram_id = $1
   AND status IN ('owned', 'in_game')
 ORDER BY
-  created_at DESC,
+  updated_at DESC,
   (status = 'owned') DESC,
   price DESC
 LIMIT $2 OFFSET $3;
